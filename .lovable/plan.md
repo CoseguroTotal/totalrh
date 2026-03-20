@@ -1,99 +1,60 @@
 
-# Plan: Conectar Lovable Cloud y desarrollar Módulo de Legajo Digital
+
+# Plan: Formulario de alta, edición de empleados y limpieza de datos
 
 ## Resumen
 
-Habilitaremos Lovable Cloud (Supabase integrado) para tener base de datos, autenticación y almacenamiento. Luego migraremos el módulo de Legajo Digital de datos mock a datos reales en la base de datos.
+Tres cambios: (1) formulario Dialog para crear empleados desde Legajos, (2) modo edición inline en LegajoDetail, (3) eliminar datos seed de la base de datos.
 
 ---
 
-## Paso 1 — Habilitar Lovable Cloud
+## 1. Crear componente `EmpleadoFormDialog`
 
-Activar Lovable Cloud para obtener base de datos PostgreSQL, autenticación y storage integrados.
+Nuevo componente `src/components/EmpleadoFormDialog.tsx`:
+- Dialog modal con formulario usando react-hook-form + zod validation
+- Campos: nombre, apellido, legajo, DNI, CUIL, puesto, categoría, CCT, fecha_ingreso, estado, email, teléfono
+- Selects dinámicos para empresa y sucursal (sucursales filtradas por empresa seleccionada)
+- Hook `useSucursales(empresaId)` en `useEmpleados.ts` para cargar sucursales filtradas
+- On submit: insert en tabla `empleados` via Supabase, invalidar query `["empleados"]`, cerrar dialog
+- Reutilizable tanto para crear como para editar (recibe `empleado` opcional como prop)
 
-## Paso 2 — Crear esquema de base de datos
+## 2. Agregar botón "Nuevo Empleado" en `Legajos.tsx`
 
-Tablas a crear mediante migraciones:
+- Botón con icono `Plus` junto a los filtros
+- Abre `EmpleadoFormDialog` en modo creación
 
-```text
-empresas
-├── id (uuid, PK)
-├── nombre
-├── cuit
-└── created_at
+## 3. Agregar edición en `LegajoDetail.tsx`
 
-sucursales
-├── id (uuid, PK)
-├── empresa_id (FK → empresas)
-├── nombre
-└── direccion
+- Botón "Editar" (icono `Pencil`) en el header del perfil
+- Abre `EmpleadoFormDialog` en modo edición, pre-populado con datos del empleado
+- On submit: `update` en tabla `empleados` por id, invalidar queries `["empleado", id]` y `["empleados"]`
 
-empleados
-├── id (uuid, PK)
-├── legajo (unique)
-├── nombre, apellido
-├── dni, cuil
-├── puesto, categoria
-├── empresa_id (FK → empresas)
-├── sucursal_id (FK → sucursales)
-├── fecha_ingreso
-├── cct
-├── estado (enum: activo/licencia/baja)
-├── email, telefono
-├── avatar_url
-└── created_at, updated_at
+## 4. Hook `useSucursales` 
 
-eventos_legajo
-├── id (uuid, PK)
-├── empleado_id (FK → empleados)
-├── fecha
-├── tipo (enum: ingreso/promocion/sancion/licencia/cambio)
-├── titulo
-├── descripcion
-└── created_at
-
-documentos_legajo
-├── id (uuid, PK)
-├── empleado_id (FK → empleados)
-├── nombre_archivo
-├── storage_path
-├── tamaño
-├── fecha_vencimiento (nullable, para alertas)
-├── tipo_documento
-└── created_at
+Agregar en `useEmpleados.ts`:
+```typescript
+export function useSucursales(empresaId?: string) {
+  // query sucursales filtradas por empresa_id
+}
 ```
 
-Se habilitará RLS en todas las tablas con políticas para usuarios autenticados.
+## 5. Limpiar datos de prueba
 
-## Paso 3 — Configurar autenticación
+Eliminar todos los registros seed de las tablas usando el insert tool (DELETE):
+- `eventos_legajo` (primero, por FK)
+- `documentos_legajo` (por FK)
+- `empleados`
+- `sucursales`
+- `empresas`
 
-- Crear página de Login con email/password
-- Proteger rutas con componente `ProtectedRoute`
-- Redirigir usuarios no autenticados al login
-
-## Paso 4 — Configurar Storage
-
-- Crear bucket `documentos-legajo` para archivos de empleados
-- Políticas de acceso para usuarios autenticados
-
-## Paso 5 — Migrar el frontend a datos reales
-
-- Reemplazar `mockEmployees.ts` por queries a Supabase usando `@tanstack/react-query`
-- Crear hooks: `useEmpleados`, `useEmpleado`, `useEventosLegajo`, `useDocumentosLegajo`
-- Actualizar `Legajos.tsx` y `LegajoDetail.tsx` para usar datos reales
-- Implementar carga de documentos con Supabase Storage
-- Agregar funcionalidad de búsqueda y filtros contra la base de datos
-
-## Paso 6 — Seed de datos iniciales
-
-Insertar los 7 empleados mock y sus eventos como datos iniciales para que el sistema no arranque vacío.
+Las tablas quedan vacías, listas para carga real.
 
 ---
 
 ## Detalle técnico
 
-- **Stack**: Supabase (via Lovable Cloud) + React Query para fetching
-- **Auth**: Supabase Auth con email/password, sin perfiles adicionales
-- **Storage**: Bucket con políticas RLS para documentos
-- **Tipos**: Se generarán automáticamente desde el esquema de Supabase
-- **Patrón de datos**: Hooks custom con `useQuery`/`useMutation` de TanStack Query
+- **Validación**: zod schema con campos requeridos (nombre, apellido, legajo, DNI, CUIL, puesto, empresa, sucursal, fecha_ingreso)
+- **UI**: Dialog de shadcn/ui, campos con Label + Input/Select, grid de 2 columnas en desktop
+- **Mutations**: useMutation de TanStack Query para insert/update con toast de feedback
+- **No requiere migración**: el schema actual ya soporta insert y update en `empleados`
+
