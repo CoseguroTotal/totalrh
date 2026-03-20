@@ -1,9 +1,13 @@
 import { useParams, Link } from "react-router-dom";
-import { employees, timelineEvents, TimelineEvent } from "@/data/mockEmployees";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, FolderOpen, Award, AlertCircle } from "lucide-react";
+import { useEmpleado, useEventosLegajo, useDocumentosLegajo } from "@/hooks/useEmpleados";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
+import { toast } from "sonner";
 
-const eventIcon: Record<TimelineEvent["type"], { icon: typeof Award; color: string }> = {
+const eventIcon: Record<string, { icon: typeof Award; color: string }> = {
   ingreso: { icon: Award, color: "text-success bg-success/15" },
   promocion: { icon: Award, color: "text-info bg-info/15" },
   sancion: { icon: AlertCircle, color: "text-destructive bg-destructive/15" },
@@ -11,17 +15,79 @@ const eventIcon: Record<TimelineEvent["type"], { icon: typeof Award; color: stri
   cambio: { icon: Building2, color: "text-primary bg-primary/15" },
 };
 
-const mockDocuments = [
-  { name: "DNI Frente y Dorso.pdf", size: "1.2 MB", date: "2018-03-15" },
-  { name: "Constancia CUIL.pdf", size: "340 KB", date: "2018-03-15" },
-  { name: "Contrato de Trabajo.pdf", size: "2.1 MB", date: "2018-03-15" },
-  { name: "Certificado Art. 80.pdf", size: "890 KB", date: "2023-12-01" },
-  { name: "Carnet de Conducir.pdf", size: "560 KB", date: "2025-01-10" },
-];
+const estadoBadge: Record<string, string> = {
+  Activo: "bg-success/15 text-success",
+  Licencia: "bg-warning/15 text-warning",
+  Baja: "bg-destructive/15 text-destructive",
+};
 
 export default function LegajoDetail() {
   const { id } = useParams();
-  const emp = employees.find((e) => e.id === id);
+  const { data: emp, isLoading } = useEmpleado(id);
+  const { data: events = [] } = useEventosLegajo(id);
+  const { data: documentos = [] } = useDocumentosLegajo(id);
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+
+    const storagePath = `${id}/${Date.now()}_${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from("documentos-legajo")
+      .upload(storagePath, file);
+
+    if (uploadError) {
+      toast.error("Error al subir archivo: " + uploadError.message);
+      return;
+    }
+
+    const { error: dbError } = await supabase.from("documentos_legajo").insert({
+      empleado_id: id,
+      nombre_archivo: file.name,
+      storage_path: storagePath,
+      tamano: file.size < 1024 * 1024
+        ? `${(file.size / 1024).toFixed(0)} KB`
+        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      tipo_documento: file.type || "application/octet-stream",
+    });
+
+    if (dbError) {
+      toast.error("Error al registrar documento: " + dbError.message);
+      return;
+    }
+
+    toast.success("Documento subido correctamente");
+    queryClient.invalidateQueries({ queryKey: ["documentos_legajo", id] });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDownload = async (storagePath: string, fileName: string) => {
+    const { data, error } = await supabase.storage
+      .from("documentos-legajo")
+      .download(storagePath);
+
+    if (error) {
+      toast.error("Error al descargar: " + error.message);
+      return;
+    }
+
+    const url = URL.createObjectURL(data);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!emp) {
     return (
@@ -32,17 +98,8 @@ export default function LegajoDetail() {
     );
   }
 
-  const events = timelineEvents[emp.id] || [];
-
-  const estadoBadge: Record<string, string> = {
-    Activo: "bg-success/15 text-success",
-    Licencia: "bg-warning/15 text-warning",
-    Baja: "bg-destructive/15 text-destructive",
-  };
-
   return (
     <div className="space-y-6 max-w-5xl">
-      {/* Back */}
       <Link to="/legajos" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors animate-fade-in">
         <ArrowLeft className="h-4 w-4" />
         Volver a Legajos
@@ -63,9 +120,9 @@ export default function LegajoDetail() {
             </div>
             <p className="text-sm text-muted-foreground mt-1">{emp.puesto} · {emp.categoria}</p>
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" />{emp.empresa} — {emp.sucursal}</span>
-              <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{emp.email}</span>
-              <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{emp.telefono}</span>
+              <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" />{emp.empresa?.nombre} — {emp.sucursal?.nombre}</span>
+              {emp.email && <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{emp.email}</span>}
+              {emp.telefono && <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{emp.telefono}</span>}
             </div>
           </div>
         </div>
@@ -76,13 +133,13 @@ export default function LegajoDetail() {
             { label: "Legajo", value: emp.legajo },
             { label: "DNI", value: emp.dni },
             { label: "CUIL", value: emp.cuil },
-            { label: "Ingreso", value: new Date(emp.fechaIngreso).toLocaleDateString("es-AR") },
+            { label: "Ingreso", value: new Date(emp.fecha_ingreso).toLocaleDateString("es-AR") },
             { label: "CCT", value: emp.cct },
             { label: "Categoría", value: emp.categoria },
           ].map((d) => (
             <div key={d.label}>
               <p className="text-xs text-muted-foreground">{d.label}</p>
-              <p className="text-sm font-medium mt-0.5">{d.value}</p>
+              <p className="text-sm font-medium mt-0.5">{d.value || "—"}</p>
             </div>
           ))}
         </div>
@@ -97,15 +154,16 @@ export default function LegajoDetail() {
           ) : (
             <div className="relative space-y-4 pl-6 before:absolute before:left-[9px] before:top-2 before:bottom-2 before:w-px before:bg-border">
               {events.map((ev) => {
-                const { icon: Icon, color } = eventIcon[ev.type];
+                const config = eventIcon[ev.tipo] || eventIcon.cambio;
+                const Icon = config.icon;
                 return (
                   <div key={ev.id} className="relative">
-                    <div className={cn("absolute -left-6 top-0.5 h-5 w-5 rounded-full flex items-center justify-center", color)}>
+                    <div className={cn("absolute -left-6 top-0.5 h-5 w-5 rounded-full flex items-center justify-center", config.color)}>
                       <Icon className="h-3 w-3" />
                     </div>
-                    <p className="text-xs text-muted-foreground">{new Date(ev.date).toLocaleDateString("es-AR")}</p>
-                    <p className="text-sm font-medium">{ev.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{ev.description}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(ev.fecha).toLocaleDateString("es-AR")}</p>
+                    <p className="text-sm font-medium">{ev.titulo}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{ev.descripcion}</p>
                   </div>
                 );
               })}
@@ -117,21 +175,43 @@ export default function LegajoDetail() {
         <div className="animate-slide-up rounded-xl border bg-card p-5 shadow-sm" style={{ animationDelay: "180ms" }}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium">Documentación</h3>
-            <button className="text-xs text-primary hover:underline">Subir archivo</button>
+            <label className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1">
+              <Upload className="h-3 w-3" />
+              Subir archivo
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleUpload}
+              />
+            </label>
           </div>
-          <div className="space-y-1">
-            {mockDocuments.map((doc, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors cursor-pointer group">
-                <div className="rounded-md bg-muted p-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
+          {documentos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin documentos cargados.</p>
+          ) : (
+            <div className="space-y-1">
+              {documentos.map((doc) => (
+                <div
+                  key={doc.id}
+                  onClick={() => handleDownload(doc.storage_path, doc.nombre_archivo)}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors cursor-pointer group"
+                >
+                  <div className="rounded-md bg-muted p-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{doc.nombre_archivo}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {doc.tamano} · {new Date(doc.created_at).toLocaleDateString("es-AR")}
+                      {doc.fecha_vencimiento && (
+                        <span className="ml-2 text-warning">Vence: {new Date(doc.fecha_vencimiento).toLocaleDateString("es-AR")}</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{doc.name}</p>
-                  <p className="text-xs text-muted-foreground">{doc.size} · {new Date(doc.date).toLocaleDateString("es-AR")}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
