@@ -20,6 +20,16 @@ export type EmpleadoConEmpresa = {
   sucursal_id: string;
   empresa: { id: string; nombre: string } | null;
   sucursal: { id: string; nombre: string } | null;
+  domicilio_calle: string | null;
+  domicilio_numero: string | null;
+  domicilio_piso: string | null;
+  domicilio_localidad: string | null;
+  domicilio_provincia: string | null;
+  domicilio_cp: string | null;
+  nacionalidad: string | null;
+  fecha_nacimiento: string | null;
+  sexo: string | null;
+  estado_civil: string | null;
 };
 
 export function useEmpleados() {
@@ -30,7 +40,6 @@ export function useEmpleados() {
         .from("empleados")
         .select("*, empresa:empresas(id, nombre), sucursal:sucursales(id, nombre)")
         .order("apellido");
-
       if (error) throw error;
       return data as EmpleadoConEmpresa[];
     },
@@ -47,7 +56,6 @@ export function useEmpleado(id: string | undefined) {
         .select("*, empresa:empresas(id, nombre), sucursal:sucursales(id, nombre)")
         .eq("id", id!)
         .single();
-
       if (error) throw error;
       return data as EmpleadoConEmpresa;
     },
@@ -64,7 +72,6 @@ export function useEventosLegajo(empleadoId: string | undefined) {
         .select("*")
         .eq("empleado_id", empleadoId!)
         .order("fecha", { ascending: false });
-
       if (error) throw error;
       return data;
     },
@@ -81,7 +88,6 @@ export function useDocumentosLegajo(empleadoId: string | undefined) {
         .select("*")
         .eq("empleado_id", empleadoId!)
         .order("created_at", { ascending: false });
-
       if (error) throw error;
       return data;
     },
@@ -109,6 +115,38 @@ export function useSucursales(empresaId?: string) {
         .select("*")
         .eq("empresa_id", empresaId!)
         .order("nombre");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useGrupoFamiliar(empleadoId: string | undefined) {
+  return useQuery({
+    queryKey: ["grupo_familiar", empleadoId],
+    enabled: !!empleadoId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("grupo_familiar")
+        .select("*")
+        .eq("empleado_id", empleadoId!)
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useDatosMedicos(empleadoId: string | undefined) {
+  return useQuery({
+    queryKey: ["datos_medicos", empleadoId],
+    enabled: !!empleadoId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("datos_medicos")
+        .select("*")
+        .eq("empleado_id", empleadoId!)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },

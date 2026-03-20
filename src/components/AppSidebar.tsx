@@ -14,6 +14,7 @@ import {
 const modules = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Legajos", url: "/legajos", icon: FileText },
+  { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Liquidación", url: "/liquidacion", icon: DollarSign },
   { title: "Autogestión", url: "/autogestion", icon: UserCircle },
   { title: "Asistencia", url: "/asistencia", icon: Clock },

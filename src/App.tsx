@@ -9,6 +9,7 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Legajos from "@/pages/Legajos";
 import LegajoDetail from "@/pages/LegajoDetail";
+import Empresas from "@/pages/Empresas";
 import PlaceholderModule from "@/pages/PlaceholderModule";
 import NotFound from "./pages/NotFound";
 
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/" element={<Dashboard />} />
               <Route path="/legajos" element={<Legajos />} />
               <Route path="/legajos/:id" element={<LegajoDetail />} />
+              <Route path="/empresas" element={<Empresas />} />
               <Route path="/liquidacion" element={<PlaceholderModule />} />
               <Route path="/autogestion" element={<PlaceholderModule />} />
               <Route path="/asistencia" element={<PlaceholderModule />} />

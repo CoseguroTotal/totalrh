@@ -14,8 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      datos_medicos: {
+        Row: {
+          alergias: string | null
+          art: string | null
+          created_at: string
+          empleado_id: string
+          grupo_sanguineo: string | null
+          id: string
+          nro_afiliado: string | null
+          nro_art: string | null
+          obra_social: string | null
+          observaciones: string | null
+          plan_obra_social: string | null
+          updated_at: string
+        }
+        Insert: {
+          alergias?: string | null
+          art?: string | null
+          created_at?: string
+          empleado_id: string
+          grupo_sanguineo?: string | null
+          id?: string
+          nro_afiliado?: string | null
+          nro_art?: string | null
+          obra_social?: string | null
+          observaciones?: string | null
+          plan_obra_social?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alergias?: string | null
+          art?: string | null
+          created_at?: string
+          empleado_id?: string
+          grupo_sanguineo?: string | null
+          id?: string
+          nro_afiliado?: string | null
+          nro_art?: string | null
+          obra_social?: string | null
+          observaciones?: string | null
+          plan_obra_social?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "datos_medicos_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: true
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documentos_legajo: {
         Row: {
+          categoria: string | null
           created_at: string
           empleado_id: string
           fecha_vencimiento: string | null
@@ -26,6 +80,7 @@ export type Database = {
           tipo_documento: string | null
         }
         Insert: {
+          categoria?: string | null
           created_at?: string
           empleado_id: string
           fecha_vencimiento?: string | null
@@ -36,6 +91,7 @@ export type Database = {
           tipo_documento?: string | null
         }
         Update: {
+          categoria?: string | null
           created_at?: string
           empleado_id?: string
           fecha_vencimiento?: string | null
@@ -64,14 +120,24 @@ export type Database = {
           created_at: string
           cuil: string
           dni: string
+          domicilio_calle: string | null
+          domicilio_cp: string | null
+          domicilio_localidad: string | null
+          domicilio_numero: string | null
+          domicilio_piso: string | null
+          domicilio_provincia: string | null
           email: string | null
           empresa_id: string
           estado: Database["public"]["Enums"]["estado_empleado"]
+          estado_civil: string | null
           fecha_ingreso: string
+          fecha_nacimiento: string | null
           id: string
           legajo: string
+          nacionalidad: string | null
           nombre: string
           puesto: string
+          sexo: string | null
           sucursal_id: string
           telefono: string | null
           updated_at: string
@@ -84,14 +150,24 @@ export type Database = {
           created_at?: string
           cuil: string
           dni: string
+          domicilio_calle?: string | null
+          domicilio_cp?: string | null
+          domicilio_localidad?: string | null
+          domicilio_numero?: string | null
+          domicilio_piso?: string | null
+          domicilio_provincia?: string | null
           email?: string | null
           empresa_id: string
           estado?: Database["public"]["Enums"]["estado_empleado"]
+          estado_civil?: string | null
           fecha_ingreso: string
+          fecha_nacimiento?: string | null
           id?: string
           legajo: string
+          nacionalidad?: string | null
           nombre: string
           puesto: string
+          sexo?: string | null
           sucursal_id: string
           telefono?: string | null
           updated_at?: string
@@ -104,14 +180,24 @@ export type Database = {
           created_at?: string
           cuil?: string
           dni?: string
+          domicilio_calle?: string | null
+          domicilio_cp?: string | null
+          domicilio_localidad?: string | null
+          domicilio_numero?: string | null
+          domicilio_piso?: string | null
+          domicilio_provincia?: string | null
           email?: string | null
           empresa_id?: string
           estado?: Database["public"]["Enums"]["estado_empleado"]
+          estado_civil?: string | null
           fecha_ingreso?: string
+          fecha_nacimiento?: string | null
           id?: string
           legajo?: string
+          nacionalidad?: string | null
           nombre?: string
           puesto?: string
+          sexo?: string | null
           sucursal_id?: string
           telefono?: string | null
           updated_at?: string
@@ -192,6 +278,53 @@ export type Database = {
           },
         ]
       }
+      grupo_familiar: {
+        Row: {
+          a_cargo: boolean
+          apellido: string
+          created_at: string
+          discapacidad: boolean
+          dni: string | null
+          empleado_id: string
+          fecha_nacimiento: string | null
+          id: string
+          nombre: string
+          parentesco: Database["public"]["Enums"]["parentesco_familiar"]
+        }
+        Insert: {
+          a_cargo?: boolean
+          apellido: string
+          created_at?: string
+          discapacidad?: boolean
+          dni?: string | null
+          empleado_id: string
+          fecha_nacimiento?: string | null
+          id?: string
+          nombre: string
+          parentesco: Database["public"]["Enums"]["parentesco_familiar"]
+        }
+        Update: {
+          a_cargo?: boolean
+          apellido?: string
+          created_at?: string
+          discapacidad?: boolean
+          dni?: string | null
+          empleado_id?: string
+          fecha_nacimiento?: string | null
+          id?: string
+          nombre?: string
+          parentesco?: Database["public"]["Enums"]["parentesco_familiar"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupo_familiar_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sucursales: {
         Row: {
           created_at: string
@@ -233,6 +366,7 @@ export type Database = {
     }
     Enums: {
       estado_empleado: "Activo" | "Licencia" | "Baja"
+      parentesco_familiar: "conyuge" | "hijo" | "padre" | "otro"
       tipo_evento_legajo:
         | "ingreso"
         | "promocion"
@@ -367,6 +501,7 @@ export const Constants = {
   public: {
     Enums: {
       estado_empleado: ["Activo", "Licencia", "Baja"],
+      parentesco_familiar: ["conyuge", "hijo", "padre", "otro"],
       tipo_evento_legajo: [
         "ingreso",
         "promocion",
