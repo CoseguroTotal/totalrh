@@ -26,6 +26,7 @@ const estadoBadge: Record<string, string> = {
 
 export default function LegajoDetail() {
   const { id } = useParams();
+  const [editOpen, setEditOpen] = useState(false);
   const { data: emp, isLoading } = useEmpleado(id);
   const { data: events = [] } = useEventosLegajo(id);
   const { data: documentos = [] } = useDocumentosLegajo(id);
