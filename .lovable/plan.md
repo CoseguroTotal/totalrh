@@ -1,60 +1,82 @@
 
 
-# Plan: Formulario de alta, edición de empleados y limpieza de datos
+# Plan: Ampliar Legajo Digital — Eventos, Empresas, Domicilio, Grupo Familiar y Datos Médicos
 
 ## Resumen
 
-Tres cambios: (1) formulario Dialog para crear empleados desde Legajos, (2) modo edición inline en LegajoDetail, (3) eliminar datos seed de la base de datos.
+Agregar 5 funcionalidades al módulo de Legajo Digital:
+1. CRUD de empresas y sucursales desde la UI
+2. Formulario para agregar eventos al historial del legajo
+3. Campos adicionales en empleados: domicilio completo
+4. Nuevas tablas: grupo familiar, datos médicos
+5. Categorización de documentos (permisos, documentos presentados, médicos)
 
 ---
 
-## 1. Crear componente `EmpleadoFormDialog`
+## 1. Migración de base de datos
 
-Nuevo componente `src/components/EmpleadoFormDialog.tsx`:
-- Dialog modal con formulario usando react-hook-form + zod validation
-- Campos: nombre, apellido, legajo, DNI, CUIL, puesto, categoría, CCT, fecha_ingreso, estado, email, teléfono
-- Selects dinámicos para empresa y sucursal (sucursales filtradas por empresa seleccionada)
-- Hook `useSucursales(empresaId)` en `useEmpleados.ts` para cargar sucursales filtradas
-- On submit: insert en tabla `empleados` via Supabase, invalidar query `["empleados"]`, cerrar dialog
-- Reutilizable tanto para crear como para editar (recibe `empleado` opcional como prop)
+### Nuevas columnas en `empleados`:
+- `domicilio_calle`, `domicilio_numero`, `domicilio_piso`, `domicilio_localidad`, `domicilio_provincia`, `domicilio_cp` (todos text nullable)
+- `nacionalidad`, `fecha_nacimiento`, `sexo`, `estado_civil` (text/date nullable)
 
-## 2. Agregar botón "Nuevo Empleado" en `Legajos.tsx`
+### Nueva tabla `grupo_familiar`:
+- `id`, `empleado_id` (FK), `nombre`, `apellido`, `parentesco` (enum: conyuge/hijo/padre/otro), `dni`, `fecha_nacimiento`, `discapacidad` (bool), `a_cargo` (bool), `created_at`
 
-- Botón con icono `Plus` junto a los filtros
-- Abre `EmpleadoFormDialog` en modo creación
+### Nueva tabla `datos_medicos`:
+- `id`, `empleado_id` (FK), `grupo_sanguineo`, `obra_social`, `plan_obra_social`, `nro_afiliado`, `art`, `nro_art`, `alergias`, `observaciones`, `created_at`, `updated_at`
 
-## 3. Agregar edición en `LegajoDetail.tsx`
+### RLS: Todas las tablas con políticas CRUD para authenticated.
 
-- Botón "Editar" (icono `Pencil`) en el header del perfil
-- Abre `EmpleadoFormDialog` en modo edición, pre-populado con datos del empleado
-- On submit: `update` en tabla `empleados` por id, invalidar queries `["empleado", id]` y `["empleados"]`
+### Políticas INSERT/UPDATE en `empresas` y `sucursales` (actualmente solo SELECT).
 
-## 4. Hook `useSucursales` 
+---
 
-Agregar en `useEmpleados.ts`:
-```typescript
-export function useSucursales(empresaId?: string) {
-  // query sucursales filtradas por empresa_id
-}
-```
+## 2. CRUD de Empresas y Sucursales
 
-## 5. Limpiar datos de prueba
+- Nuevo componente `EmpresaFormDialog.tsx`: Dialog para crear/editar empresa (nombre, CUIT) y sus sucursales inline
+- Nueva página `src/pages/Empresas.tsx` con listado de empresas y sus sucursales
+- Ruta `/empresas` en App.tsx y enlace en sidebar
+- Botones para agregar/editar empresas y sucursales
 
-Eliminar todos los registros seed de las tablas usando el insert tool (DELETE):
-- `eventos_legajo` (primero, por FK)
-- `documentos_legajo` (por FK)
-- `empleados`
-- `sucursales`
-- `empresas`
+## 3. Formulario de Eventos en LegajoDetail
 
-Las tablas quedan vacías, listas para carga real.
+- Nuevo componente `EventoFormDialog.tsx`: Dialog con campos fecha, tipo (select del enum), titulo, descripcion
+- Botón "Agregar evento" junto al título "Historial de Eventos" en LegajoDetail
+- Insert en `eventos_legajo`, invalidar query
+
+## 4. Datos ampliados del empleado
+
+- Ampliar `EmpleadoFormDialog.tsx` con pestañas/secciones:
+  - Datos personales (existentes + domicilio + nacionalidad, fecha nacimiento, sexo, estado civil)
+  - Los campos nuevos son opcionales
+- En `LegajoDetail.tsx`: mostrar sección de domicilio en el grid de detalles
+
+## 5. Grupo Familiar en LegajoDetail
+
+- Nueva sección/card "Grupo Familiar" en LegajoDetail
+- Componente `FamiliarFormDialog.tsx` para agregar/editar familiares
+- Hook `useGrupoFamiliar(empleadoId)` en useEmpleados.ts
+- Tabla inline mostrando familiares con botón agregar
+
+## 6. Datos Médicos en LegajoDetail
+
+- Nueva sección/card "Datos Médicos" en LegajoDetail
+- Formulario inline o dialog para editar datos médicos (un registro por empleado)
+- Hook `useDatosMedicos(empleadoId)`
+
+## 7. Categorización de documentos
+
+- Agregar columna `categoria` a `documentos_legajo` (enum o text: 'documento_personal', 'permiso', 'medico', 'contrato', 'otro')
+- Al subir archivo, permitir seleccionar categoría y fecha de vencimiento
+- Filtro por categoría en la sección de documentos
 
 ---
 
 ## Detalle técnico
 
-- **Validación**: zod schema con campos requeridos (nombre, apellido, legajo, DNI, CUIL, puesto, empresa, sucursal, fecha_ingreso)
-- **UI**: Dialog de shadcn/ui, campos con Label + Input/Select, grid de 2 columnas en desktop
-- **Mutations**: useMutation de TanStack Query para insert/update con toast de feedback
-- **No requiere migración**: el schema actual ya soporta insert y update en `empleados`
+- **Migración**: Una sola migración SQL con todas las tablas nuevas, columnas y políticas RLS
+- **Hooks**: Agregar `useGrupoFamiliar`, `useDatosMedicos` en useEmpleados.ts
+- **EmpleadoConEmpresa type**: Ampliar con campos de domicilio
+- **LegajoDetail**: Reorganizar en tabs (Datos, Familia, Médico, Documentos, Historial) para no sobrecargar la vista
+- **No se modifica** `client.ts` ni `types.ts` (auto-generados)
 
