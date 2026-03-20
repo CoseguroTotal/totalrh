@@ -94,9 +94,18 @@ export default function EmpleadoFormDialog({ open, onOpenChange, empleado }: Pro
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const payload = {
-        ...values,
+        nombre: values.nombre,
+        apellido: values.apellido,
+        legajo: values.legajo,
+        dni: values.dni,
+        cuil: values.cuil,
+        puesto: values.puesto,
         categoria: values.categoria || null,
         cct: values.cct || null,
+        fecha_ingreso: values.fecha_ingreso,
+        estado: values.estado,
+        empresa_id: values.empresa_id,
+        sucursal_id: values.sucursal_id,
         email: values.email || null,
         telefono: values.telefono || null,
       };
@@ -108,7 +117,7 @@ export default function EmpleadoFormDialog({ open, onOpenChange, empleado }: Pro
           .eq("id", empleado.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("empleados").insert(payload);
+        const { error } = await supabase.from("empleados").insert([payload]);
         if (error) throw error;
       }
     },
