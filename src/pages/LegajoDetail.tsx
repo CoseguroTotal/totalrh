@@ -1,11 +1,14 @@
 import { useParams, Link } from "react-router-dom";
+import { useState } from "react";
 import { useEmpleado, useEventosLegajo, useDocumentosLegajo } from "@/hooks/useEmpleados";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import EmpleadoFormDialog from "@/components/EmpleadoFormDialog";
 
 const eventIcon: Record<string, { icon: typeof Award; color: string }> = {
   ingreso: { icon: Award, color: "text-success bg-success/15" },
