@@ -1,13 +1,14 @@
 import {
-  Users, LayoutDashboard, FileText, DollarSign, UserCircle,
-  Clock, Briefcase, BarChart3, ChevronDown, Building2,
+  LayoutDashboard, FileText, DollarSign, UserCircle,
+  Clock, Briefcase, BarChart3, Building2, LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarHeader, useSidebar,
+  SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 
 const modules = [
@@ -23,6 +24,12 @@ const modules = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -65,6 +72,16 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={handleLogout} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+              <LogOut className="h-4 w-4 shrink-0" />
+              {!collapsed && <span>Cerrar Sesión</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }
