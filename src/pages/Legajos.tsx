@@ -15,6 +15,7 @@ const estadoBadge: Record<string, string> = {
 export default function Legajos() {
   const [search, setSearch] = useState("");
   const [filterEmpresa, setFilterEmpresa] = useState("Todas");
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { data: empleados, isLoading } = useEmpleados();
   const { data: empresas } = useEmpresas();
 
