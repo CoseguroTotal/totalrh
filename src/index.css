@@ -68,7 +68,8 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
   h1, h2, h3, h4 {
-    @apply tracking-tight text-wrap-balance;
+    @apply tracking-tight;
+    text-wrap: balance;
   }
   .tabular-nums {
     font-variant-numeric: tabular-nums;
