@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useEmpleados, useEmpresas } from "@/hooks/useEmpleados";
-import { Search, Filter, ChevronRight, Loader2 } from "lucide-react";
+import { Search, Filter, ChevronRight, Loader2, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import EmpleadoFormDialog from "@/components/EmpleadoFormDialog";
 
 const estadoBadge: Record<string, string> = {
   Activo: "bg-success/15 text-success",
