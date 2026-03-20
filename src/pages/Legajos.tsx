@@ -29,10 +29,18 @@ export default function Legajos() {
 
   return (
     <div className="space-y-6">
-      <div className="animate-fade-in">
-        <h1 className="text-2xl font-semibold">Legajos Digitales</h1>
-        <p className="text-sm text-muted-foreground mt-1">Gestión centralizada de legajos del personal</p>
+      <div className="animate-fade-in flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Legajos Digitales</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gestión centralizada de legajos del personal</p>
+        </div>
+        <Button onClick={() => setDialogOpen(true)} size="sm">
+          <Plus className="h-4 w-4 mr-1.5" />
+          Nuevo Empleado
+        </Button>
       </div>
+
+      <EmpleadoFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
       {/* Filters */}
       <div className="animate-slide-up flex flex-col sm:flex-row gap-3" style={{ animationDelay: "100ms" }}>
