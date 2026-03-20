@@ -98,3 +98,19 @@ export function useEmpresas() {
     },
   });
 }
+
+export function useSucursales(empresaId?: string) {
+  return useQuery({
+    queryKey: ["sucursales", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sucursales")
+        .select("*")
+        .eq("empresa_id", empresaId!)
+        .order("nombre");
+      if (error) throw error;
+      return data;
+    },
+  });
+}

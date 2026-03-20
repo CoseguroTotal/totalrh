@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useEmpleados, useEmpresas } from "@/hooks/useEmpleados";
-import { Search, Filter, ChevronRight, Loader2 } from "lucide-react";
+import { Search, Filter, ChevronRight, Loader2, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import EmpleadoFormDialog from "@/components/EmpleadoFormDialog";
 
 const estadoBadge: Record<string, string> = {
   Activo: "bg-success/15 text-success",
@@ -13,6 +15,7 @@ const estadoBadge: Record<string, string> = {
 export default function Legajos() {
   const [search, setSearch] = useState("");
   const [filterEmpresa, setFilterEmpresa] = useState("Todas");
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { data: empleados, isLoading } = useEmpleados();
   const { data: empresas } = useEmpresas();
 
@@ -26,10 +29,18 @@ export default function Legajos() {
 
   return (
     <div className="space-y-6">
-      <div className="animate-fade-in">
-        <h1 className="text-2xl font-semibold">Legajos Digitales</h1>
-        <p className="text-sm text-muted-foreground mt-1">Gestión centralizada de legajos del personal</p>
+      <div className="animate-fade-in flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Legajos Digitales</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gestión centralizada de legajos del personal</p>
+        </div>
+        <Button onClick={() => setDialogOpen(true)} size="sm">
+          <Plus className="h-4 w-4 mr-1.5" />
+          Nuevo Empleado
+        </Button>
       </div>
+
+      <EmpleadoFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
       {/* Filters */}
       <div className="animate-slide-up flex flex-col sm:flex-row gap-3" style={{ animationDelay: "100ms" }}>

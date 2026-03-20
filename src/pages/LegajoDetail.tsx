@@ -1,11 +1,14 @@
 import { useParams, Link } from "react-router-dom";
+import { useState } from "react";
 import { useEmpleado, useEventosLegajo, useDocumentosLegajo } from "@/hooks/useEmpleados";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import EmpleadoFormDialog from "@/components/EmpleadoFormDialog";
 
 const eventIcon: Record<string, { icon: typeof Award; color: string }> = {
   ingreso: { icon: Award, color: "text-success bg-success/15" },
@@ -23,6 +26,7 @@ const estadoBadge: Record<string, string> = {
 
 export default function LegajoDetail() {
   const { id } = useParams();
+  const [editOpen, setEditOpen] = useState(false);
   const { data: emp, isLoading } = useEmpleado(id);
   const { data: events = [] } = useEventosLegajo(id);
   const { data: documentos = [] } = useDocumentosLegajo(id);
@@ -117,7 +121,12 @@ export default function LegajoDetail() {
               <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", estadoBadge[emp.estado])}>
                 {emp.estado}
               </span>
+              <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)} className="ml-auto">
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Editar
+              </Button>
             </div>
+            <EmpleadoFormDialog open={editOpen} onOpenChange={setEditOpen} empleado={emp} />
             <p className="text-sm text-muted-foreground mt-1">{emp.puesto} · {emp.categoria}</p>
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" />{emp.empresa?.nombre} — {emp.sucursal?.nombre}</span>
