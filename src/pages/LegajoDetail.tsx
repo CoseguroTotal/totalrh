@@ -1,14 +1,21 @@
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
-import { useEmpleado, useEventosLegajo, useDocumentosLegajo } from "@/hooks/useEmpleados";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil } from "lucide-react";
+import { useEmpleado, useEventosLegajo, useDocumentosLegajo, useGrupoFamiliar, useDatosMedicos } from "@/hooks/useEmpleados";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import EmpleadoFormDialog from "@/components/EmpleadoFormDialog";
+import EventoFormDialog from "@/components/EventoFormDialog";
+import FamiliarFormDialog from "@/components/FamiliarFormDialog";
+import DatosMedicosForm from "@/components/DatosMedicosForm";
 
 const eventIcon: Record<string, { icon: typeof Award; color: string }> = {
   ingreso: { icon: Award, color: "text-success bg-success/15" },
@@ -24,73 +31,81 @@ const estadoBadge: Record<string, string> = {
   Baja: "bg-destructive/15 text-destructive",
 };
 
+const parentescoLabel: Record<string, string> = {
+  conyuge: "Cónyuge", hijo: "Hijo/a", padre: "Padre/Madre", otro: "Otro",
+};
+
+const categoriasDocumento = [
+  { value: "documento_personal", label: "Documento Personal" },
+  { value: "permiso", label: "Permiso" },
+  { value: "medico", label: "Médico" },
+  { value: "contrato", label: "Contrato" },
+  { value: "otro", label: "Otro" },
+];
+
 export default function LegajoDetail() {
   const { id } = useParams();
   const [editOpen, setEditOpen] = useState(false);
+  const [eventoOpen, setEventoOpen] = useState(false);
+  const [familiarOpen, setFamiliarOpen] = useState<{ open: boolean; familiar?: any }>({ open: false });
   const { data: emp, isLoading } = useEmpleado(id);
   const { data: events = [] } = useEventosLegajo(id);
   const { data: documentos = [] } = useDocumentosLegajo(id);
+  const { data: familiares = [] } = useGrupoFamiliar(id);
+  const { data: datosMedicos, isLoading: loadingMedicos } = useDatosMedicos(id);
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadCategoria, setUploadCategoria] = useState("otro");
+  const [uploadVencimiento, setUploadVencimiento] = useState("");
+
+  const deleteFamiliarMutation = useMutation({
+    mutationFn: async (familiarId: string) => {
+      const { error } = await supabase.from("grupo_familiar").delete().eq("id", familiarId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Familiar eliminado");
+      queryClient.invalidateQueries({ queryKey: ["grupo_familiar", id] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !id) return;
 
     const storagePath = `${id}/${Date.now()}_${file.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from("documentos-legajo")
-      .upload(storagePath, file);
-
-    if (uploadError) {
-      toast.error("Error al subir archivo: " + uploadError.message);
-      return;
-    }
+    const { error: uploadError } = await supabase.storage.from("documentos-legajo").upload(storagePath, file);
+    if (uploadError) { toast.error("Error al subir archivo: " + uploadError.message); return; }
 
     const { error: dbError } = await supabase.from("documentos_legajo").insert({
       empleado_id: id,
       nombre_archivo: file.name,
       storage_path: storagePath,
-      tamano: file.size < 1024 * 1024
-        ? `${(file.size / 1024).toFixed(0)} KB`
-        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      tamano: file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(0)} KB` : `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
       tipo_documento: file.type || "application/octet-stream",
+      categoria: uploadCategoria,
+      fecha_vencimiento: uploadVencimiento || null,
     });
-
-    if (dbError) {
-      toast.error("Error al registrar documento: " + dbError.message);
-      return;
-    }
+    if (dbError) { toast.error("Error al registrar documento: " + dbError.message); return; }
 
     toast.success("Documento subido correctamente");
     queryClient.invalidateQueries({ queryKey: ["documentos_legajo", id] });
     if (fileInputRef.current) fileInputRef.current.value = "";
+    setUploadVencimiento("");
   };
 
   const handleDownload = async (storagePath: string, fileName: string) => {
-    const { data, error } = await supabase.storage
-      .from("documentos-legajo")
-      .download(storagePath);
-
-    if (error) {
-      toast.error("Error al descargar: " + error.message);
-      return;
-    }
-
+    const { data, error } = await supabase.storage.from("documentos-legajo").download(storagePath);
+    if (error) { toast.error("Error al descargar: " + error.message); return; }
     const url = URL.createObjectURL(data);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
+    a.href = url; a.download = fileName; a.click();
     URL.revokeObjectURL(url);
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
 
   if (!emp) {
@@ -102,11 +117,13 @@ export default function LegajoDetail() {
     );
   }
 
+  const domicilio = [emp.domicilio_calle, emp.domicilio_numero, emp.domicilio_piso].filter(Boolean).join(" ");
+  const domicilioFull = [domicilio, emp.domicilio_localidad, emp.domicilio_provincia, emp.domicilio_cp].filter(Boolean).join(", ");
+
   return (
     <div className="space-y-6 max-w-5xl">
       <Link to="/legajos" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors animate-fade-in">
-        <ArrowLeft className="h-4 w-4" />
-        Volver a Legajos
+        <ArrowLeft className="h-4 w-4" />Volver a Legajos
       </Link>
 
       {/* Profile Header */}
@@ -118,25 +135,22 @@ export default function LegajoDetail() {
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl font-semibold">{emp.apellido}, {emp.nombre}</h1>
-              <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", estadoBadge[emp.estado])}>
-                {emp.estado}
-              </span>
+              <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", estadoBadge[emp.estado])}>{emp.estado}</span>
               <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)} className="ml-auto">
-                <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                Editar
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
               </Button>
             </div>
             <EmpleadoFormDialog open={editOpen} onOpenChange={setEditOpen} empleado={emp} />
-            <p className="text-sm text-muted-foreground mt-1">{emp.puesto} · {emp.categoria}</p>
+            <p className="text-sm text-muted-foreground mt-1">{emp.puesto}{emp.categoria ? ` · ${emp.categoria}` : ""}</p>
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" />{emp.empresa?.nombre} — {emp.sucursal?.nombre}</span>
               {emp.email && <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{emp.email}</span>}
               {emp.telefono && <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{emp.telefono}</span>}
+              {domicilioFull && <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{domicilioFull}</span>}
             </div>
           </div>
         </div>
 
-        {/* Details Grid */}
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 border-t pt-5">
           {[
             { label: "Legajo", value: emp.legajo },
@@ -145,6 +159,8 @@ export default function LegajoDetail() {
             { label: "Ingreso", value: new Date(emp.fecha_ingreso).toLocaleDateString("es-AR") },
             { label: "CCT", value: emp.cct },
             { label: "Categoría", value: emp.categoria },
+            { label: "Nacionalidad", value: emp.nacionalidad },
+            { label: "Nacimiento", value: emp.fecha_nacimiento ? new Date(emp.fecha_nacimiento).toLocaleDateString("es-AR") : null },
           ].map((d) => (
             <div key={d.label}>
               <p className="text-xs text-muted-foreground">{d.label}</p>
@@ -154,75 +170,162 @@ export default function LegajoDetail() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Timeline */}
-        <div className="animate-slide-up rounded-xl border bg-card p-5 shadow-sm" style={{ animationDelay: "100ms" }}>
-          <h3 className="text-sm font-medium mb-4">Historial de Eventos</h3>
-          {events.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin eventos registrados.</p>
-          ) : (
-            <div className="relative space-y-4 pl-6 before:absolute before:left-[9px] before:top-2 before:bottom-2 before:w-px before:bg-border">
-              {events.map((ev) => {
-                const config = eventIcon[ev.tipo] || eventIcon.cambio;
-                const Icon = config.icon;
-                return (
-                  <div key={ev.id} className="relative">
-                    <div className={cn("absolute -left-6 top-0.5 h-5 w-5 rounded-full flex items-center justify-center", config.color)}>
-                      <Icon className="h-3 w-3" />
-                    </div>
-                    <p className="text-xs text-muted-foreground">{new Date(ev.fecha).toLocaleDateString("es-AR")}</p>
-                    <p className="text-sm font-medium">{ev.titulo}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{ev.descripcion}</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+      {/* Tabs */}
+      <Tabs defaultValue="historial" className="animate-slide-up" style={{ animationDelay: "100ms" }}>
+        <TabsList>
+          <TabsTrigger value="historial">Historial</TabsTrigger>
+          <TabsTrigger value="documentos">Documentos</TabsTrigger>
+          <TabsTrigger value="familia">Grupo Familiar</TabsTrigger>
+          <TabsTrigger value="medico">Datos Médicos</TabsTrigger>
+        </TabsList>
 
-        {/* Documents */}
-        <div className="animate-slide-up rounded-xl border bg-card p-5 shadow-sm" style={{ animationDelay: "180ms" }}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium">Documentación</h3>
-            <label className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1">
-              <Upload className="h-3 w-3" />
-              Subir archivo
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleUpload}
-              />
-            </label>
-          </div>
-          {documentos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin documentos cargados.</p>
-          ) : (
-            <div className="space-y-1">
-              {documentos.map((doc) => (
-                <div
-                  key={doc.id}
-                  onClick={() => handleDownload(doc.storage_path, doc.nombre_archivo)}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors cursor-pointer group"
-                >
-                  <div className="rounded-md bg-muted p-2">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{doc.nombre_archivo}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {doc.tamano} · {new Date(doc.created_at).toLocaleDateString("es-AR")}
-                      {doc.fecha_vencimiento && (
-                        <span className="ml-2 text-warning">Vence: {new Date(doc.fecha_vencimiento).toLocaleDateString("es-AR")}</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              ))}
+        {/* Historial */}
+        <TabsContent value="historial">
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium">Historial de Eventos</h3>
+              <Button variant="ghost" size="sm" onClick={() => setEventoOpen(true)}>
+                <Plus className="h-3.5 w-3.5 mr-1" />Agregar
+              </Button>
             </div>
-          )}
-        </div>
-      </div>
+            <EventoFormDialog open={eventoOpen} onOpenChange={setEventoOpen} empleadoId={id!} />
+            {events.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin eventos registrados.</p>
+            ) : (
+              <div className="relative space-y-4 pl-6 before:absolute before:left-[9px] before:top-2 before:bottom-2 before:w-px before:bg-border">
+                {events.map((ev) => {
+                  const config = eventIcon[ev.tipo] || eventIcon.cambio;
+                  const Icon = config.icon;
+                  return (
+                    <div key={ev.id} className="relative">
+                      <div className={cn("absolute -left-6 top-0.5 h-5 w-5 rounded-full flex items-center justify-center", config.color)}>
+                        <Icon className="h-3 w-3" />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{new Date(ev.fecha).toLocaleDateString("es-AR")}</p>
+                      <p className="text-sm font-medium">{ev.titulo}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{ev.descripcion}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Documentos */}
+        <TabsContent value="documentos">
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium">Documentación</h3>
+              <div className="flex items-center gap-2">
+                <Select value={uploadCategoria} onValueChange={setUploadCategoria}>
+                  <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {categoriasDocumento.map((c) => (
+                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="space-y-0">
+                  <Input type="date" className="h-8 text-xs w-36" value={uploadVencimiento} onChange={(e) => setUploadVencimiento(e.target.value)} placeholder="Vencimiento" />
+                </div>
+                <label className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1 whitespace-nowrap">
+                  <Upload className="h-3 w-3" />Subir
+                  <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
+                </label>
+              </div>
+            </div>
+            {documentos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin documentos cargados.</p>
+            ) : (
+              <div className="space-y-1">
+                {documentos.map((doc) => (
+                  <div key={doc.id} onClick={() => handleDownload(doc.storage_path, doc.nombre_archivo)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50 transition-colors cursor-pointer group">
+                    <div className="rounded-md bg-muted p-2"><FileText className="h-4 w-4 text-muted-foreground" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{doc.nombre_archivo}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {doc.tamano} · {new Date(doc.created_at).toLocaleDateString("es-AR")}
+                        {(doc as any).categoria && (doc as any).categoria !== "otro" && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded bg-muted text-xs">{categoriasDocumento.find(c => c.value === (doc as any).categoria)?.label}</span>
+                        )}
+                        {doc.fecha_vencimiento && (
+                          <span className="ml-2 text-warning">Vence: {new Date(doc.fecha_vencimiento).toLocaleDateString("es-AR")}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Grupo Familiar */}
+        <TabsContent value="familia">
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium flex items-center gap-2"><Users className="h-4 w-4" />Grupo Familiar</h3>
+              <Button variant="ghost" size="sm" onClick={() => setFamiliarOpen({ open: true })}>
+                <Plus className="h-3.5 w-3.5 mr-1" />Agregar
+              </Button>
+            </div>
+            <FamiliarFormDialog
+              open={familiarOpen.open}
+              onOpenChange={(o) => setFamiliarOpen({ open: o })}
+              empleadoId={id!}
+              familiar={familiarOpen.familiar}
+            />
+            {familiares.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin familiares registrados.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Nombre</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Parentesco</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs hidden sm:table-cell">DNI</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs hidden sm:table-cell">Nacimiento</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">A cargo</th>
+                      <th className="px-3 py-2 w-16"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {familiares.map((f: any) => (
+                      <tr key={f.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2">{f.apellido}, {f.nombre}</td>
+                        <td className="px-3 py-2">{parentescoLabel[f.parentesco] || f.parentesco}</td>
+                        <td className="px-3 py-2 hidden sm:table-cell">{f.dni || "—"}</td>
+                        <td className="px-3 py-2 hidden sm:table-cell">{f.fecha_nacimiento ? new Date(f.fecha_nacimiento).toLocaleDateString("es-AR") : "—"}</td>
+                        <td className="px-3 py-2">{f.a_cargo ? "Sí" : "No"}{f.discapacidad ? " · Disc." : ""}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setFamiliarOpen({ open: true, familiar: f })}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteFamiliarMutation.mutate(f.id)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Datos Médicos */}
+        <TabsContent value="medico">
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <DatosMedicosForm empleadoId={id!} datos={datosMedicos ?? null} isLoading={loadingMedicos} />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
