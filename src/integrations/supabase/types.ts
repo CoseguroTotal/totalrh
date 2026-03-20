@@ -14,7 +14,216 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      documentos_legajo: {
+        Row: {
+          created_at: string
+          empleado_id: string
+          fecha_vencimiento: string | null
+          id: string
+          nombre_archivo: string
+          storage_path: string
+          tamano: string | null
+          tipo_documento: string | null
+        }
+        Insert: {
+          created_at?: string
+          empleado_id: string
+          fecha_vencimiento?: string | null
+          id?: string
+          nombre_archivo: string
+          storage_path: string
+          tamano?: string | null
+          tipo_documento?: string | null
+        }
+        Update: {
+          created_at?: string
+          empleado_id?: string
+          fecha_vencimiento?: string | null
+          id?: string
+          nombre_archivo?: string
+          storage_path?: string
+          tamano?: string | null
+          tipo_documento?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documentos_legajo_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empleados: {
+        Row: {
+          apellido: string
+          avatar_url: string | null
+          categoria: string | null
+          cct: string | null
+          created_at: string
+          cuil: string
+          dni: string
+          email: string | null
+          empresa_id: string
+          estado: Database["public"]["Enums"]["estado_empleado"]
+          fecha_ingreso: string
+          id: string
+          legajo: string
+          nombre: string
+          puesto: string
+          sucursal_id: string
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          apellido: string
+          avatar_url?: string | null
+          categoria?: string | null
+          cct?: string | null
+          created_at?: string
+          cuil: string
+          dni: string
+          email?: string | null
+          empresa_id: string
+          estado?: Database["public"]["Enums"]["estado_empleado"]
+          fecha_ingreso: string
+          id?: string
+          legajo: string
+          nombre: string
+          puesto: string
+          sucursal_id: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          apellido?: string
+          avatar_url?: string | null
+          categoria?: string | null
+          cct?: string | null
+          created_at?: string
+          cuil?: string
+          dni?: string
+          email?: string | null
+          empresa_id?: string
+          estado?: Database["public"]["Enums"]["estado_empleado"]
+          fecha_ingreso?: string
+          id?: string
+          legajo?: string
+          nombre?: string
+          puesto?: string
+          sucursal_id?: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empleados_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empleados_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empresas: {
+        Row: {
+          created_at: string
+          cuit: string | null
+          id: string
+          nombre: string
+        }
+        Insert: {
+          created_at?: string
+          cuit?: string | null
+          id?: string
+          nombre: string
+        }
+        Update: {
+          created_at?: string
+          cuit?: string | null
+          id?: string
+          nombre?: string
+        }
+        Relationships: []
+      }
+      eventos_legajo: {
+        Row: {
+          created_at: string
+          descripcion: string | null
+          empleado_id: string
+          fecha: string
+          id: string
+          tipo: Database["public"]["Enums"]["tipo_evento_legajo"]
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          descripcion?: string | null
+          empleado_id: string
+          fecha: string
+          id?: string
+          tipo: Database["public"]["Enums"]["tipo_evento_legajo"]
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          descripcion?: string | null
+          empleado_id?: string
+          fecha?: string
+          id?: string
+          tipo?: Database["public"]["Enums"]["tipo_evento_legajo"]
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventos_legajo_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sucursales: {
+        Row: {
+          created_at: string
+          direccion: string | null
+          empresa_id: string
+          id: string
+          nombre: string
+        }
+        Insert: {
+          created_at?: string
+          direccion?: string | null
+          empresa_id: string
+          id?: string
+          nombre: string
+        }
+        Update: {
+          created_at?: string
+          direccion?: string | null
+          empresa_id?: string
+          id?: string
+          nombre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sucursales_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +232,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      estado_empleado: "Activo" | "Licencia" | "Baja"
+      tipo_evento_legajo:
+        | "ingreso"
+        | "promocion"
+        | "sancion"
+        | "licencia"
+        | "cambio"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +365,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      estado_empleado: ["Activo", "Licencia", "Baja"],
+      tipo_evento_legajo: [
+        "ingreso",
+        "promocion",
+        "sancion",
+        "licencia",
+        "cambio",
+      ],
+    },
   },
 } as const
