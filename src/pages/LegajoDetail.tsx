@@ -121,7 +121,12 @@ export default function LegajoDetail() {
               <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", estadoBadge[emp.estado])}>
                 {emp.estado}
               </span>
+              <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)} className="ml-auto">
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Editar
+              </Button>
             </div>
+            <EmpleadoFormDialog open={editOpen} onOpenChange={setEditOpen} empleado={emp} />
             <p className="text-sm text-muted-foreground mt-1">{emp.puesto} · {emp.categoria}</p>
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" />{emp.empresa?.nombre} — {emp.sucursal?.nombre}</span>
