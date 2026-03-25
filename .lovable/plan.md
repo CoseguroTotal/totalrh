@@ -1,100 +1,102 @@
 
 
-# Plan: Roles expandidos, creación de usuarios admin-only, y liquidación avanzada estilo CCT Comercio
+# Plan: Rol empleado, conceptos CCT seed, liquidación masiva, logo por empresa, reclutamiento y reportes BI
 
 ## Resumen
 
-Tres bloques: (1) expandir el sistema de roles con Contador/Gerente/RRHH, restringir creación de usuarios solo a admin, (2) rediseñar el módulo de liquidación basado en el modelo de referencia CCT 130/75 con agrupación de conceptos, bases de cálculo y estructura de recibo profesional.
+6 bloques: (1) rol "empleado" con acceso restringido a autogestión, (2) seed de conceptos CCT 130/75, (3) liquidación masiva por empresa, (4) logo por empresa en PDFs, (5) módulo de reclutamiento, (6) módulo de reportes BI.
 
 ---
 
-## 1. Roles expandidos y gestión de usuarios
+## 1. Rol "empleado" con acceso restringido
 
 ### Migración
-- Alterar enum `app_role`: agregar valores `contador`, `gerente`, `rrhh` (además de los existentes `admin`, `usuario`)
-- No se modifica la tabla `user_roles` ni la función `has_role`
+- `ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'empleado';`
 
-### Restricción de registro
-- **Eliminar** el modo signup del `Login.tsx` (quitar botón "Registrate" y lógica de signup)
-- Solo queda login. Los usuarios se crean desde Configuración por un admin
-
-### Creación de usuarios desde Configuración
-- Crear edge function `create-user` que usa el service role key para invocar `supabase.auth.admin.createUser({ email, password, email_confirm: true })`
-- En `Configuracion.tsx` tab Usuarios: agregar formulario "Crear Usuario" con campos email, contraseña, rol
-- Al crear: invocar edge function, luego insertar en `user_roles` el rol seleccionado
-- Mostrar lista de usuarios con su rol y email (query a `user_roles` + lookup)
-
-### Hook `useUserRole`
-- Ampliar para soportar los nuevos roles
-- Agregar helper `useHasRole(role)` para verificar permisos granulares
-- Sidebar: Configuración visible para admin; otros módulos se pueden restringir por rol si se desea en el futuro
+### Lógica de acceso
+- Actualizar `ROLES` en `Configuracion.tsx` para incluir "Empleado"
+- Crear componente `EmployeeRoute` (o modificar `AppLayout`) que detecta si el rol es `empleado` y solo permite acceso a `/autogestion`
+- En `AppSidebar.tsx`: si rol es `empleado`, mostrar solo el link a Autogestión y Cerrar Sesión
+- En `App.tsx`: envolver las rutas admin/rrhh con un guard que redirige empleados a `/autogestion`
 
 ---
 
-## 2. Liquidación avanzada — Modelo CCT Comercio
+## 2. Conceptos CCT 130/75 pre-cargados (seed)
 
-### Rediseño del modelo de conceptos
+Usar la herramienta de inserción de datos (no migración) para insertar en `conceptos_liquidacion`:
 
-Basado en la imagen de referencia, la liquidación se organiza en **grupos de conceptos**:
-
-#### Migración — Nuevas columnas en `conceptos_liquidacion`:
-- `grupo` (text): "Sumas remunerativas", "No remunerativo FIJO Diciembre 2025", "Otros conceptos", etc.
-- `base_calculo` (text): "basico", "remunerativo_total", "monto_concepto" (para conceptos que calculan sobre otro concepto), "fijo"
-- `concepto_base_id` (uuid FK nullable): referencia a otro concepto cuando calcula sobre su monto
-- `unidad` (text): "dias", "porcentaje", "unidades" — para mostrar la columna "Unidad" del recibo
-- `cantidad_default` (numeric): valor por defecto de la columna "Unidad" (ej: 30 días)
-- `orden` (integer): para controlar el orden de aparición en el recibo
-
-#### Nuevas columnas en `liquidacion_lineas`:
-- `base` (numeric): monto base sobre el que se calculó
-- `cantidad` ya existe
-- `es_haber` (boolean): true = columna Haberes, false = columna Descuentos
-
-### Rediseño del Simulador de Recibo
-
-El simulador actual es simple. Rediseñar para reflejar el modelo de referencia:
-
-1. **Selección de empleado** con auto-carga de categoría, CCT, antigüedad
-2. **Sueldo básico** auto-calculable o manual
-3. **Tabla de liquidación** con columnas: Concepto, Base, Unidad, Haberes, Descuentos
-4. **Agrupación** por grupo de conceptos (colapsables como en la imagen)
-5. **Motor de cálculo**:
-   - Conceptos que calculan sobre el básico (ej: Adicional por asistencia 8.33%)
-   - Conceptos que calculan sobre el total remunerativo (ej: Jubilación 11%, Obra Social 3%)
-   - Conceptos con monto fijo por unidad (ej: $2.000 x 30 = $60.000)
-   - Conceptos que calculan sobre otro concepto específico (ej: Presentismo sobre un NR)
-6. **Totales**: Subtotal por grupo, Total Haberes, Total Descuentos, Sueldo Neto
-7. **Checkboxes** para opciones: Calcular SAC, Adicional por asistencia, Aporte solidario, Cuota sindical
-
-### Rediseño del PDF de Recibo
-
-Actualizar `ReciboPDF.tsx` para generar un recibo con formato profesional:
-- Membrete de empresa (usando `MembretePDF.ts`)
-- Tabla con columnas: Concepto | Base | Unidad | Haberes | Descuentos
-- Filas agrupadas por sección con subtotales
-- Fila final: Totales y Sueldo Neto
-- Firmas al pie
-
-### ConceptoFormDialog
-- Agregar campos: grupo, base_calculo, concepto_base_id, unidad, cantidad_default, orden
-- Selector de base de cálculo con opciones: Básico, Total Remunerativo, Otro concepto, Fijo
+| Código | Nombre | Tipo | Grupo | Base | % | Orden |
+|--------|--------|------|-------|------|---|-------|
+| 100 | Sueldo Básico | remunerativo | Haberes | basico | — | 1 |
+| 110 | Presentismo | remunerativo | Haberes | basico | 8.33 | 2 |
+| 200 | Jubilación | deduccion | Aportes del Trabajador | remunerativo_total | 11 | 10 |
+| 210 | Obra Social | deduccion | Aportes del Trabajador | remunerativo_total | 3 | 11 |
+| 220 | Ley 19.032 (PAMI) | deduccion | Aportes del Trabajador | remunerativo_total | 3 | 12 |
+| 230 | Cuota Sindical | deduccion | Aportes del Trabajador | remunerativo_total | 2 | 13 |
 
 ---
 
-## 3. Archivos a crear/editar
+## 3. Liquidación masiva por empresa
 
-### Nuevos:
-- `supabase/functions/create-user/index.ts` — edge function para crear usuarios
-- Migración SQL
+### UI en `Liquidacion.tsx`
+- Nuevo tab "Masiva" o botón en tab Simulador
+- Seleccionar empresa + período + sueldo básico (o tomar de cada empleado si existe)
+- Botón "Generar para todos los activos"
+- Progress bar mientras se procesan
+- Al confirmar: insertar una liquidación por cada empleado activo de la empresa, aplicando todos los conceptos activos
+- Opción de descarga masiva de PDFs (zip o secuencial)
 
-### Editados:
-- `src/pages/Login.tsx` — quitar signup
-- `src/pages/Configuracion.tsx` — formulario de creación de usuarios con rol
-- `src/pages/Liquidacion.tsx` — rediseño completo con tabla agrupada
-- `src/components/SimuladorRecibo.tsx` — motor de cálculo avanzado con grupos y bases
-- `src/components/ConceptoFormDialog.tsx` — nuevos campos
-- `src/components/ReciboPDF.tsx` — formato profesional con columnas Base/Unidad/Haberes/Descuentos
-- `src/hooks/useLiquidacion.ts` — adaptar queries a nuevos campos
-- `src/hooks/useUserRole.ts` — soportar nuevos roles
-- `src/components/AppSidebar.tsx` — permisos por rol si aplica
+### Lógica
+- Reutilizar el motor de cálculo del SimuladorRecibo como función extractable
+- Iterar sobre empleados activos filtrando por empresa_id
+
+---
+
+## 4. Logo por empresa en PDFs
+
+- La columna `logo_url` ya existe en `empresas`
+- El upload de logo ya funciona en `Empresas.tsx`
+- Integrar `MembretePDF.ts` (ya existente) en `ReciboPDF.tsx`, `SolicitudPermisoPDF.tsx` y `MemorandumPDF.ts`
+- Al generar un PDF, buscar la empresa del empleado y pasar sus datos (nombre, CUIT, logo_url, domicilio) al membrete
+- Fallback a datos del grupo empresario (`configuracion_grupo`) si la empresa no tiene logo
+
+---
+
+## 5. Módulo de Reclutamiento
+
+### Migración
+- Tabla `vacantes`: id, empresa_id (FK), titulo, descripcion, requisitos (text), estado (enum: abierta/cerrada/pausada), fecha_publicacion, created_by, created_at
+- Tabla `candidatos`: id, vacante_id (FK), nombre, email, telefono, cv_url (text), estado (enum: postulado/entrevista/evaluacion/oferta/contratado/descartado), notas, created_at
+- RLS CRUD para authenticated
+
+### UI — Página `/reclutamiento`
+- Tabs: **Vacantes** y **Pipeline**
+- **Vacantes**: CRUD de vacantes con estado, empresa asociada
+- **Pipeline**: Vista Kanban con columnas por estado del candidato (drag & drop con estados)
+- Dialog para agregar candidato a una vacante con datos básicos y upload de CV
+
+---
+
+## 6. Módulo de Reportes BI
+
+### Página `/reportes`
+- Reutilizar y ampliar `useDashboardStats`
+- Secciones:
+  - **Dotación**: headcount por empresa con filtro de fecha
+  - **Rotación**: tasa mensual con gráfico de línea (últimos 12 meses, calculado por fecha de baja)
+  - **Distribución**: por estado, antigüedad, sexo, CCT
+  - **Liquidaciones**: total liquidado por período y empresa
+  - **Asistencia**: resumen de tardanzas/ausencias por período
+- Botón "Exportar a Excel" usando `xlsx` (SheetJS) para descargar tabla filtrada
+- Gráficos con recharts (ya disponible como dependencia de shadcn chart)
+
+---
+
+## Detalle técnico
+
+- **Migración**: 1 migración con enum empleado + tablas vacantes/candidatos
+- **Seed**: INSERT via herramienta de inserción para conceptos CCT
+- **Archivos nuevos**: `src/pages/Reclutamiento.tsx`, `src/pages/Reportes.tsx`, `src/hooks/useReclutamiento.ts`
+- **Archivos editados**: `Configuracion.tsx` (rol empleado), `AppSidebar.tsx` (restricción por rol), `App.tsx` (rutas + guards), `Liquidacion.tsx` (tab masiva), `ReciboPDF.tsx` y `MemorandumPDF.ts` (integrar membrete con logo empresa), `SimuladorRecibo.tsx` (extraer motor de cálculo)
+- **Dependencias**: ninguna nueva (xlsx y recharts ya disponibles)
 
