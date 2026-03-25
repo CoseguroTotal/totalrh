@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Download, ChevronDown, ChevronRight } from "lucide-react";
 import { generarReciboPDF } from "@/components/ReciboPDF";
+import { calcularLiquidacion, calcTotales, type LineaCalc } from "@/lib/liquidacionEngine";
 import { cn } from "@/lib/utils";
 
 interface LineaCalc {
