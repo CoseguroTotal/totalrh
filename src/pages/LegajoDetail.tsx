@@ -273,6 +273,7 @@ export default function LegajoDetail() {
             { label: "Ingreso", value: new Date(emp.fecha_ingreso).toLocaleDateString("es-AR") },
             { label: "CCT", value: emp.cct },
             { label: "Categoría", value: emp.categoria },
+            { label: "Sueldo Básico", value: emp.sueldo_basico != null ? `$${Number(emp.sueldo_basico).toLocaleString("es-AR")}` : null },
             { label: "Nacionalidad", value: emp.nacionalidad },
             { label: "Nacimiento", value: emp.fecha_nacimiento ? new Date(emp.fecha_nacimiento).toLocaleDateString("es-AR") : null },
           ].map((d) => (
@@ -292,7 +293,9 @@ export default function LegajoDetail() {
           <TabsTrigger value="familia">Familia</TabsTrigger>
           <TabsTrigger value="medico">Médico</TabsTrigger>
           <TabsTrigger value="estudios">Estudios</TabsTrigger>
+          <TabsTrigger value="asistencia"><Clock className="h-3.5 w-3.5 mr-1" />Asistencia</TabsTrigger>
           <TabsTrigger value="permisos">Permisos</TabsTrigger>
+          <TabsTrigger value="vacaciones"><Palmtree className="h-3.5 w-3.5 mr-1" />Vacaciones</TabsTrigger>
         </TabsList>
 
         {/* Historial */}
