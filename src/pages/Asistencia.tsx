@@ -497,8 +497,12 @@ function PlanillasTab({ canEdit }: { canEdit: boolean }) {
         {canEdit && (
           <div className="flex gap-2">
             <label className="inline-flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer">
-              <Upload className="h-3 w-3" />Importar XLSX
+              <Upload className="h-3 w-3" />Importar Horarios XLSX
               <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportXLSX} />
+            </label>
+            <label className="inline-flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer">
+              <FileSpreadsheet className="h-3 w-3" />Importar Lector Biométrico
+              <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportBiometrico} />
             </label>
           </div>
         )}
