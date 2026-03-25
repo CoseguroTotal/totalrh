@@ -83,9 +83,13 @@ function EmpresaCard({ empresa, expanded, onToggle, onEdit, onAddSucursal, onEdi
         className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-muted/30 transition-colors"
         onClick={onToggle}
       >
-        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-          <Building2 className="h-5 w-5 text-primary" />
-        </div>
+        {empresa.logo_url ? (
+          <img src={empresa.logo_url} alt={empresa.nombre} className="h-10 w-10 rounded-lg object-contain shrink-0" />
+        ) : (
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Building2 className="h-5 w-5 text-primary" />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <p className="font-medium">{empresa.nombre}</p>
           {details.length > 0 && (
@@ -161,7 +165,7 @@ function EmpresaFormDialog({ open, onOpenChange, empresa }: { open: boolean; onO
   const [form, setForm] = useState({
     nombre: "", cuit: "", razon_social: "", domicilio_fiscal: "", localidad: "",
     provincia: "", cp: "", telefono: "", email: "", actividad_principal: "",
-    fecha_inicio_actividades: "", convenio_colectivo: "",
+    fecha_inicio_actividades: "", convenio_colectivo: "", logo_url: "",
   });
   const queryClient = useQueryClient();
 
@@ -179,6 +183,7 @@ function EmpresaFormDialog({ open, onOpenChange, empresa }: { open: boolean; onO
       actividad_principal: empresa?.actividad_principal ?? "",
       fecha_inicio_actividades: empresa?.fecha_inicio_actividades ?? "",
       convenio_colectivo: empresa?.convenio_colectivo ?? "",
+      logo_url: empresa?.logo_url ?? "",
     });
   };
 
@@ -198,7 +203,8 @@ function EmpresaFormDialog({ open, onOpenChange, empresa }: { open: boolean; onO
         actividad_principal: form.actividad_principal.trim() || null,
         fecha_inicio_actividades: form.fecha_inicio_actividades || null,
         convenio_colectivo: form.convenio_colectivo.trim() || null,
-      };
+        logo_url: form.logo_url || null,
+      } as any;
       if (empresa) {
         const { error } = await supabase.from("empresas").update(payload).eq("id", empresa.id);
         if (error) throw error;
@@ -264,6 +270,26 @@ function EmpresaFormDialog({ open, onOpenChange, empresa }: { open: boolean; onO
             <div className="space-y-1.5">
               <Label className="text-xs">C.P.</Label>
               <Input value={form.cp} onChange={(e) => updateField("cp", e.target.value)} />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Logo de la Empresa</Label>
+            <div className="flex items-center gap-3">
+              {form.logo_url && <img src={form.logo_url} alt="Logo" className="h-12 w-12 object-contain rounded border" />}
+              <label className="text-xs text-primary hover:underline cursor-pointer">
+                {form.logo_url ? "Cambiar logo" : "Subir logo"}
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const path = `empresas/${Date.now()}_${file.name}`;
+                  const { error } = await supabase.storage.from("logos-empresas").upload(path, file);
+                  if (error) { toast.error(error.message); return; }
+                  const { data } = supabase.storage.from("logos-empresas").getPublicUrl(path);
+                  setForm((p) => ({ ...p, logo_url: data.publicUrl }));
+                  toast.success("Logo subido");
+                }} />
+              </label>
             </div>
           </div>
 
