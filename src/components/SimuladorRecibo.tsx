@@ -12,21 +12,9 @@ import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Download, ChevronDown, ChevronRight } from "lucide-react";
 import { generarReciboPDF } from "@/components/ReciboPDF";
-import { calcularLiquidacion, calcTotales, type LineaCalc } from "@/lib/liquidacionEngine";
+import { calcularLiquidacion, calcTotales } from "@/lib/liquidacionEngine";
+import type { LineaCalc } from "@/lib/liquidacionEngine";
 import { cn } from "@/lib/utils";
-
-interface LineaCalc {
-  concepto_id: string;
-  descripcion: string;
-  tipo: string;
-  base: number;
-  cantidad: number;
-  unidad: string;
-  monto: number;
-  grupo: string;
-  orden: number;
-  es_haber: boolean;
-}
 
 function fmt(n: number) {
   return n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
