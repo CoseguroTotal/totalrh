@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Save, Users, Settings2, Plus, UserPlus, Bell, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import AdminRoute from "@/components/AdminRoute";
+
 
 const ROLES = [
   { value: "admin", label: "Administrador" },
@@ -37,7 +37,7 @@ function useUsuariosConRoles() {
   return useQuery({
     queryKey: ["usuarios-roles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("user_roles").select("*");
+      const { data, error } = await supabase.rpc("get_users_with_roles");
       if (error) throw error;
       return data;
     },
@@ -45,11 +45,7 @@ function useUsuariosConRoles() {
 }
 
 export default function Configuracion() {
-  return (
-    <AdminRoute>
-      <ConfiguracionContent />
-    </AdminRoute>
-  );
+  return <ConfiguracionContent />;
 }
 
 function ConfiguracionContent() {
@@ -332,7 +328,7 @@ function UsuariosTab() {
           {roles.map((r: any) => (
             <div key={r.id} className="flex items-center gap-3 rounded-lg border px-4 py-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium font-mono truncate">{r.user_id}</p>
+                <p className="text-sm font-medium truncate">{r.email || r.user_id}</p>
               </div>
               <Select value={r.role} onValueChange={(v) => updateRole.mutate({ id: r.id, role: v })}>
                 <SelectTrigger className="w-[160px] h-8 text-xs">

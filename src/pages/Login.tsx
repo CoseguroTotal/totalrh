@@ -44,8 +44,10 @@ export default function Login() {
           .maybeSingle();
 
         if (restriccion?.activo) {
-          const now = new Date();
-          const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+          // Use server time to prevent client manipulation
+          const { data: serverTimeData } = await supabase.rpc("get_server_time" as any);
+          const serverTime = serverTimeData ? String(serverTimeData).substring(0, 5) : null;
+          const currentTime = serverTime || `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
 
           if (currentTime < restriccion.hora_desde || currentTime > restriccion.hora_hasta) {
             await supabase.auth.signOut();
