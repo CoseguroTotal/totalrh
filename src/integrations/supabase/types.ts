@@ -167,6 +167,7 @@ export type Database = {
           id: string
           logo_url: string | null
           nombre_grupo: string
+          notificaciones_email_activas: boolean | null
           telefono: string | null
           updated_at: string
         }
@@ -178,6 +179,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           nombre_grupo?: string
+          notificaciones_email_activas?: boolean | null
           telefono?: string | null
           updated_at?: string
         }
@@ -189,6 +191,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           nombre_grupo?: string
+          notificaciones_email_activas?: boolean | null
           telefono?: string | null
           updated_at?: string
         }
@@ -855,6 +858,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "novedades_asistencia_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sanciones: {
+        Row: {
+          created_at: string | null
+          descargo_cerrado: boolean | null
+          descargo_documento_url: string | null
+          descargo_fecha: string | null
+          descargo_texto: string | null
+          descripcion: string | null
+          emitido_por: string | null
+          empleado_id: string
+          fecha: string
+          id: string
+          motivo: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string | null
+          descargo_cerrado?: boolean | null
+          descargo_documento_url?: string | null
+          descargo_fecha?: string | null
+          descargo_texto?: string | null
+          descripcion?: string | null
+          emitido_por?: string | null
+          empleado_id: string
+          fecha?: string
+          id?: string
+          motivo: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string | null
+          descargo_cerrado?: boolean | null
+          descargo_documento_url?: string | null
+          descargo_fecha?: string | null
+          descargo_texto?: string | null
+          descripcion?: string | null
+          emitido_por?: string | null
+          empleado_id?: string
+          fecha?: string
+          id?: string
+          motivo?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sanciones_empleado_id_fkey"
             columns: ["empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"

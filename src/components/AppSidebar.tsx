@@ -35,6 +35,14 @@ const employeeModules = [
   { title: "Autogestión", url: "/autogestion", icon: UserCircle },
 ];
 
+const contadorModules = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Legajos", url: "/legajos", icon: FileText },
+  { title: "Liquidación", url: "/liquidacion", icon: DollarSign },
+  { title: "Asistencia", url: "/asistencia", icon: Clock },
+  { title: "Vacaciones", url: "/vacaciones", icon: Palmtree },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -42,7 +50,8 @@ export function AppSidebar() {
   const { isAdmin } = useIsAdmin();
   const { data: role } = useUserRole();
   const isEmpleado = role === "empleado";
-  const visibleModules = isEmpleado ? employeeModules : modules;
+  const isContador = role === "contador";
+  const visibleModules = isEmpleado ? employeeModules : isContador ? contadorModules : modules;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

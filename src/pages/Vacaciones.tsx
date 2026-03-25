@@ -4,6 +4,9 @@ import {
   useVacacionesConfig, useSaveVacacionesConfig, useDeleteVacacionesConfig,
   useSolicitudesVacaciones, useUpdateSolicitudVacaciones, calcDiasCorrespondientes,
 } from "@/hooks/useVacaciones";
+import { useCanEdit } from "@/hooks/useCanEdit";
+import { useConfigGrupo } from "@/hooks/useConfigGrupo";
+import { sendNotificationEmailIfEnabled } from "@/lib/sendNotificationEmail";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -74,6 +77,8 @@ export default function Vacaciones() {
 function SolicitudesTab({ empresaId }: { empresaId: string }) {
   const { data: solicitudes = [], isLoading } = useSolicitudesVacaciones(empresaId);
   const updateSolicitud = useUpdateSolicitudVacaciones();
+  const { canEdit } = useCanEdit("vacaciones");
+  const { data: configGrupo } = useConfigGrupo();
 
   const filtered = solicitudes.filter((s: any) => s.empleado?.empresa_id === empresaId);
 
@@ -82,42 +87,17 @@ function SolicitudesTab({ empresaId }: { empresaId: string }) {
     updateSolicitud.mutate({ id: sol.id, estado, aprobado_por: user?.id }, {
       onSuccess: async () => {
         toast.success(`Solicitud ${estado}`);
-        // Notificación automática al empleado
-        try {
-          const empleadoEmail = sol.empleado?.email;
-          if (empleadoEmail) {
-            const { data: authUsers } = await supabase.rpc("has_role", { _user_id: user?.id || "", _role: "admin" });
-            // Search user by matching email in profiles - use edge function or direct lookup
-            // Since we can't query auth.users, find user_roles entries and match
-            // Simple approach: look up all user_roles and find by email isn't possible directly
-            // Instead, notify via empleado email lookup in a simpler way
-          }
-          // Fallback: insert notification for all users with matching employee data
-          if (sol.empleado?.email) {
-            // We'll try to find the user_id by querying user_roles
-            // Since there's no direct link, we skip if we can't find the user
-            const estadoLabel = estado === "aprobada" ? "aprobada ✅" : "rechazada ❌";
-            const fechaDesde = new Date(sol.fecha_desde).toLocaleDateString("es-AR");
-            const fechaHasta = new Date(sol.fecha_hasta).toLocaleDateString("es-AR");
-            // Try to find user by checking all user_roles - not ideal but works for small datasets
-            const { data: allRoles } = await supabase.from("user_roles").select("user_id");
-            if (allRoles) {
-              for (const r of allRoles) {
-                // We need to match employee to user - best effort via edge function
-                // For now, we'll use a simple notification insert attempt
-              }
-            }
-            // Direct approach: use the empleado email to find auth user via supabase admin
-            // This requires server-side. Let's notify all admins instead + the employee user if found
-            await supabase.from("notificaciones").insert({
-              user_id: user?.id || "", // notify the approver as confirmation
-              titulo: `Vacaciones ${estadoLabel}`,
-              mensaje: `Solicitud de ${sol.empleado?.apellido}, ${sol.empleado?.nombre} del ${fechaDesde} al ${fechaHasta} fue ${estado}.`,
-              link: "/vacaciones",
-            });
-          }
-        } catch {
-          // Non-critical: don't block on notification failure
+        // Send email notification if enabled
+        const empleadoEmail = sol.empleado?.email;
+        if (empleadoEmail) {
+          const estadoLabel = estado === "aprobada" ? "aprobadas ✅" : "rechazadas ❌";
+          const fechaDesde = new Date(sol.fecha_desde).toLocaleDateString("es-AR");
+          const fechaHasta = new Date(sol.fecha_hasta).toLocaleDateString("es-AR");
+          await sendNotificationEmailIfEnabled(configGrupo, {
+            to: empleadoEmail,
+            subject: `Vacaciones ${estado}`,
+            html: `<h2>Vacaciones ${estadoLabel}</h2><p>Hola ${sol.empleado?.nombre},</p><p>Tu solicitud de vacaciones del ${fechaDesde} al ${fechaHasta} ha sido <strong>${estado}</strong>.</p><p>Saludos,<br/>RRHH</p>`,
+          });
         }
       },
     });
@@ -145,7 +125,7 @@ function SolicitudesTab({ empresaId }: { empresaId: string }) {
               <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoBadge[sol.estado])}>
                 {sol.estado}
               </span>
-              {sol.estado === "pendiente" && (
+              {sol.estado === "pendiente" && canEdit && (
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => handleEstado(sol, "aprobada")} title="Aprobar">
                     <Check className="h-3.5 w-3.5" />
@@ -284,6 +264,7 @@ function ConfiguracionTab({ empresaId }: { empresaId: string }) {
   const { data: configs = [], isLoading } = useVacacionesConfig(empresaId);
   const saveConfig = useSaveVacacionesConfig();
   const deleteConfig = useDeleteVacacionesConfig();
+  const { canEdit } = useCanEdit("vacaciones");
   const [form, setForm] = useState({ min: "0", max: "5", dias: "14" });
 
   const handleAdd = () => {
@@ -312,7 +293,7 @@ function ConfiguracionTab({ empresaId }: { empresaId: string }) {
               <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Desde (años)</th>
               <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Hasta (años)</th>
               <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Días</th>
-              <th className="px-3 py-2 w-10"></th>
+              {canEdit && <th className="px-3 py-2 w-10"></th>}
             </tr>
           </thead>
           <tbody>
@@ -321,22 +302,26 @@ function ConfiguracionTab({ empresaId }: { empresaId: string }) {
                 <td className="px-3 py-2">{c.anios_antiguedad_min}</td>
                 <td className="px-3 py-2">{c.anios_antiguedad_max >= 999 ? "+" : c.anios_antiguedad_max}</td>
                 <td className="px-3 py-2 font-medium">{c.dias_correspondientes}</td>
-                <td className="px-3 py-2">
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteConfig.mutate(c.id)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </td>
+                {canEdit && (
+                  <td className="px-3 py-2">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteConfig.mutate(c.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div className="flex gap-2 items-end">
-        <div><Label className="text-xs">Desde</Label><Input type="number" className="w-20 h-8" value={form.min} onChange={(e) => setForm({ ...form, min: e.target.value })} /></div>
-        <div><Label className="text-xs">Hasta</Label><Input type="number" className="w-20 h-8" value={form.max} onChange={(e) => setForm({ ...form, max: e.target.value })} /></div>
-        <div><Label className="text-xs">Días</Label><Input type="number" className="w-20 h-8" value={form.dias} onChange={(e) => setForm({ ...form, dias: e.target.value })} /></div>
-        <Button size="sm" onClick={handleAdd}><Plus className="h-3.5 w-3.5 mr-1" />Agregar</Button>
-      </div>
+      {canEdit && (
+        <div className="flex gap-2 items-end">
+          <div><Label className="text-xs">Desde</Label><Input type="number" className="w-20 h-8" value={form.min} onChange={(e) => setForm({ ...form, min: e.target.value })} /></div>
+          <div><Label className="text-xs">Hasta</Label><Input type="number" className="w-20 h-8" value={form.max} onChange={(e) => setForm({ ...form, max: e.target.value })} /></div>
+          <div><Label className="text-xs">Días</Label><Input type="number" className="w-20 h-8" value={form.dias} onChange={(e) => setForm({ ...form, dias: e.target.value })} /></div>
+          <Button size="sm" onClick={handleAdd}><Plus className="h-3.5 w-3.5 mr-1" />Agregar</Button>
+        </div>
+      )}
     </div>
   );
 }
