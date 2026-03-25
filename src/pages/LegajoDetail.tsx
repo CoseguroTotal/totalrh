@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useEmpleado, useEventosLegajo, useDocumentosLegajo, useGrupoFamiliar, useDatosMedicos } from "@/hooks/useEmpleados";
 import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2 } from "lucide-react";
@@ -46,6 +46,7 @@ const categoriasDocumento = [
 
 export default function LegajoDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [eventoOpen, setEventoOpen] = useState(false);
   const [familiarOpen, setFamiliarOpen] = useState<{ open: boolean; familiar?: any }>({ open: false });

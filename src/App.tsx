@@ -11,6 +11,7 @@ import Legajos from "@/pages/Legajos";
 import LegajoDetail from "@/pages/LegajoDetail";
 import Empresas from "@/pages/Empresas";
 import PlaceholderModule from "@/pages/PlaceholderModule";
+import Liquidacion from "@/pages/Liquidacion";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
