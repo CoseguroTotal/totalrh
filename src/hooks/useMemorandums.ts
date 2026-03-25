@@ -7,7 +7,7 @@ export function useMemorandums() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("memorandums")
-        .select("*, empresa:empresas(id, nombre), destinatario:empleados(id, nombre, apellido)")
+        .select("*, empresa:empresas(id, nombre), destinatario:empleados(id, nombre, apellido, email)")
         .order("numero", { ascending: false });
       if (error) throw error;
       return data;

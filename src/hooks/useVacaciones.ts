@@ -135,12 +135,7 @@ export function calcDiasCorrespondientes(
 export function calcDiasHabiles(desde: string, hasta: string): number {
   const start = new Date(desde);
   const end = new Date(hasta);
-  let dias = 0;
-  const current = new Date(start);
-  while (current <= end) {
-    const day = current.getDay();
-    if (day !== 0 && day !== 6) dias++;
-    current.setDate(current.getDate() + 1);
-  }
-  return dias;
+  const diffTime = end.getTime() - start.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  return diffDays > 0 ? diffDays : 0;
 }
