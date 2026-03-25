@@ -1,49 +1,37 @@
 
 
-# Plan: Envío masivo de memorándums + fix del dominio remitente
+# Plan: Auto-email en memorándums, vacaciones en días corridos, y footer del sistema
 
-## Dos cambios principales
+## 3 cambios
 
-### 1. Configurar el dominio verificado como remitente
+### 1. Email automático del empleado en envío individual de memorándum
 
-El `email_remitente` en `configuracion_grupo` todavía dice `onboarding@resend.dev`. Hay que actualizarlo a una dirección del dominio verificado (ej: `notificaciones@notificaciones.cosegurototal.com.ar`).
+**Problema:** La query de memorándums no trae el `email` del empleado destinatario, por eso `emailDialog.memo.destinatario?.email` es siempre undefined.
 
-- En `Configuracion.tsx`, agregar nota informativa indicando que el email debe pertenecer al dominio verificado en Resend.
+**Cambios:**
+- `src/hooks/useMemorandums.ts`: agregar `email` al select de la relación destinatario: `destinatario:empleados(id, nombre, apellido, email)`
+- `src/pages/Memorandums.tsx`: el `defaultTo` ya usa `emailDialog.memo.destinatario?.email`, con el campo en la query funcionará automáticamente.
 
-### 2. Envío masivo de memorándums
+### 2. Vacaciones en días corridos (no hábiles)
 
-Agregar un botón "Envío Masivo" en la página de Memorándums que abre un dialog con tres modos de selección de destinatarios:
+**Cambio en `src/hooks/useVacaciones.ts`:**
+- Modificar `calcDiasHabiles` para contar todos los días (corridos), no solo hábiles. Renombrar a `calcDiasCorridos`. Simplificar a: diferencia en días entre fecha_desde y fecha_hasta + 1.
 
-**Nuevo componente `EnvioMasivoMemoDialog.tsx`:**
-- Selector de modo: "Todos", "Por empresa", "Selección manual"
-- **Todos**: envía a todos los empleados activos con email
-- **Por empresa**: selector de empresa, filtra empleados activos de esa empresa con email
-- **Selección manual**: lista de checkboxes con todos los empleados activos con email
-- Vista previa de cantidad de destinatarios seleccionados
-- Selector de memorándum existente (o los campos para redactar uno nuevo inline)
-- Botón "Enviar a X destinatarios" con confirmación
-- Progreso visual del envío (barra o contador)
-- Envía secuencialmente al Edge Function `send-email` (un email por empleado), personalizando el nombre del destinatario en el HTML
+**Cambio en `src/pages/Vacaciones.tsx`:**
+- Actualizar la referencia de `calcDiasHabiles` a `calcDiasCorridos` (o simplemente cambiar la implementación interna sin renombrar).
 
-**Modificación del Edge Function `send-email`:**
-- Ya soporta `to` como array, no necesita cambios.
+### 3. Footer/marca de agua del sistema
 
-**Cambios en `Memorandums.tsx`:**
-- Botón "Envío Masivo" junto al botón "Nuevo"
-- Estado para abrir el dialog de envío masivo
-- Pasar la lista de memos, empleados, empresas y config al dialog
+**Cambio en `src/components/AppLayout.tsx`:**
+- Agregar un footer fijo en la parte inferior de la página con logo y texto: "TotalRH - Gestión de Personal. Sky Studio 2026 todos los derechos reservados."
+- Incluir el logo (`/logo_total_rh.png`) al lado del texto.
+- Estilo sutil (texto pequeño, color muted) como marca de agua informativa.
 
-## Archivos nuevos/modificados
+## Archivos modificados
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/EnvioMasivoMemoDialog.tsx` | Nuevo dialog para envío masivo |
-| `src/pages/Memorandums.tsx` | Botón envío masivo + integración del dialog |
-
-## Notas técnicas
-
-- Cada email se envía individualmente (no en batch) para personalizar el destinatario en el HTML
-- Se usa `Promise.allSettled` o envío secuencial con delay para no saturar la API de Resend
-- Solo se incluyen empleados activos que tengan email cargado
-- Se muestra resumen al final: X enviados, X fallidos
+| `src/hooks/useMemorandums.ts` | Agregar `email` al select de destinatario |
+| `src/hooks/useVacaciones.ts` | Cambiar cálculo de días hábiles a días corridos |
+| `src/components/AppLayout.tsx` | Agregar footer con logo y marca del sistema |
 
