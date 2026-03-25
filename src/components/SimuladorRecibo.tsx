@@ -23,7 +23,14 @@ function fmt(n: number) {
 export default function SimuladorRecibo() {
   const { data: empleados } = useEmpleados();
   const { data: conceptos } = useConceptos();
-  const qc = useQueryClient();
+  const { data: empresas } = useQuery({
+    queryKey: ["empresas-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("empresas").select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const [empleadoId, setEmpleadoId] = useState("");
   const [periodo, setPeriodo] = useState(() => {
