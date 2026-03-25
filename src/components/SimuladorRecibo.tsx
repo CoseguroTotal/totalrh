@@ -30,7 +30,7 @@ export default function SimuladorRecibo() {
       if (error) throw error;
       return data;
     },
-  });
+  const qc = useQueryClient();
 
   const [empleadoId, setEmpleadoId] = useState("");
   const [periodo, setPeriodo] = useState(() => {
