@@ -1,82 +1,126 @@
 
 
-# Plan: Ampliar Legajo Digital — Eventos, Empresas, Domicilio, Grupo Familiar y Datos Médicos
+# Plan: Baja de empleados, reset de contraseña, Dashboard con KPIs reales y Módulo de Liquidación
 
-## Resumen
+## 1. Baja (eliminación) de empleados
 
-Agregar 5 funcionalidades al módulo de Legajo Digital:
-1. CRUD de empresas y sucursales desde la UI
-2. Formulario para agregar eventos al historial del legajo
-3. Campos adicionales en empleados: domicilio completo
-4. Nuevas tablas: grupo familiar, datos médicos
-5. Categorización de documentos (permisos, documentos presentados, médicos)
+### Migración
+- Agregar política RLS DELETE en `empleados` para authenticated users
 
----
+### UI
+- **Legajos.tsx**: Agregar botón de eliminar (icono Trash2) en cada fila de la tabla, con diálogo de confirmación (AlertDialog)
+- **LegajoDetail.tsx**: Agregar botón "Dar de Baja" en el header del perfil, con confirmación. Al eliminar, redirige a `/legajos`
+- Cascade: los registros relacionados (eventos, documentos, familiares, datos_medicos) se eliminan vía FK CASCADE o manualmente antes del DELETE
 
-## 1. Migración de base de datos
-
-### Nuevas columnas en `empleados`:
-- `domicilio_calle`, `domicilio_numero`, `domicilio_piso`, `domicilio_localidad`, `domicilio_provincia`, `domicilio_cp` (todos text nullable)
-- `nacionalidad`, `fecha_nacimiento`, `sexo`, `estado_civil` (text/date nullable)
-
-### Nueva tabla `grupo_familiar`:
-- `id`, `empleado_id` (FK), `nombre`, `apellido`, `parentesco` (enum: conyuge/hijo/padre/otro), `dni`, `fecha_nacimiento`, `discapacidad` (bool), `a_cargo` (bool), `created_at`
-
-### Nueva tabla `datos_medicos`:
-- `id`, `empleado_id` (FK), `grupo_sanguineo`, `obra_social`, `plan_obra_social`, `nro_afiliado`, `art`, `nro_art`, `alergias`, `observaciones`, `created_at`, `updated_at`
-
-### RLS: Todas las tablas con políticas CRUD para authenticated.
-
-### Políticas INSERT/UPDATE en `empresas` y `sucursales` (actualmente solo SELECT).
+### Lógica
+- useMutation con DELETE en tabla `empleados`, invalidar queries, toast de confirmación
 
 ---
 
-## 2. CRUD de Empresas y Sucursales
+## 2. Reset de contraseña del usuario admin
 
-- Nuevo componente `EmpresaFormDialog.tsx`: Dialog para crear/editar empresa (nombre, CUIT) y sus sucursales inline
-- Nueva página `src/pages/Empresas.tsx` con listado de empresas y sus sucursales
-- Ruta `/empresas` en App.tsx y enlace en sidebar
-- Botones para agregar/editar empresas y sucursales
+- Usar la API de Supabase Admin para resetear la contraseña de `mcponce.torres@gmail.com` via edge function o directamente actualizar el password
+- Se ejecutará un update de contraseña usando el service role key mediante una migración o invocación directa
 
-## 3. Formulario de Eventos en LegajoDetail
+---
 
-- Nuevo componente `EventoFormDialog.tsx`: Dialog con campos fecha, tipo (select del enum), titulo, descripcion
-- Botón "Agregar evento" junto al título "Historial de Eventos" en LegajoDetail
-- Insert en `eventos_legajo`, invalidar query
+## 3. Dashboard con KPIs reales
 
-## 4. Datos ampliados del empleado
+### Reescribir `Dashboard.tsx` para usar datos de la base de datos:
 
-- Ampliar `EmpleadoFormDialog.tsx` con pestañas/secciones:
-  - Datos personales (existentes + domicilio + nacionalidad, fecha nacimiento, sexo, estado civil)
-  - Los campos nuevos son opcionales
-- En `LegajoDetail.tsx`: mostrar sección de domicilio en el grid de detalles
+- **Hook `useDashboardStats`**: queries a Supabase para obtener:
+  - Conteo de empleados activos por empresa (GROUP BY empresa_id, estado)
+  - Distribución por estado (Activo/Licencia/Baja)
+  - Distribución por antigüedad (rangos: <1 año, 1-3, 3-5, 5-10, 10+)
+  - Tasa de rotación: contar empleados con estado "Baja" vs total
 
-## 5. Grupo Familiar en LegajoDetail
+- **KPI Cards**: Dotación total (activos), empleados en licencia, bajas del período, promedio de antigüedad
+- **Gráficos**:
+  - Bar chart: dotación por empresa (datos reales)
+  - Pie chart: distribución por estado
+  - Bar chart: distribución por antigüedad
+  - Alertas: documentos próximos a vencer (fecha_vencimiento < hoy + 30 días)
 
-- Nueva sección/card "Grupo Familiar" en LegajoDetail
-- Componente `FamiliarFormDialog.tsx` para agregar/editar familiares
-- Hook `useGrupoFamiliar(empleadoId)` en useEmpleados.ts
-- Tabla inline mostrando familiares con botón agregar
+---
 
-## 6. Datos Médicos en LegajoDetail
+## 4. Módulo de Liquidación de Haberes
 
-- Nueva sección/card "Datos Médicos" en LegajoDetail
-- Formulario inline o dialog para editar datos médicos (un registro por empleado)
-- Hook `useDatosMedicos(empleadoId)`
+### Migración — Nuevas tablas:
 
-## 7. Categorización de documentos
+```text
+conceptos_liquidacion
+├── id (uuid, PK)
+├── codigo (text, unique)
+├── nombre (text)
+├── tipo (enum: remunerativo, no_remunerativo, deduccion)
+├── porcentaje (numeric, nullable) — si es % sobre básico
+├── monto_fijo (numeric, nullable) — si es monto fijo
+├── aplica_a (text: todos / categoria / convenio)
+├── activo (bool, default true)
+├── created_at
 
-- Agregar columna `categoria` a `documentos_legajo` (enum o text: 'documento_personal', 'permiso', 'medico', 'contrato', 'otro')
-- Al subir archivo, permitir seleccionar categoría y fecha de vencimiento
-- Filtro por categoría en la sección de documentos
+liquidaciones
+├── id (uuid, PK)
+├── empleado_id (FK)
+├── periodo (text, e.g. "2026-03")
+├── sueldo_basico (numeric)
+├── total_remunerativo (numeric)
+├── total_no_remunerativo (numeric)
+├── total_deducciones (numeric)
+├── neto (numeric)
+├── estado (enum: borrador, confirmada)
+├── created_at
+
+liquidacion_lineas
+├── id (uuid, PK)
+├── liquidacion_id (FK)
+├── concepto_id (FK)
+├── descripcion (text)
+├── cantidad (numeric, default 1)
+├── monto (numeric)
+├── tipo (remunerativo/no_remunerativo/deduccion)
+```
+
+RLS: CRUD para authenticated en las 3 tablas.
+
+### Página `/liquidacion` — Reemplazar PlaceholderModule:
+
+**Sub-secciones con Tabs:**
+
+1. **Configurador de Conceptos**: CRUD table para `conceptos_liquidacion`
+   - Tabla listando conceptos con código, nombre, tipo, porcentaje/monto, estado
+   - Dialog para crear/editar concepto
+   - Toggle para activar/desactivar
+
+2. **Simulador de Recibo**: 
+   - Selector de empleado + período
+   - Al seleccionar, se calcula en tiempo real:
+     - Sueldo básico (input manual o del empleado)
+     - Aplica todos los conceptos activos según tipo
+     - Remunerativos suman, deducciones restan
+     - Muestra preview tipo recibo de sueldo con columnas Haberes/Deducciones
+   - Botón "Guardar Liquidación" (inserta en liquidaciones + liquidacion_lineas)
+
+3. **Liquidaciones Guardadas**: 
+   - Listado de liquidaciones previas con filtro por período y empleado
+   - Click para ver detalle del recibo
+
+### Hooks:
+- `useConceptos()`, `useLiquidaciones(periodo)`, `useLiquidacionDetalle(id)`
+
+### Componentes nuevos:
+- `src/pages/Liquidacion.tsx` — página principal con tabs
+- `src/components/ConceptoFormDialog.tsx` — CRUD de conceptos
+- `src/components/SimuladorRecibo.tsx` — simulador en tiempo real
 
 ---
 
 ## Detalle técnico
 
-- **Migración**: Una sola migración SQL con todas las tablas nuevas, columnas y políticas RLS
-- **Hooks**: Agregar `useGrupoFamiliar`, `useDatosMedicos` en useEmpleados.ts
-- **EmpleadoConEmpresa type**: Ampliar con campos de domicilio
-- **LegajoDetail**: Reorganizar en tabs (Datos, Familia, Médico, Documentos, Historial) para no sobrecargar la vista
-- **No se modifica** `client.ts` ni `types.ts` (auto-generados)
+- **Migración**: Una sola migración SQL con DELETE policy en empleados, tablas de liquidación y enums
+- **Password reset**: Edge function o script con service role para actualizar contraseña del admin
+- **Dashboard**: Queries con `.select()` y procesamiento client-side para KPIs
+- **Liquidación**: Cálculo client-side con los conceptos activos, persistencia al guardar
+- **Archivos nuevos**: ~5 componentes, 1 página, 1 hook file, 1 migración
+- **Archivos editados**: Dashboard.tsx (rewrite), LegajoDetail.tsx, Legajos.tsx, App.tsx
 
