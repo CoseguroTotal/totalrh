@@ -64,14 +64,17 @@ export default function Liquidacion() {
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Código</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Nombre</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Tipo</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Grupo</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Base</th>
                       <th className="px-3 py-2 text-right font-medium text-muted-foreground text-xs">%</th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground text-xs">Monto Fijo</th>
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground text-xs">Fijo</th>
+                      <th className="px-3 py-2 text-center font-medium text-muted-foreground text-xs">Ord</th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground text-xs">Activo</th>
                       <th className="px-3 py-2 w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(conceptos ?? []).map((c) => (
+                    {(conceptos ?? []).map((c: any) => (
                       <tr key={c.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                         <td className="px-3 py-2 font-mono text-xs">{c.codigo}</td>
                         <td className="px-3 py-2">{c.nombre}</td>
@@ -80,8 +83,11 @@ export default function Liquidacion() {
                             {tipoLabel[c.tipo]}
                           </span>
                         </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{c.grupo || "—"}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground capitalize">{(c.base_calculo || "basico").replace("_", " ")}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{c.porcentaje != null ? `${c.porcentaje}%` : "—"}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{c.monto_fijo != null ? `$${Number(c.monto_fijo).toLocaleString("es-AR")}` : "—"}</td>
+                        <td className="px-3 py-2 text-center text-xs">{c.orden ?? 0}</td>
                         <td className="px-3 py-2 text-center">
                           <Switch
                             checked={c.activo}

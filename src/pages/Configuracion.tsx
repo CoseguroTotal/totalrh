@@ -7,8 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save, Users, Settings2 } from "lucide-react";
+import { Loader2, Save, Users, Settings2, Plus, UserPlus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import AdminRoute from "@/components/AdminRoute";
+
+const ROLES = [
+  { value: "admin", label: "Administrador" },
+  { value: "contador", label: "Contador" },
+  { value: "gerente", label: "Gerente" },
+  { value: "rrhh", label: "Recursos Humanos" },
+  { value: "usuario", label: "Usuario" },
+];
 
 function useConfigGrupo() {
   return useQuery({
@@ -139,10 +148,42 @@ function GeneralTab() {
 function UsuariosTab() {
   const { data: roles = [], isLoading } = useUsuariosConRoles();
   const qc = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newUser, setNewUser] = useState({ email: "", password: "", role: "usuario" });
+  const [creating, setCreating] = useState(false);
+
+  const handleCreate = async () => {
+    if (!newUser.email || !newUser.password) { toast.error("Completá email y contraseña"); return; }
+    setCreating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify(newUser),
+        }
+      );
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Error al crear usuario");
+      toast.success(`Usuario ${newUser.email} creado con rol ${newUser.role}`);
+      qc.invalidateQueries({ queryKey: ["usuarios-roles"] });
+      setCreateOpen(false);
+      setNewUser({ email: "", password: "", role: "usuario" });
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const updateRole = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-      const { error } = await supabase.from("user_roles").upsert({ user_id: userId, role: role as any }, { onConflict: "user_id,role" });
+    mutationFn: async ({ id, role }: { id: string; role: string }) => {
+      const { error } = await supabase.from("user_roles").update({ role: role as any }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Rol actualizado"); qc.invalidateQueries({ queryKey: ["usuarios-roles"] }); },
@@ -152,8 +193,14 @@ function UsuariosTab() {
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-sm">
-      <h3 className="text-sm font-medium mb-4">Usuarios y Roles</h3>
+    <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Usuarios y Roles</h3>
+        <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <UserPlus className="h-4 w-4 mr-1" />Crear Usuario
+        </Button>
+      </div>
+
       {roles.length === 0 ? (
         <p className="text-sm text-muted-foreground">No hay roles asignados.</p>
       ) : (
@@ -161,14 +208,50 @@ function UsuariosTab() {
           {roles.map((r: any) => (
             <div key={r.id} className="flex items-center gap-3 rounded-lg border px-4 py-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium font-mono">{r.user_id}</p>
+                <p className="text-sm font-medium font-mono truncate">{r.user_id}</p>
               </div>
-              <span className="text-xs font-medium px-2 py-0.5 rounded bg-primary/10 text-primary capitalize">{r.role}</span>
+              <Select value={r.role} onValueChange={(v) => updateRole.mutate({ id: r.id, role: v })}>
+                <SelectTrigger className="w-[160px] h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((rl) => (
+                    <SelectItem key={rl.value} value={rl.value}>{rl.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           ))}
         </div>
       )}
-      <p className="text-xs text-muted-foreground mt-4">Para agregar usuarios, creá cuentas desde el sistema de login. Los roles se asignan automáticamente al admin principal.</p>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Crear Nuevo Usuario</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label className="text-xs">Email</Label><Input type="email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} /></div>
+            <div><Label className="text-xs">Contraseña</Label><Input type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} minLength={6} /></div>
+            <div>
+              <Label className="text-xs">Rol</Label>
+              <Select value={newUser.role} onValueChange={(v) => setNewUser({ ...newUser, role: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((rl) => (
+                    <SelectItem key={rl.value} value={rl.value}>{rl.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} disabled={creating}>
+              {creating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+              Crear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
