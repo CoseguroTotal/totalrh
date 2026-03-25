@@ -1,7 +1,8 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useEmpleado, useEventosLegajo, useDocumentosLegajo, useGrupoFamiliar, useDatosMedicos } from "@/hooks/useEmpleados";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2 } from "lucide-react";
+import { useEstudiosEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2, GraduationCap, ClipboardList, Download, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,11 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import EmpleadoFormDialog from "@/components/EmpleadoFormDialog";
 import EventoFormDialog from "@/components/EventoFormDialog";
 import FamiliarFormDialog from "@/components/FamiliarFormDialog";
 import DatosMedicosForm from "@/components/DatosMedicosForm";
+import EstudioFormDialog from "@/components/EstudioFormDialog";
+import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const eventIcon: Record<string, { icon: typeof Award; color: string }> = {
@@ -36,11 +38,26 @@ const parentescoLabel: Record<string, string> = {
   conyuge: "Cónyuge", hijo: "Hijo/a", padre: "Padre/Madre", otro: "Otro",
 };
 
+const nivelLabel: Record<string, string> = {
+  primario: "Primario", secundario: "Secundario", terciario: "Terciario", universitario: "Universitario", posgrado: "Posgrado",
+};
+
+const estadoEstudioLabel: Record<string, string> = {
+  completo: "Completo", en_curso: "En curso", incompleto: "Incompleto",
+};
+
+const estadoSolicitudBadge: Record<string, string> = {
+  pendiente: "bg-warning/15 text-warning",
+  aprobada: "bg-success/15 text-success",
+  rechazada: "bg-destructive/15 text-destructive",
+};
+
 const categoriasDocumento = [
   { value: "documento_personal", label: "Documento Personal" },
   { value: "permiso", label: "Permiso" },
   { value: "medico", label: "Médico" },
   { value: "contrato", label: "Contrato" },
+  { value: "certificado", label: "Certificado" },
   { value: "otro", label: "Otro" },
 ];
 
@@ -50,11 +67,14 @@ export default function LegajoDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [eventoOpen, setEventoOpen] = useState(false);
   const [familiarOpen, setFamiliarOpen] = useState<{ open: boolean; familiar?: any }>({ open: false });
+  const [estudioOpen, setEstudioOpen] = useState<{ open: boolean; estudio?: any }>({ open: false });
   const { data: emp, isLoading } = useEmpleado(id);
   const { data: events = [] } = useEventosLegajo(id);
   const { data: documentos = [] } = useDocumentosLegajo(id);
   const { data: familiares = [] } = useGrupoFamiliar(id);
   const { data: datosMedicos, isLoading: loadingMedicos } = useDatosMedicos(id);
+  const { data: estudios = [] } = useEstudiosEmpleado(id);
+  const { data: solicitudes = [] } = useSolicitudesPermiso(id);
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadCategoria, setUploadCategoria] = useState("otro");
@@ -66,6 +86,8 @@ export default function LegajoDetail() {
       await supabase.from("documentos_legajo").delete().eq("empleado_id", id!);
       await supabase.from("grupo_familiar").delete().eq("empleado_id", id!);
       await supabase.from("datos_medicos").delete().eq("empleado_id", id!);
+      await supabase.from("estudios_empleado").delete().eq("empleado_id", id!);
+      await supabase.from("solicitudes_permiso").delete().eq("empleado_id", id!);
       const liqs = await supabase.from("liquidaciones").select("id").eq("empleado_id", id!);
       if (liqs.data?.length) {
         await supabase.from("liquidacion_lineas").delete().in("liquidacion_id", liqs.data.map((l) => l.id));
@@ -94,14 +116,36 @@ export default function LegajoDetail() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const deleteEstudioMutation = useMutation({
+    mutationFn: async (estudioId: string) => {
+      const { error } = await supabase.from("estudios_empleado").delete().eq("id", estudioId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Estudio eliminado");
+      queryClient.invalidateQueries({ queryKey: ["estudios_empleado", id] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const updateSolicitudMutation = useMutation({
+    mutationFn: async ({ solId, estado }: { solId: string; estado: string }) => {
+      const { error } = await supabase.from("solicitudes_permiso").update({ estado: estado as any }).eq("id", solId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Solicitud actualizada");
+      queryClient.invalidateQueries({ queryKey: ["solicitudes_permiso", id] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !id) return;
-
     const storagePath = `${id}/${Date.now()}_${file.name}`;
     const { error: uploadError } = await supabase.storage.from("documentos-legajo").upload(storagePath, file);
     if (uploadError) { toast.error("Error al subir archivo: " + uploadError.message); return; }
-
     const { error: dbError } = await supabase.from("documentos_legajo").insert({
       empleado_id: id,
       nombre_archivo: file.name,
@@ -112,7 +156,6 @@ export default function LegajoDetail() {
       fecha_vencimiento: uploadVencimiento || null,
     });
     if (dbError) { toast.error("Error al registrar documento: " + dbError.message); return; }
-
     toast.success("Documento subido correctamente");
     queryClient.invalidateQueries({ queryKey: ["documentos_legajo", id] });
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -219,11 +262,13 @@ export default function LegajoDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="historial" className="animate-slide-up" style={{ animationDelay: "100ms" }}>
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
-          <TabsTrigger value="familia">Grupo Familiar</TabsTrigger>
-          <TabsTrigger value="medico">Datos Médicos</TabsTrigger>
+          <TabsTrigger value="familia">Familia</TabsTrigger>
+          <TabsTrigger value="medico">Médico</TabsTrigger>
+          <TabsTrigger value="estudios">Estudios</TabsTrigger>
+          <TabsTrigger value="permisos">Permisos</TabsTrigger>
         </TabsList>
 
         {/* Historial */}
@@ -273,9 +318,7 @@ export default function LegajoDetail() {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="space-y-0">
-                  <Input type="date" className="h-8 text-xs w-36" value={uploadVencimiento} onChange={(e) => setUploadVencimiento(e.target.value)} placeholder="Vencimiento" />
-                </div>
+                <Input type="date" className="h-8 text-xs w-36" value={uploadVencimiento} onChange={(e) => setUploadVencimiento(e.target.value)} />
                 <label className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1 whitespace-nowrap">
                   <Upload className="h-3 w-3" />Subir
                   <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
@@ -318,12 +361,7 @@ export default function LegajoDetail() {
                 <Plus className="h-3.5 w-3.5 mr-1" />Agregar
               </Button>
             </div>
-            <FamiliarFormDialog
-              open={familiarOpen.open}
-              onOpenChange={(o) => setFamiliarOpen({ open: o })}
-              empleadoId={id!}
-              familiar={familiarOpen.familiar}
-            />
+            <FamiliarFormDialog open={familiarOpen.open} onOpenChange={(o) => setFamiliarOpen({ open: o })} empleadoId={id!} familiar={familiarOpen.familiar} />
             {familiares.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin familiares registrados.</p>
             ) : (
@@ -370,6 +408,119 @@ export default function LegajoDetail() {
         <TabsContent value="medico">
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <DatosMedicosForm empleadoId={id!} datos={datosMedicos ?? null} isLoading={loadingMedicos} />
+          </div>
+        </TabsContent>
+
+        {/* Estudios */}
+        <TabsContent value="estudios">
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium flex items-center gap-2"><GraduationCap className="h-4 w-4" />Formación Académica</h3>
+              <Button variant="ghost" size="sm" onClick={() => setEstudioOpen({ open: true })}>
+                <Plus className="h-3.5 w-3.5 mr-1" />Agregar
+              </Button>
+            </div>
+            <EstudioFormDialog
+              open={estudioOpen.open}
+              onOpenChange={(o) => setEstudioOpen({ open: o })}
+              empleadoId={id!}
+              estudio={estudioOpen.estudio}
+            />
+            {estudios.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin estudios registrados.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Título</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Institución</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Nivel</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Estado</th>
+                      <th className="px-3 py-2 w-16"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {estudios.map((est: any) => (
+                      <tr key={est.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2">{est.titulo}</td>
+                        <td className="px-3 py-2">{est.institucion || "—"}</td>
+                        <td className="px-3 py-2">{nivelLabel[est.nivel] || est.nivel}</td>
+                        <td className="px-3 py-2">
+                          <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                            est.estado === "completo" ? "bg-success/15 text-success" : est.estado === "en_curso" ? "bg-info/15 text-info" : "bg-muted text-muted-foreground"
+                          )}>{estadoEstudioLabel[est.estado]}</span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEstudioOpen({ open: true, estudio: est })}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteEstudioMutation.mutate(est.id)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Permisos */}
+        <TabsContent value="permisos">
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium flex items-center gap-2"><ClipboardList className="h-4 w-4" />Solicitudes de Permiso</h3>
+            </div>
+            {solicitudes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin solicitudes de permiso.</p>
+            ) : (
+              <div className="space-y-2">
+                {solicitudes.map((sol: any) => (
+                  <div key={sol.id} className="flex items-center gap-3 rounded-lg border px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{sol.motivo}{sol.motivo_detalle ? ` — ${sol.motivo_detalle}` : ""}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al {new Date(sol.fecha_hasta).toLocaleDateString("es-AR")}
+                        {sol.sujeto_descuento && " · Con descuento"}
+                      </p>
+                    </div>
+                    <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoSolicitudBadge[sol.estado])}>
+                      {sol.estado}
+                    </span>
+                    {sol.estado === "pendiente" && (
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => updateSolicitudMutation.mutate({ solId: sol.id, estado: "aprobada" })} title="Aprobar">
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => updateSolicitudMutation.mutate({ solId: sol.id, estado: "rechazada" })} title="Rechazar">
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                      generarSolicitudPermisoPDF({
+                        empleadoNombre: `${emp.apellido}, ${emp.nombre}`,
+                        areaTrabajo: emp.puesto,
+                        motivo: sol.motivo,
+                        motivoDetalle: sol.motivo_detalle,
+                        fechaDesde: sol.fecha_desde,
+                        fechaHasta: sol.fecha_hasta,
+                        horaReintegro: sol.hora_reintegro,
+                        sujetoDescuento: sol.sujeto_descuento,
+                        fechaSolicitud: sol.fecha_solicitud,
+                      });
+                    }} title="Descargar PDF">
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
