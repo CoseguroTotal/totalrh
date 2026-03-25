@@ -2,7 +2,9 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useEmpleado, useEventosLegajo, useDocumentosLegajo, useGrupoFamiliar, useDatosMedicos } from "@/hooks/useEmpleados";
 import { useEstudiosEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2, GraduationCap, ClipboardList, Download, Check, X } from "lucide-react";
+import { useFichadasEmpleado } from "@/hooks/useAsistencia";
+import { useSolicitudesVacacionesEmpleado, useUpdateSolicitudVacaciones, useVacacionesConfig, calcDiasCorrespondientes } from "@/hooks/useVacaciones";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, DollarSign, Palmtree } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -75,6 +77,14 @@ export default function LegajoDetail() {
   const { data: datosMedicos, isLoading: loadingMedicos } = useDatosMedicos(id);
   const { data: estudios = [] } = useEstudiosEmpleado(id);
   const { data: solicitudes = [] } = useSolicitudesPermiso(id);
+  const [mesFichadas, setMesFichadas] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const { data: fichadas = [] } = useFichadasEmpleado(id, mesFichadas);
+  const { data: solicitudesVac = [] } = useSolicitudesVacacionesEmpleado(id);
+  const { data: vacConfig = [] } = useVacacionesConfig(emp?.empresa_id);
+  const updateVac = useUpdateSolicitudVacaciones();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadCategoria, setUploadCategoria] = useState("otro");
