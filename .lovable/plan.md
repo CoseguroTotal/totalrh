@@ -1,53 +1,33 @@
 
 
-# Plan: Rebranding a TotalRH
+# Plan: Eliminar branding Lovable y optimizar compartir enlace con logo TotalRH
 
 ## Resumen
 
-Reemplazar toda la identidad "GrupoRH" por "TotalRH", incorporar el logo subido como favicon e imagen de marca, y ajustar la paleta de colores para alinearse con los tonos del logo (celeste/cyan `#4FC3F7` y verde-teal `#26A69A`).
+El código del proyecto ya no tiene ninguna referencia visible a "Lovable". El badge "Edit in Lovable" que aparece en la app publicada se desactiva desde la configuración del proyecto (Settings → Hide Lovable Badge). Para que al compartir el enlace en WhatsApp, iMessage, redes sociales etc. aparezca el logo de TotalRH, hay que agregar las meta tags `og:image` y `twitter:image`.
 
 ---
 
 ## Cambios
 
-### 1. Logo e imágenes
-- Copiar `user-uploads://logo_Total_RH.png` a `public/logo_total_rh.png` (favicon y PWA) y a `src/assets/logo_total_rh.png` (componentes React)
-- Actualizar `index.html`: favicon apuntando a `/logo_total_rh.png`, title y metas OG → "TotalRH"
-- Actualizar `public/manifest.json`: name, short_name, icons
-- Actualizar `vite.config.ts`: PWA manifest name/short_name/theme_color
+### 1. Ocultar badge de Lovable
+- Se usará la configuración de publicación del proyecto para ocultar el badge (no requiere código).
 
-### 2. Textos "GrupoRH" → "TotalRH"
-- `src/pages/Login.tsx`: título y reemplazar ícono Building2 por el logo importado
-- `src/components/AppSidebar.tsx`: nombre en header del sidebar + reemplazar ícono por logo
-- `src/components/MemorandumPDF.ts`: fallback name
-- `vite.config.ts`, `index.html`, `manifest.json`: ya mencionados arriba
+### 2. Meta tags OG para compartir con logo
+En `index.html`, agregar:
+- `og:image` apuntando a la URL absoluta del logo (`https://rrhh-totalgroup.lovable.app/logo_total_rh.png`)
+- `og:image:width`, `og:image:height` para dimensiones
+- `twitter:card`, `twitter:image` para previews en Twitter/X
+- `og:url` con la URL publicada
 
-### 3. Paleta de colores (alineada al logo)
-Ajustar variables CSS en `src/index.css`:
-- `--primary`: de navy oscuro a un teal más alineado al logo (~`174 60% 38%`)
-- `--accent`: mantener pero ajustar al cyan del logo (~`199 90% 63%`)
-- `--sidebar-primary`: teal del logo
-- `--sidebar-background`: navy oscuro compatible
-- `--theme-color` en metas: actualizar a `#26A69A`
-
-### 4. Login con logo
-- Reemplazar el ícono `Building2` con cuadrado por una `<img>` del logo importado desde `@/assets/logo_total_rh.png`
+### 3. Apple touch icon (ya existe)
+Ya está configurado correctamente con `/logo_total_rh.png`.
 
 ---
 
-## Archivos editados
+## Archivo editado
 
 | Archivo | Cambio |
 |---------|--------|
-| `index.html` | Favicon, title, metas OG |
-| `public/manifest.json` | name, short_name, theme_color |
-| `vite.config.ts` | PWA manifest fields |
-| `src/index.css` | Variables de color primary/accent/sidebar |
-| `src/pages/Login.tsx` | Logo + texto "TotalRH" |
-| `src/components/AppSidebar.tsx` | Logo + texto "TotalRH" |
-| `src/components/MemorandumPDF.ts` | Fallback "TotalRH" |
-
-## Archivos nuevos (copias del logo)
-- `public/logo_total_rh.png`
-- `src/assets/logo_total_rh.png`
+| `index.html` | Agregar `og:image`, `twitter:card`, `twitter:image`, `og:url` |
 
