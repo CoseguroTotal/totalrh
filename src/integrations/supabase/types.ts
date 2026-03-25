@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      conceptos_liquidacion: {
+        Row: {
+          activo: boolean
+          aplica_a: string
+          codigo: string
+          created_at: string
+          id: string
+          monto_fijo: number | null
+          nombre: string
+          porcentaje: number | null
+          tipo: Database["public"]["Enums"]["tipo_concepto"]
+        }
+        Insert: {
+          activo?: boolean
+          aplica_a?: string
+          codigo: string
+          created_at?: string
+          id?: string
+          monto_fijo?: number | null
+          nombre: string
+          porcentaje?: number | null
+          tipo: Database["public"]["Enums"]["tipo_concepto"]
+        }
+        Update: {
+          activo?: boolean
+          aplica_a?: string
+          codigo?: string
+          created_at?: string
+          id?: string
+          monto_fijo?: number | null
+          nombre?: string
+          porcentaje?: number | null
+          tipo?: Database["public"]["Enums"]["tipo_concepto"]
+        }
+        Relationships: []
+      }
       datos_medicos: {
         Row: {
           alergias: string | null
@@ -325,6 +361,98 @@ export type Database = {
           },
         ]
       }
+      liquidacion_lineas: {
+        Row: {
+          cantidad: number
+          concepto_id: string | null
+          descripcion: string
+          id: string
+          liquidacion_id: string
+          monto: number
+          tipo: Database["public"]["Enums"]["tipo_concepto"]
+        }
+        Insert: {
+          cantidad?: number
+          concepto_id?: string | null
+          descripcion: string
+          id?: string
+          liquidacion_id: string
+          monto?: number
+          tipo: Database["public"]["Enums"]["tipo_concepto"]
+        }
+        Update: {
+          cantidad?: number
+          concepto_id?: string | null
+          descripcion?: string
+          id?: string
+          liquidacion_id?: string
+          monto?: number
+          tipo?: Database["public"]["Enums"]["tipo_concepto"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liquidacion_lineas_concepto_id_fkey"
+            columns: ["concepto_id"]
+            isOneToOne: false
+            referencedRelation: "conceptos_liquidacion"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "liquidacion_lineas_liquidacion_id_fkey"
+            columns: ["liquidacion_id"]
+            isOneToOne: false
+            referencedRelation: "liquidaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      liquidaciones: {
+        Row: {
+          created_at: string
+          empleado_id: string
+          estado: Database["public"]["Enums"]["estado_liquidacion"]
+          id: string
+          neto: number
+          periodo: string
+          sueldo_basico: number
+          total_deducciones: number
+          total_no_remunerativo: number
+          total_remunerativo: number
+        }
+        Insert: {
+          created_at?: string
+          empleado_id: string
+          estado?: Database["public"]["Enums"]["estado_liquidacion"]
+          id?: string
+          neto?: number
+          periodo: string
+          sueldo_basico?: number
+          total_deducciones?: number
+          total_no_remunerativo?: number
+          total_remunerativo?: number
+        }
+        Update: {
+          created_at?: string
+          empleado_id?: string
+          estado?: Database["public"]["Enums"]["estado_liquidacion"]
+          id?: string
+          neto?: number
+          periodo?: string
+          sueldo_basico?: number
+          total_deducciones?: number
+          total_no_remunerativo?: number
+          total_remunerativo?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liquidaciones_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sucursales: {
         Row: {
           created_at: string
@@ -366,7 +494,9 @@ export type Database = {
     }
     Enums: {
       estado_empleado: "Activo" | "Licencia" | "Baja"
+      estado_liquidacion: "borrador" | "confirmada"
       parentesco_familiar: "conyuge" | "hijo" | "padre" | "otro"
+      tipo_concepto: "remunerativo" | "no_remunerativo" | "deduccion"
       tipo_evento_legajo:
         | "ingreso"
         | "promocion"
@@ -501,7 +631,9 @@ export const Constants = {
   public: {
     Enums: {
       estado_empleado: ["Activo", "Licencia", "Baja"],
+      estado_liquidacion: ["borrador", "confirmada"],
       parentesco_familiar: ["conyuge", "hijo", "padre", "otro"],
+      tipo_concepto: ["remunerativo", "no_remunerativo", "deduccion"],
       tipo_evento_legajo: [
         "ingreso",
         "promocion",
