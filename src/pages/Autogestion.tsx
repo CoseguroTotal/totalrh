@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import SolicitudPermisoFormDialog from "@/components/SolicitudPermisoFormDialog";
 import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
+import InstallPWAPrompt from "@/components/InstallPWAPrompt";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
