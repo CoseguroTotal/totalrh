@@ -1,126 +1,112 @@
 
 
-# Plan: Baja de empleados, reset de contraseña, Dashboard con KPIs reales y Módulo de Liquidación
+# Plan: Legajo reforzado, Autogestión, PWA de Asistencia, Formulario de Permisos y Empresas ampliadas
 
-## 1. Baja (eliminación) de empleados
+## Resumen
+
+Seis bloques de trabajo:
+1. Reforzar legajo: agregar sección de estudios/formación al empleado
+2. Módulo de Autogestión para empleados (portal self-service)
+3. Asistencia como PWA instalable
+4. Formulario de Solicitud de Permisos (basado en el PDF adjunto) con generación PDF y firma
+5. Ampliar datos de empresa y gestión de sucursales
+6. Notificaciones de solicitudes de permisos
+
+---
+
+## 1. Reforzar Legajo del Trabajador
 
 ### Migración
-- Agregar política RLS DELETE en `empleados` para authenticated users
+- Nueva tabla `estudios_empleado`: id, empleado_id (FK), titulo, institucion, nivel (enum: primario/secundario/terciario/universitario/posgrado), estado (enum: completo/en_curso/incompleto), fecha_inicio, fecha_fin, created_at
+- RLS CRUD para authenticated
+
+### UI en LegajoDetail
+- Nuevo tab "Estudios" junto a Familia/Médico
+- Tabla listando estudios con botón agregar/editar/eliminar
+- Dialog `EstudioFormDialog.tsx`
+
+### Documentos: ya soporta categorías (documento_personal, permiso, médico, contrato, otro). Agregar categoría "certificado" para certificados de estudio, cursos, etc.
+
+---
+
+## 2. Módulo de Autogestión
+
+### Migración
+- Nueva tabla `solicitudes_permiso`: id, empleado_id (FK), fecha_solicitud (default now), motivo (text), motivo_detalle (text nullable), fecha_desde (date), fecha_hasta (date), hora_reintegro (text nullable), sujeto_descuento (bool), estado (enum: pendiente/aprobada/rechazada), aprobado_por (uuid nullable), observaciones (text nullable), created_at
+- RLS: authenticated puede SELECT/INSERT; UPDATE solo para admin (o todos authenticated por ahora)
+
+### Página `/autogestion`
+- Reemplazar PlaceholderModule
+- Tabs: **Mis Datos**, **Solicitudes de Permiso**, **Mis Documentos**
+
+#### Tab "Mis Datos"
+- Vista read-only de datos personales del empleado logueado (busca por email del auth user)
+- Botón para solicitar actualización de datos (crea un evento o notificación)
+
+#### Tab "Solicitudes de Permiso"
+- Listado de solicitudes del empleado
+- Botón "Nueva Solicitud" abre formulario basado en el PDF adjunto:
+  - Motivo (radio/select): Lic. Paternidad, Lic. Estudio, Mudanza, Trámites Personales, Lic. Fallecimiento (+ campo pariente), Lic. Sin goce, Otros (+ campo detalle)
+  - Fecha desde, fecha hasta, hora reintegro
+  - Sujeto a descuento (sí/no)
+- Botón "Descargar PDF" genera el formulario completado para firma
+- Estado badge: pendiente/aprobada/rechazada
+
+#### Tab "Mis Documentos"
+- Lista documentos del empleado (read-only)
+
+### Lógica de matching
+- Al cargar autogestión, buscar en `empleados` el registro cuyo `email` coincida con el email del usuario autenticado
+- Si no hay match, mostrar mensaje "Tu email no está asociado a un legajo"
+
+---
+
+## 3. Formulario de Solicitud de Permisos (PDF)
+
+- Componente `SolicitudPermisoPDF.tsx` que genera con jsPDF un PDF replicando el formulario adjunto
+- Datos pre-llenados: nombre del empleado, área de trabajo, fechas, motivo
+- Espacios para firma del empleado, responsable directo y RRHH
+- Descargable desde autogestión y desde el legajo (sección permisos)
+
+---
+
+## 4. Asistencia como PWA
+
+- Instalar `vite-plugin-pwa`
+- Configurar en `vite.config.ts` con manifest, iconos y service worker
+- Meta tags mobile en `index.html`
+- Agregar ruta `/install` con instrucciones de instalación
+- `navigateFallbackDenylist: [/^\/~oauth/]`
+- La app completa se vuelve instalable (beneficia especialmente al módulo de asistencia para fichada desde el celular)
+
+---
+
+## 5. Ampliar Empresas
+
+### Migración — Nuevas columnas en `empresas`:
+- razon_social, domicilio_fiscal, localidad, provincia, cp, telefono, email, actividad_principal, fecha_inicio_actividades, convenio_colectivo (todos text nullable)
 
 ### UI
-- **Legajos.tsx**: Agregar botón de eliminar (icono Trash2) en cada fila de la tabla, con diálogo de confirmación (AlertDialog)
-- **LegajoDetail.tsx**: Agregar botón "Dar de Baja" en el header del perfil, con confirmación. Al eliminar, redirige a `/legajos`
-- Cascade: los registros relacionados (eventos, documentos, familiares, datos_medicos) se eliminan vía FK CASCADE o manualmente antes del DELETE
-
-### Lógica
-- useMutation con DELETE en tabla `empleados`, invalidar queries, toast de confirmación
+- Ampliar `EmpresaFormDialog` con más campos organizados en secciones
+- Mostrar datos completos en la card de empresa
+- Sucursales: ya funciona el CRUD, sin cambios
 
 ---
 
-## 2. Reset de contraseña del usuario admin
+## 6. Gestión de permisos desde el admin (LegajoDetail)
 
-- Usar la API de Supabase Admin para resetear la contraseña de `mcponce.torres@gmail.com` via edge function o directamente actualizar el password
-- Se ejecutará un update de contraseña usando el service role key mediante una migración o invocación directa
-
----
-
-## 3. Dashboard con KPIs reales
-
-### Reescribir `Dashboard.tsx` para usar datos de la base de datos:
-
-- **Hook `useDashboardStats`**: queries a Supabase para obtener:
-  - Conteo de empleados activos por empresa (GROUP BY empresa_id, estado)
-  - Distribución por estado (Activo/Licencia/Baja)
-  - Distribución por antigüedad (rangos: <1 año, 1-3, 3-5, 5-10, 10+)
-  - Tasa de rotación: contar empleados con estado "Baja" vs total
-
-- **KPI Cards**: Dotación total (activos), empleados en licencia, bajas del período, promedio de antigüedad
-- **Gráficos**:
-  - Bar chart: dotación por empresa (datos reales)
-  - Pie chart: distribución por estado
-  - Bar chart: distribución por antigüedad
-  - Alertas: documentos próximos a vencer (fecha_vencimiento < hoy + 30 días)
-
----
-
-## 4. Módulo de Liquidación de Haberes
-
-### Migración — Nuevas tablas:
-
-```text
-conceptos_liquidacion
-├── id (uuid, PK)
-├── codigo (text, unique)
-├── nombre (text)
-├── tipo (enum: remunerativo, no_remunerativo, deduccion)
-├── porcentaje (numeric, nullable) — si es % sobre básico
-├── monto_fijo (numeric, nullable) — si es monto fijo
-├── aplica_a (text: todos / categoria / convenio)
-├── activo (bool, default true)
-├── created_at
-
-liquidaciones
-├── id (uuid, PK)
-├── empleado_id (FK)
-├── periodo (text, e.g. "2026-03")
-├── sueldo_basico (numeric)
-├── total_remunerativo (numeric)
-├── total_no_remunerativo (numeric)
-├── total_deducciones (numeric)
-├── neto (numeric)
-├── estado (enum: borrador, confirmada)
-├── created_at
-
-liquidacion_lineas
-├── id (uuid, PK)
-├── liquidacion_id (FK)
-├── concepto_id (FK)
-├── descripcion (text)
-├── cantidad (numeric, default 1)
-├── monto (numeric)
-├── tipo (remunerativo/no_remunerativo/deduccion)
-```
-
-RLS: CRUD para authenticated en las 3 tablas.
-
-### Página `/liquidacion` — Reemplazar PlaceholderModule:
-
-**Sub-secciones con Tabs:**
-
-1. **Configurador de Conceptos**: CRUD table para `conceptos_liquidacion`
-   - Tabla listando conceptos con código, nombre, tipo, porcentaje/monto, estado
-   - Dialog para crear/editar concepto
-   - Toggle para activar/desactivar
-
-2. **Simulador de Recibo**: 
-   - Selector de empleado + período
-   - Al seleccionar, se calcula en tiempo real:
-     - Sueldo básico (input manual o del empleado)
-     - Aplica todos los conceptos activos según tipo
-     - Remunerativos suman, deducciones restan
-     - Muestra preview tipo recibo de sueldo con columnas Haberes/Deducciones
-   - Botón "Guardar Liquidación" (inserta en liquidaciones + liquidacion_lineas)
-
-3. **Liquidaciones Guardadas**: 
-   - Listado de liquidaciones previas con filtro por período y empleado
-   - Click para ver detalle del recibo
-
-### Hooks:
-- `useConceptos()`, `useLiquidaciones(periodo)`, `useLiquidacionDetalle(id)`
-
-### Componentes nuevos:
-- `src/pages/Liquidacion.tsx` — página principal con tabs
-- `src/components/ConceptoFormDialog.tsx` — CRUD de conceptos
-- `src/components/SimuladorRecibo.tsx` — simulador en tiempo real
+- En LegajoDetail, nuevo tab "Permisos" que lista las solicitudes del empleado
+- Botones para aprobar/rechazar solicitudes pendientes
+- Al aprobar/rechazar se actualiza el estado y se registra quién aprobó
 
 ---
 
 ## Detalle técnico
 
-- **Migración**: Una sola migración SQL con DELETE policy en empleados, tablas de liquidación y enums
-- **Password reset**: Edge function o script con service role para actualizar contraseña del admin
-- **Dashboard**: Queries con `.select()` y procesamiento client-side para KPIs
-- **Liquidación**: Cálculo client-side con los conceptos activos, persistencia al guardar
-- **Archivos nuevos**: ~5 componentes, 1 página, 1 hook file, 1 migración
-- **Archivos editados**: Dashboard.tsx (rewrite), LegajoDetail.tsx, Legajos.tsx, App.tsx
+- **Migración**: Una sola migración con tablas `estudios_empleado`, `solicitudes_permiso`, columnas nuevas en `empresas`
+- **PWA**: vite-plugin-pwa con workbox, manifest.json, iconos 192/512px
+- **PDF**: jsPDF (ya instalado) para generar solicitud de permisos
+- **Hooks nuevos**: `useEstudios(empleadoId)`, `useSolicitudesPermiso(empleadoId)`, `useMiEmpleado()`
+- **Archivos nuevos**: ~6 componentes/páginas, 1 hook file
+- **Archivos editados**: vite.config.ts, index.html, LegajoDetail.tsx, Empresas.tsx, App.tsx
 
