@@ -163,6 +163,7 @@ export type Database = {
           cuit: string | null
           domicilio: string | null
           email: string | null
+          email_remitente: string | null
           id: string
           logo_url: string | null
           nombre_grupo: string
@@ -173,6 +174,7 @@ export type Database = {
           cuit?: string | null
           domicilio?: string | null
           email?: string | null
+          email_remitente?: string | null
           id?: string
           logo_url?: string | null
           nombre_grupo?: string
@@ -183,6 +185,7 @@ export type Database = {
           cuit?: string | null
           domicilio?: string | null
           email?: string | null
+          email_remitente?: string | null
           id?: string
           logo_url?: string | null
           nombre_grupo?: string

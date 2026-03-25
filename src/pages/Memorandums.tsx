@@ -4,7 +4,7 @@ import { useEmpleados, useEmpresas } from "@/hooks/useEmpleados";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Send, FileText, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Send, FileText, Download, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { generarMemorandumPDF } from "@/components/MemorandumPDF";
+import EnviarEmailDialog from "@/components/EnviarEmailDialog";
 
 const estadoBadge: Record<string, string> = {
   borrador: "bg-muted text-muted-foreground",
@@ -43,6 +44,24 @@ export default function Memorandums() {
     destinatario_nombre: "", fecha: new Date().toISOString().slice(0, 10),
   });
   const [search, setSearch] = useState("");
+  const [emailDialog, setEmailDialog] = useState<{ open: boolean; memo?: any }>({ open: false });
+
+  const getEmailHtml = (m: any) => {
+    const empresa = empresas.find((e: any) => e.id === m.empresa_id);
+    const nombreEmpresa = empresa?.nombre || config?.nombre_grupo || "Grupo Empresario";
+    return `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+        <h2 style="color:#333;border-bottom:2px solid #2563eb;padding-bottom:10px;">Memorándum #${m.numero}</h2>
+        <p style="color:#666;font-size:14px;"><strong>Empresa:</strong> ${nombreEmpresa}</p>
+        <p style="color:#666;font-size:14px;"><strong>Fecha:</strong> ${new Date(m.fecha).toLocaleDateString("es-AR")}</p>
+        ${m.destinatario_nombre ? `<p style="color:#666;font-size:14px;"><strong>Para:</strong> ${m.destinatario_nombre}</p>` : ""}
+        <h3 style="color:#333;margin-top:20px;">${m.titulo}</h3>
+        <div style="color:#444;font-size:14px;line-height:1.6;white-space:pre-wrap;">${m.contenido}</div>
+        <hr style="margin-top:30px;border:none;border-top:1px solid #ddd;"/>
+        <p style="color:#999;font-size:12px;">${nombreEmpresa}</p>
+      </div>
+    `;
+  };
 
   const openNew = () => {
     setForm({ titulo: "", contenido: "", empresa_id: "", destinatario_empleado_id: "", destinatario_nombre: "", fecha: new Date().toISOString().slice(0, 10) });
@@ -175,6 +194,7 @@ export default function Memorandums() {
               <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full capitalize", estadoBadge[m.estado])}>{m.estado}</span>
               <div className="flex gap-1">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDescargarPDF(m)} title="Descargar PDF"><Download className="h-3.5 w-3.5" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEmailDialog({ open: true, memo: m })} title="Enviar por email"><Mail className="h-3.5 w-3.5" /></Button>
                 {m.estado === "borrador" && (
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEnviar(m)} title="Marcar enviado"><Send className="h-3.5 w-3.5" /></Button>
                 )}
@@ -184,6 +204,17 @@ export default function Memorandums() {
             </div>
           ))}
         </div>
+      )}
+
+      {emailDialog.memo && (
+        <EnviarEmailDialog
+          open={emailDialog.open}
+          onOpenChange={(o) => setEmailDialog({ open: o })}
+          defaultTo={emailDialog.memo.destinatario?.email || ""}
+          defaultSubject={`Memorándum #${emailDialog.memo.numero} — ${emailDialog.memo.titulo}`}
+          htmlContent={getEmailHtml(emailDialog.memo)}
+          previewText={emailDialog.memo.contenido?.substring(0, 200)}
+        />
       )}
     </div>
   );

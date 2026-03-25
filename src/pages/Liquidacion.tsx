@@ -6,13 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Pencil, Loader2, Zap } from "lucide-react";
+import { Plus, Pencil, Loader2, Zap, Mail } from "lucide-react";
 import { useConceptos, useToggleConcepto, useLiquidaciones } from "@/hooks/useLiquidacion";
 import { useEmpleados, useEmpresas } from "@/hooks/useEmpleados";
 import { supabase } from "@/integrations/supabase/client";
 import { calcularLiquidacion, calcTotales } from "@/lib/liquidacionEngine";
 import ConceptoFormDialog from "@/components/ConceptoFormDialog";
 import SimuladorRecibo from "@/components/SimuladorRecibo";
+import EnviarEmailDialog from "@/components/EnviarEmailDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +34,24 @@ export default function Liquidacion() {
   const toggleConcepto = useToggleConcepto();
   const { data: liquidaciones, isLoading: loadingLiqs } = useLiquidaciones();
   const [conceptoDialog, setConceptoDialog] = useState<{ open: boolean; concepto?: any }>({ open: false });
+  const [emailDialog, setEmailDialog] = useState<{ open: boolean; liq?: any }>({ open: false });
 
+  const getReciboHtml = (l: any) => `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+      <h2 style="color:#333;border-bottom:2px solid #2563eb;padding-bottom:10px;">Recibo de Sueldo</h2>
+      <p style="color:#666;font-size:14px;"><strong>Empleado:</strong> ${l.empleado?.apellido}, ${l.empleado?.nombre}</p>
+      <p style="color:#666;font-size:14px;"><strong>Período:</strong> ${l.periodo}</p>
+      <p style="color:#666;font-size:14px;"><strong>Fecha:</strong> ${new Date(l.created_at).toLocaleDateString("es-AR")}</p>
+      <table style="width:100%;border-collapse:collapse;margin-top:15px;">
+        <tr style="background:#f3f4f6;"><th style="text-align:left;padding:8px;font-size:13px;">Concepto</th><th style="text-align:right;padding:8px;font-size:13px;">Monto</th></tr>
+        <tr><td style="padding:8px;font-size:13px;border-bottom:1px solid #eee;">Sueldo Básico</td><td style="text-align:right;padding:8px;font-size:13px;border-bottom:1px solid #eee;">$${Number(l.sueldo_basico).toLocaleString("es-AR")}</td></tr>
+        <tr><td style="padding:8px;font-size:13px;border-bottom:1px solid #eee;">Total Remunerativo</td><td style="text-align:right;padding:8px;font-size:13px;border-bottom:1px solid #eee;">$${Number(l.total_remunerativo).toLocaleString("es-AR")}</td></tr>
+        <tr><td style="padding:8px;font-size:13px;border-bottom:1px solid #eee;">Total No Remunerativo</td><td style="text-align:right;padding:8px;font-size:13px;border-bottom:1px solid #eee;">$${Number(l.total_no_remunerativo).toLocaleString("es-AR")}</td></tr>
+        <tr><td style="padding:8px;font-size:13px;border-bottom:1px solid #eee;">Total Deducciones</td><td style="text-align:right;padding:8px;font-size:13px;border-bottom:1px solid #eee;">-$${Number(l.total_deducciones).toLocaleString("es-AR")}</td></tr>
+        <tr style="background:#f3f4f6;font-weight:bold;"><td style="padding:8px;font-size:14px;">NETO A COBRAR</td><td style="text-align:right;padding:8px;font-size:14px;">$${Number(l.neto).toLocaleString("es-AR")}</td></tr>
+      </table>
+    </div>
+  `;
   return (
     <div className="space-y-6">
       <div className="animate-fade-in">
@@ -146,6 +164,7 @@ export default function Liquidacion() {
                       <th className="px-3 py-2 text-right font-medium text-muted-foreground text-xs">Neto</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Estado</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Fecha</th>
+                      <th className="px-3 py-2 w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -161,6 +180,11 @@ export default function Liquidacion() {
                           )}>{l.estado}</span>
                         </td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">{new Date(l.created_at).toLocaleDateString("es-AR")}</td>
+                        <td className="px-3 py-2">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Enviar por email" onClick={() => setEmailDialog({ open: true, liq: l })}>
+                            <Mail className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -168,6 +192,17 @@ export default function Liquidacion() {
               </div>
             )}
           </div>
+
+          {emailDialog.liq && (
+            <EnviarEmailDialog
+              open={emailDialog.open}
+              onOpenChange={(o) => setEmailDialog({ open: o })}
+              defaultTo={emailDialog.liq.empleado?.email || ""}
+              defaultSubject={`Recibo de sueldo — ${emailDialog.liq.periodo} — ${emailDialog.liq.empleado?.apellido}, ${emailDialog.liq.empleado?.nombre}`}
+              htmlContent={getReciboHtml(emailDialog.liq)}
+              previewText={`Neto: $${Number(emailDialog.liq.neto).toLocaleString("es-AR")} | Período: ${emailDialog.liq.periodo}`}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>

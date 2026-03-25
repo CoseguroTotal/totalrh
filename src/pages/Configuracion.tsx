@@ -72,7 +72,7 @@ function ConfiguracionContent() {
 function GeneralTab() {
   const { data: config, isLoading } = useConfigGrupo();
   const qc = useQueryClient();
-  const [form, setForm] = useState({ nombre_grupo: "", logo_url: "", domicilio: "", cuit: "", telefono: "", email: "" });
+  const [form, setForm] = useState({ nombre_grupo: "", logo_url: "", domicilio: "", cuit: "", telefono: "", email: "", email_remitente: "" });
 
   useEffect(() => {
     if (config) {
@@ -83,6 +83,7 @@ function GeneralTab() {
         cuit: config.cuit || "",
         telefono: config.telefono || "",
         email: config.email || "",
+        email_remitente: (config as any).email_remitente || "onboarding@resend.dev",
       });
     }
   }, [config]);
@@ -96,7 +97,8 @@ function GeneralTab() {
         cuit: form.cuit || null,
         telefono: form.telefono || null,
         email: form.email || null,
-      }).eq("id", config!.id);
+        email_remitente: form.email_remitente || null,
+      } as any).eq("id", config!.id);
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Configuración guardada"); qc.invalidateQueries({ queryKey: ["configuracion_grupo"] }); },
@@ -127,6 +129,11 @@ function GeneralTab() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5"><Label className="text-xs">Teléfono</Label><Input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} /></div>
         <div className="space-y-1.5"><Label className="text-xs">Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">Email Remitente (Resend)</Label>
+        <Input value={form.email_remitente} onChange={(e) => setForm({ ...form, email_remitente: e.target.value })} placeholder="rrhh@tudominio.com" />
+        <p className="text-xs text-muted-foreground">Dirección desde la que se envían los emails. Usá onboarding@resend.dev para testing.</p>
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Logo del Grupo</Label>
