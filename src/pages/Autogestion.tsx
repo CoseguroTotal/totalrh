@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useMiEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
 import { useDocumentosLegajo } from "@/hooks/useEmpleados";
-import { Loader2, User, FileText, ClipboardList, Download, Plus } from "lucide-react";
+import { useMemorandumsEmpleado, useUpdateEstadoMemorandum } from "@/hooks/useMemorandums";
+import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,10 +17,18 @@ const estadoBadge: Record<string, string> = {
   rechazada: "bg-destructive/15 text-destructive",
 };
 
+const memoEstadoBadge: Record<string, string> = {
+  enviado: "bg-info/15 text-info",
+  recibido: "bg-warning/15 text-warning",
+  firmado: "bg-success/15 text-success",
+};
+
 export default function Autogestion() {
   const { data: emp, isLoading } = useMiEmpleado();
   const { data: solicitudes = [] } = useSolicitudesPermiso(emp?.id);
   const { data: documentos = [] } = useDocumentosLegajo(emp?.id);
+  const { data: memos = [] } = useMemorandumsEmpleado(emp?.id);
+  const updateEstadoMemo = useUpdateEstadoMemorandum();
   const [solicitudOpen, setSolicitudOpen] = useState(false);
 
   if (isLoading) {
@@ -61,6 +70,20 @@ export default function Autogestion() {
     URL.revokeObjectURL(url);
   };
 
+  const handleAcuseRecibo = async (memoId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    updateEstadoMemo.mutate({ id: memoId, estado: "recibido" }, {
+      onSuccess: () => toast.success("Acuse de recibo registrado"),
+    });
+  };
+
+  const handleFirmar = async (memoId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    updateEstadoMemo.mutate({ id: memoId, estado: "firmado", firmado_por: user?.id }, {
+      onSuccess: () => toast.success("Firma digital registrada"),
+    });
+  };
+
   const domicilio = [emp.domicilio_calle, emp.domicilio_numero, emp.domicilio_piso].filter(Boolean).join(" ");
   const domicilioFull = [domicilio, emp.domicilio_localidad, emp.domicilio_provincia].filter(Boolean).join(", ");
 
@@ -72,10 +95,11 @@ export default function Autogestion() {
       </div>
 
       <Tabs defaultValue="datos">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="datos"><User className="h-3.5 w-3.5 mr-1.5" />Mis Datos</TabsTrigger>
           <TabsTrigger value="permisos"><ClipboardList className="h-3.5 w-3.5 mr-1.5" />Solicitudes</TabsTrigger>
           <TabsTrigger value="documentos"><FileText className="h-3.5 w-3.5 mr-1.5" />Documentos</TabsTrigger>
+          <TabsTrigger value="memorandums"><FileCheck className="h-3.5 w-3.5 mr-1.5" />Memorándums</TabsTrigger>
         </TabsList>
 
         <TabsContent value="datos">
@@ -153,6 +177,45 @@ export default function Autogestion() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{doc.nombre_archivo}</p>
                       <p className="text-xs text-muted-foreground">{doc.tamano} · {new Date(doc.created_at).toLocaleDateString("es-AR")}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="memorandums">
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-medium mb-4">Memorándums Recibidos</h3>
+            {memos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No tenés memorándums.</p>
+            ) : (
+              <div className="space-y-2">
+                {memos.map((m: any) => (
+                  <div key={m.id} className="rounded-lg border px-4 py-3 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">#{m.numero} — {m.titulo}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {new Date(m.fecha).toLocaleDateString("es-AR")}
+                          {m.empresa && ` · ${m.empresa.nombre}`}
+                        </p>
+                      </div>
+                      <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full capitalize", memoEstadoBadge[m.estado])}>
+                        {m.estado}
+                      </span>
+                    </div>
+                    {m.contenido && (
+                      <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{m.contenido}</p>
+                    )}
+                    <div className="flex gap-2 mt-3">
+                      {m.estado === "enviado" && (
+                        <Button size="sm" variant="outline" onClick={() => handleAcuseRecibo(m.id)}>Acusar Recibo</Button>
+                      )}
+                      {(m.estado === "enviado" || m.estado === "recibido") && (
+                        <Button size="sm" onClick={() => handleFirmar(m.id)}>Firmar Digitalmente</Button>
+                      )}
                     </div>
                   </div>
                 ))}
