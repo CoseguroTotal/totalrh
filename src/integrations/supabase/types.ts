@@ -257,24 +257,98 @@ export type Database = {
       }
       empresas: {
         Row: {
+          actividad_principal: string | null
+          convenio_colectivo: string | null
+          cp: string | null
           created_at: string
           cuit: string | null
+          domicilio_fiscal: string | null
+          email: string | null
+          fecha_inicio_actividades: string | null
           id: string
+          localidad: string | null
           nombre: string
+          provincia: string | null
+          razon_social: string | null
+          telefono: string | null
+        }
+        Insert: {
+          actividad_principal?: string | null
+          convenio_colectivo?: string | null
+          cp?: string | null
+          created_at?: string
+          cuit?: string | null
+          domicilio_fiscal?: string | null
+          email?: string | null
+          fecha_inicio_actividades?: string | null
+          id?: string
+          localidad?: string | null
+          nombre: string
+          provincia?: string | null
+          razon_social?: string | null
+          telefono?: string | null
+        }
+        Update: {
+          actividad_principal?: string | null
+          convenio_colectivo?: string | null
+          cp?: string | null
+          created_at?: string
+          cuit?: string | null
+          domicilio_fiscal?: string | null
+          email?: string | null
+          fecha_inicio_actividades?: string | null
+          id?: string
+          localidad?: string | null
+          nombre?: string
+          provincia?: string | null
+          razon_social?: string | null
+          telefono?: string | null
+        }
+        Relationships: []
+      }
+      estudios_empleado: {
+        Row: {
+          created_at: string
+          empleado_id: string
+          estado: Database["public"]["Enums"]["estado_estudio"]
+          fecha_fin: string | null
+          fecha_inicio: string | null
+          id: string
+          institucion: string | null
+          nivel: Database["public"]["Enums"]["nivel_estudio"]
+          titulo: string
         }
         Insert: {
           created_at?: string
-          cuit?: string | null
+          empleado_id: string
+          estado?: Database["public"]["Enums"]["estado_estudio"]
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
           id?: string
-          nombre: string
+          institucion?: string | null
+          nivel: Database["public"]["Enums"]["nivel_estudio"]
+          titulo: string
         }
         Update: {
           created_at?: string
-          cuit?: string | null
+          empleado_id?: string
+          estado?: Database["public"]["Enums"]["estado_estudio"]
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
           id?: string
-          nombre?: string
+          institucion?: string | null
+          nivel?: Database["public"]["Enums"]["nivel_estudio"]
+          titulo?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "estudios_empleado_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       eventos_legajo: {
         Row: {
@@ -539,6 +613,62 @@ export type Database = {
           },
         ]
       }
+      solicitudes_permiso: {
+        Row: {
+          aprobado_por: string | null
+          created_at: string
+          empleado_id: string
+          estado: Database["public"]["Enums"]["estado_solicitud"]
+          fecha_desde: string
+          fecha_hasta: string
+          fecha_solicitud: string
+          hora_reintegro: string | null
+          id: string
+          motivo: string
+          motivo_detalle: string | null
+          observaciones: string | null
+          sujeto_descuento: boolean
+        }
+        Insert: {
+          aprobado_por?: string | null
+          created_at?: string
+          empleado_id: string
+          estado?: Database["public"]["Enums"]["estado_solicitud"]
+          fecha_desde: string
+          fecha_hasta: string
+          fecha_solicitud?: string
+          hora_reintegro?: string | null
+          id?: string
+          motivo: string
+          motivo_detalle?: string | null
+          observaciones?: string | null
+          sujeto_descuento?: boolean
+        }
+        Update: {
+          aprobado_por?: string | null
+          created_at?: string
+          empleado_id?: string
+          estado?: Database["public"]["Enums"]["estado_solicitud"]
+          fecha_desde?: string
+          fecha_hasta?: string
+          fecha_solicitud?: string
+          hora_reintegro?: string | null
+          id?: string
+          motivo?: string
+          motivo_detalle?: string | null
+          observaciones?: string | null
+          sujeto_descuento?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitudes_permiso_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sucursales: {
         Row: {
           created_at: string
@@ -607,7 +737,15 @@ export type Database = {
     }
     Enums: {
       estado_empleado: "Activo" | "Licencia" | "Baja"
+      estado_estudio: "completo" | "en_curso" | "incompleto"
       estado_liquidacion: "borrador" | "confirmada"
+      estado_solicitud: "pendiente" | "aprobada" | "rechazada"
+      nivel_estudio:
+        | "primario"
+        | "secundario"
+        | "terciario"
+        | "universitario"
+        | "posgrado"
       parentesco_familiar: "conyuge" | "hijo" | "padre" | "otro"
       tipo_concepto: "remunerativo" | "no_remunerativo" | "deduccion"
       tipo_evento_legajo:
@@ -744,7 +882,16 @@ export const Constants = {
   public: {
     Enums: {
       estado_empleado: ["Activo", "Licencia", "Baja"],
+      estado_estudio: ["completo", "en_curso", "incompleto"],
       estado_liquidacion: ["borrador", "confirmada"],
+      estado_solicitud: ["pendiente", "aprobada", "rechazada"],
+      nivel_estudio: [
+        "primario",
+        "secundario",
+        "terciario",
+        "universitario",
+        "posgrado",
+      ],
       parentesco_familiar: ["conyuge", "hijo", "padre", "otro"],
       tipo_concepto: ["remunerativo", "no_remunerativo", "deduccion"],
       tipo_evento_legajo: [
