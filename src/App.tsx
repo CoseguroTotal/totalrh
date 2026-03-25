@@ -14,6 +14,8 @@ import PlaceholderModule from "@/pages/PlaceholderModule";
 import Liquidacion from "@/pages/Liquidacion";
 import Asistencia from "@/pages/Asistencia";
 import Autogestion from "@/pages/Autogestion";
+import Configuracion from "@/pages/Configuracion";
+import Memorandums from "@/pages/Memorandums";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,8 +35,10 @@ const App = () => (
               <Route path="/legajos/:id" element={<LegajoDetail />} />
               <Route path="/empresas" element={<Empresas />} />
               <Route path="/liquidacion" element={<Liquidacion />} />
+              <Route path="/memorandums" element={<Memorandums />} />
               <Route path="/autogestion" element={<Autogestion />} />
               <Route path="/asistencia" element={<Asistencia />} />
+              <Route path="/configuracion" element={<Configuracion />} />
               <Route path="/reclutamiento" element={<PlaceholderModule />} />
               <Route path="/reportes" element={<PlaceholderModule />} />
             </Route>

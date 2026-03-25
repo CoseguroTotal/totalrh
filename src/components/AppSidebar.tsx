@@ -1,10 +1,11 @@
 import {
   LayoutDashboard, FileText, DollarSign, UserCircle,
-  Clock, Briefcase, BarChart3, Building2, LogOut,
+  Clock, Briefcase, BarChart3, Building2, LogOut, Settings, FileCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useIsAdmin } from "@/hooks/useUserRole";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -16,6 +17,7 @@ const modules = [
   { title: "Legajos", url: "/legajos", icon: FileText },
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Liquidación", url: "/liquidacion", icon: DollarSign },
+  { title: "Memorándums", url: "/memorandums", icon: FileCheck },
   { title: "Autogestión", url: "/autogestion", icon: UserCircle },
   { title: "Asistencia", url: "/asistencia", icon: Clock },
   { title: "Reclutamiento", url: "/reclutamiento", icon: Briefcase },
@@ -26,6 +28,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
+  const { isAdmin } = useIsAdmin();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -72,6 +75,29 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs uppercase tracking-wider text-sidebar-foreground/60">
+              {!collapsed && "Admin"}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/configuracion"
+                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <Settings className="h-4 w-4 shrink-0" />
+                      {!collapsed && <span>Configuración</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-2">
         <SidebarMenu>
