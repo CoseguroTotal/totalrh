@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2, Clock, LogIn, LogOut } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Clock, LogIn, LogOut, Upload, FileSpreadsheet } from "lucide-react";
 import { useTurnos, useSaveTurno, useDeleteTurno, useFichadas, useRegistrarFichada, useNovedades, useSaveNovedad } from "@/hooks/useAsistencia";
 import { useEmpleados } from "@/hooks/useEmpleados";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 const tiposNovedad = ["ausencia", "tardanza", "licencia", "feriado", "justificado"];
+const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
 export default function Asistencia() {
   const [turnoDialog, setTurnoDialog] = useState<{ open: boolean; turno?: any }>({ open: false });
@@ -20,19 +24,21 @@ export default function Asistencia() {
     <div className="space-y-6">
       <div className="animate-fade-in">
         <h1 className="text-2xl font-semibold">Control de Asistencia</h1>
-        <p className="text-sm text-muted-foreground mt-1">Fichada, turnos y novedades de asistencia</p>
+        <p className="text-sm text-muted-foreground mt-1">Fichada, turnos, novedades y planillas de horario</p>
       </div>
 
       <Tabs defaultValue="fichada" className="animate-slide-up">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="fichada">Fichada</TabsTrigger>
           <TabsTrigger value="turnos">Turnos</TabsTrigger>
           <TabsTrigger value="novedades">Novedades</TabsTrigger>
+          <TabsTrigger value="planillas">Planillas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="fichada"><FichadaTab /></TabsContent>
         <TabsContent value="turnos"><TurnosTab dialogState={turnoDialog} setDialog={setTurnoDialog} /></TabsContent>
         <TabsContent value="novedades"><NovedadesTab /></TabsContent>
+        <TabsContent value="planillas"><PlanillasTab /></TabsContent>
       </Tabs>
     </div>
   );
@@ -58,6 +64,39 @@ function FichadaTab() {
       onSuccess: () => toast.success(tipo === "entrada" ? "Entrada registrada" : "Salida registrada"),
       onError: (err: Error) => toast.error(err.message),
     });
+  };
+
+  // Load shift assignments for comparison
+  const { data: asignaciones = [] } = useQuery({
+    queryKey: ["asignaciones_turno_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("asignaciones_turno").select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const computeTardanza = (fichada: any) => {
+    if (!fichada.hora_entrada) return null;
+    const diaSemana = new Date(fichada.fecha).getDay();
+    const asig = asignaciones.find((a: any) => a.empleado_id === fichada.empleado_id && a.dia_semana === diaSemana);
+    if (!asig) return null;
+    const entradaReal = new Date(fichada.hora_entrada);
+    const [h, m] = (asig as any).hora_entrada.split(":").map(Number);
+    const entradaProgramada = new Date(fichada.fecha + "T" + (asig as any).hora_entrada);
+    const diffMin = Math.floor((entradaReal.getTime() - entradaProgramada.getTime()) / 60000);
+    return diffMin > 0 ? diffMin : 0;
+  };
+
+  const computeHorasExtra = (fichada: any) => {
+    if (!fichada.hora_entrada || !fichada.hora_salida) return null;
+    const diaSemana = new Date(fichada.fecha).getDay();
+    const asig = asignaciones.find((a: any) => a.empleado_id === fichada.empleado_id && a.dia_semana === diaSemana);
+    if (!asig) return null;
+    const salidaReal = new Date(fichada.hora_salida);
+    const salidaProgramada = new Date(fichada.fecha + "T" + (asig as any).hora_salida);
+    const diffMin = Math.floor((salidaReal.getTime() - salidaProgramada.getTime()) / 60000);
+    return diffMin > 0 ? diffMin : 0;
   };
 
   return (
@@ -115,22 +154,38 @@ function FichadaTab() {
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Entrada</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Salida</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Estado</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Tardanza</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Hs Extra</th>
                 </tr>
               </thead>
               <tbody>
-                {(fichadas ?? []).map((f: any) => (
-                  <tr key={f.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-3 py-2">{f.empleado?.apellido}, {f.empleado?.nombre}</td>
-                    <td className="px-3 py-2">{f.turno?.nombre ?? "—"}</td>
-                    <td className="px-3 py-2 tabular-nums">{f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
-                    <td className="px-3 py-2 tabular-nums">{f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
-                    <td className="px-3 py-2">
-                      <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                        f.estado === "presente" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
-                      )}>{f.estado}</span>
-                    </td>
-                  </tr>
-                ))}
+                {(fichadas ?? []).map((f: any) => {
+                  const tardanza = computeTardanza(f);
+                  const hsExtra = computeHorasExtra(f);
+                  return (
+                    <tr key={f.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-3 py-2">{f.empleado?.apellido}, {f.empleado?.nombre}</td>
+                      <td className="px-3 py-2">{f.turno?.nombre ?? "—"}</td>
+                      <td className="px-3 py-2 tabular-nums">{f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                      <td className="px-3 py-2 tabular-nums">{f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                      <td className="px-3 py-2">
+                        <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                          f.estado === "presente" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
+                        )}>{f.estado}</span>
+                      </td>
+                      <td className="px-3 py-2 tabular-nums">
+                        {tardanza != null && tardanza > 0 ? (
+                          <span className="text-destructive text-xs font-medium">{tardanza} min</span>
+                        ) : tardanza === 0 ? "—" : "—"}
+                      </td>
+                      <td className="px-3 py-2 tabular-nums">
+                        {hsExtra != null && hsExtra > 0 ? (
+                          <span className="text-success text-xs font-medium">{Math.floor(hsExtra / 60)}h {hsExtra % 60}m</span>
+                        ) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -340,6 +395,172 @@ function NovedadesTab() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Planillas Excel ── */
+function PlanillasTab() {
+  const { data: empleados = [] } = useEmpleados();
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<any[] | null>(null);
+  const [vigente, setVigente] = useState(new Date().toISOString().slice(0, 10));
+
+  const { data: asignaciones = [], isLoading } = useQuery({
+    queryKey: ["asignaciones_turno"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("asignaciones_turno").select("*, empleado:empleados(id, nombre, apellido, legajo)").order("empleado_id");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const wb = XLSX.read(evt.target?.result, { type: "binary" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(ws);
+      // Expected columns: legajo, lunes_entrada, lunes_salida, martes_entrada, martes_salida...
+      const parsed: any[] = [];
+      const dayMap: Record<string, number> = { lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5, sabado: 6, domingo: 0 };
+
+      rows.forEach((row) => {
+        const legajo = String(row.legajo || row.Legajo || "").trim();
+        const emp = empleados.find((e) => e.legajo === legajo);
+        if (!emp) return;
+        Object.entries(dayMap).forEach(([dia, num]) => {
+          const entrada = row[`${dia}_entrada`] || row[`${dia.charAt(0).toUpperCase() + dia.slice(1)}_Entrada`];
+          const salida = row[`${dia}_salida`] || row[`${dia.charAt(0).toUpperCase() + dia.slice(1)}_Salida`];
+          if (entrada && salida) {
+            parsed.push({ empleado_id: emp.id, legajo, nombre: `${emp.apellido}, ${emp.nombre}`, dia_semana: num, dia_nombre: diasSemana[num], hora_entrada: String(entrada), hora_salida: String(salida) });
+          }
+        });
+      });
+      setPreview(parsed);
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!preview?.length) return;
+      // Delete existing for these employees
+      const empIds = [...new Set(preview.map((p) => p.empleado_id))];
+      for (const eid of empIds) {
+        await supabase.from("asignaciones_turno").delete().eq("empleado_id", eid);
+      }
+      // Insert new
+      const inserts = preview.map((p) => ({
+        empleado_id: p.empleado_id,
+        dia_semana: p.dia_semana,
+        hora_entrada: p.hora_entrada,
+        hora_salida: p.hora_salida,
+        vigente_desde: vigente,
+      }));
+      const { error } = await supabase.from("asignaciones_turno").insert(inserts);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Planilla importada correctamente");
+      setPreview(null);
+      qc.invalidateQueries({ queryKey: ["asignaciones_turno"] });
+      if (fileRef.current) fileRef.current.value = "";
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  // Group asignaciones by employee
+  const grouped = asignaciones.reduce((acc: any, a: any) => {
+    const key = a.empleado_id;
+    if (!acc[key]) acc[key] = { empleado: a.empleado, dias: [] };
+    acc[key].dias.push(a);
+    return acc;
+  }, {} as Record<string, any>);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-medium">Carga de Planilla de Horarios</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Subí un archivo Excel con columnas: legajo, lunes_entrada, lunes_salida, martes_entrada, martes_salida, etc.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input type="date" value={vigente} onChange={(e) => setVigente(e.target.value)} className="w-auto h-8 text-xs" />
+            <label className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline cursor-pointer">
+              <Upload className="h-4 w-4" />Subir Excel
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
+            </label>
+          </div>
+        </div>
+
+        {preview && (
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-muted-foreground">{preview.length} asignaciones encontradas — Preview:</p>
+            <div className="overflow-x-auto max-h-64">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-2 py-1.5 text-left">Legajo</th>
+                    <th className="px-2 py-1.5 text-left">Empleado</th>
+                    <th className="px-2 py-1.5 text-left">Día</th>
+                    <th className="px-2 py-1.5 text-left">Entrada</th>
+                    <th className="px-2 py-1.5 text-left">Salida</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.slice(0, 50).map((p, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="px-2 py-1.5 font-mono">{p.legajo}</td>
+                      <td className="px-2 py-1.5">{p.nombre}</td>
+                      <td className="px-2 py-1.5">{p.dia_nombre}</td>
+                      <td className="px-2 py-1.5 tabular-nums">{p.hora_entrada}</td>
+                      <td className="px-2 py-1.5 tabular-nums">{p.hora_salida}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />}
+                Confirmar Importación
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setPreview(null); if (fileRef.current) fileRef.current.value = ""; }}>Cancelar</Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <h3 className="text-sm font-medium mb-4">Asignaciones de Turno Vigentes</h3>
+        {isLoading ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        ) : Object.keys(grouped).length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sin asignaciones. Importá una planilla Excel para comenzar.</p>
+        ) : (
+          <div className="space-y-3">
+            {Object.values(grouped).map((g: any) => (
+              <div key={g.empleado?.id} className="rounded-lg border px-4 py-3">
+                <p className="text-sm font-medium">{g.empleado?.apellido}, {g.empleado?.nombre} <span className="text-muted-foreground font-mono text-xs ml-1">#{g.empleado?.legajo}</span></p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {g.dias.sort((a: any, b: any) => a.dia_semana - b.dia_semana).map((d: any) => (
+                    <span key={d.id} className="text-xs bg-muted px-2 py-1 rounded">
+                      {diasSemana[d.dia_semana]}: {d.hora_entrada}–{d.hora_salida}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
