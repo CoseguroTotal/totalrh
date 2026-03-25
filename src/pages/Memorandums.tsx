@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { cn } from "@/lib/utils";
 import { generarMemorandumPDF } from "@/components/MemorandumPDF";
 import EnviarEmailDialog from "@/components/EnviarEmailDialog";
+import EnvioMasivoMemoDialog from "@/components/EnvioMasivoMemoDialog";
 
 const estadoBadge: Record<string, string> = {
   borrador: "bg-muted text-muted-foreground",
@@ -45,6 +46,7 @@ export default function Memorandums() {
   });
   const [search, setSearch] = useState("");
   const [emailDialog, setEmailDialog] = useState<{ open: boolean; memo?: any }>({ open: false });
+  const [masivoOpen, setMasivoOpen] = useState(false);
 
   const getEmailHtml = (m: any) => {
     const empresa = empresas.find((e: any) => e.id === m.empresa_id);
