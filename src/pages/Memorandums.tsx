@@ -221,6 +221,15 @@ export default function Memorandums() {
           previewText={emailDialog.memo.contenido?.substring(0, 200)}
         />
       )}
+
+      <EnvioMasivoMemoDialog
+        open={masivoOpen}
+        onOpenChange={setMasivoOpen}
+        memos={memos}
+        empleados={empleados}
+        empresas={empresas}
+        config={config}
+      />
     </div>
   );
 }
