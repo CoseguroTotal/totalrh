@@ -53,7 +53,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-3">
-          <img src={logoTotalRH} alt="TotalRH" className="h-9 w-9 shrink-0 rounded-lg object-contain" />
+          <img src={logoTotalRH} alt="TotalRH" className="h-14 w-14 shrink-0 rounded-lg object-contain" />
           {!collapsed && (
             <div className="animate-fade-in">
               <p className="text-sm font-semibold text-sidebar-accent-foreground">TotalRH</p>
