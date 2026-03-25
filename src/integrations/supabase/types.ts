@@ -56,37 +56,63 @@ export type Database = {
         Row: {
           activo: boolean
           aplica_a: string
+          base_calculo: string | null
+          cantidad_default: number | null
           codigo: string
+          concepto_base_id: string | null
           created_at: string
+          grupo: string | null
           id: string
           monto_fijo: number | null
           nombre: string
+          orden: number | null
           porcentaje: number | null
           tipo: Database["public"]["Enums"]["tipo_concepto"]
+          unidad: string | null
         }
         Insert: {
           activo?: boolean
           aplica_a?: string
+          base_calculo?: string | null
+          cantidad_default?: number | null
           codigo: string
+          concepto_base_id?: string | null
           created_at?: string
+          grupo?: string | null
           id?: string
           monto_fijo?: number | null
           nombre: string
+          orden?: number | null
           porcentaje?: number | null
           tipo: Database["public"]["Enums"]["tipo_concepto"]
+          unidad?: string | null
         }
         Update: {
           activo?: boolean
           aplica_a?: string
+          base_calculo?: string | null
+          cantidad_default?: number | null
           codigo?: string
+          concepto_base_id?: string | null
           created_at?: string
+          grupo?: string | null
           id?: string
           monto_fijo?: number | null
           nombre?: string
+          orden?: number | null
           porcentaje?: number | null
           tipo?: Database["public"]["Enums"]["tipo_concepto"]
+          unidad?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conceptos_liquidacion_concepto_base_id_fkey"
+            columns: ["concepto_base_id"]
+            isOneToOne: false
+            referencedRelation: "conceptos_liquidacion"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       configuracion_grupo: {
         Row: {
@@ -562,27 +588,33 @@ export type Database = {
       }
       liquidacion_lineas: {
         Row: {
+          base: number | null
           cantidad: number
           concepto_id: string | null
           descripcion: string
+          es_haber: boolean | null
           id: string
           liquidacion_id: string
           monto: number
           tipo: Database["public"]["Enums"]["tipo_concepto"]
         }
         Insert: {
+          base?: number | null
           cantidad?: number
           concepto_id?: string | null
           descripcion: string
+          es_haber?: boolean | null
           id?: string
           liquidacion_id: string
           monto?: number
           tipo: Database["public"]["Enums"]["tipo_concepto"]
         }
         Update: {
+          base?: number | null
           cantidad?: number
           concepto_id?: string | null
           descripcion?: string
+          es_haber?: boolean | null
           id?: string
           liquidacion_id?: string
           monto?: number
@@ -927,7 +959,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "usuario"
+      app_role: "admin" | "usuario" | "contador" | "gerente" | "rrhh"
       estado_empleado: "Activo" | "Licencia" | "Baja"
       estado_estudio: "completo" | "en_curso" | "incompleto"
       estado_liquidacion: "borrador" | "confirmada"
@@ -1074,7 +1106,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "usuario"],
+      app_role: ["admin", "usuario", "contador", "gerente", "rrhh"],
       estado_empleado: ["Activo", "Licencia", "Baja"],
       estado_estudio: ["completo", "en_curso", "incompleto"],
       estado_liquidacion: ["borrador", "confirmada"],
