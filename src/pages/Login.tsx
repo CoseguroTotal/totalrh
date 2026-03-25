@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import logoTotalRH from "@/assets/logo_total_rh.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -30,11 +31,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-md">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
-          </div>
+          <img src={logoTotalRH} alt="TotalRH" className="h-16 w-auto" />
           <div className="text-center">
-            <h1 className="text-xl font-semibold">GrupoRH</h1>
+            <h1 className="text-xl font-semibold">TotalRH</h1>
             <p className="text-sm text-muted-foreground mt-1">Iniciá sesión para continuar</p>
           </div>
         </div>
