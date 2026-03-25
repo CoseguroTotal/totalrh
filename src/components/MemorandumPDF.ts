@@ -19,8 +19,8 @@ export async function generarMemorandumPDF(data: MemoData) {
   const config = data.empresa
     ? { nombre: data.empresa.nombre, razonSocial: data.empresa.razon_social, cuit: data.empresa.cuit, domicilio: data.empresa.domicilio, telefono: data.empresa.telefono, email: data.empresa.email, logoUrl: data.empresa.logo_url }
     : data.grupo
-    ? { nombre: data.grupo.nombre, cuit: data.grupo.cuit, domicilio: data.grupo.domicilio, telefono: data.grupo.telefono, email: data.grupo.email, logoUrl: data.grupo.logo_url }
-    : { nombre: "TotalRH" };
+    ? { nombre: data.grupo.nombre, cuit: data.grupo.cuit, domicilio: data.grupo.domicilio, telefono: data.grupo.telefono, email: data.grupo.email, logoUrl: data.grupo.logo_url || "/logo_total_rh.png" }
+    : { nombre: "TotalRH", logoUrl: "/logo_total_rh.png" };
 
   let y = await aplicarMembrete(doc, config);
 

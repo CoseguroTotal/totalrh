@@ -61,8 +61,16 @@ export default function Autogestion() {
     );
   }
 
-  const handleDownloadPDF = (sol: any) => {
-    generarSolicitudPermisoPDF({
+  const handleDownloadPDF = async (sol: any) => {
+    // Get empresa data for letterhead
+    let empresaData = null;
+    if (emp.empresa) {
+      const { data: empFull } = await supabase.from("empresas").select("*").eq("id", emp.empresa.id).single();
+      if (empFull) {
+        empresaData = { nombre: empFull.nombre, razonSocial: empFull.razon_social, cuit: empFull.cuit, domicilio: empFull.domicilio_fiscal, telefono: empFull.telefono, email: empFull.email, logoUrl: empFull.logo_url };
+      }
+    }
+    await generarSolicitudPermisoPDF({
       empleadoNombre: `${emp.apellido}, ${emp.nombre}`,
       areaTrabajo: emp.puesto,
       motivo: sol.motivo,
@@ -72,6 +80,7 @@ export default function Autogestion() {
       horaReintegro: sol.hora_reintegro,
       sujetoDescuento: sol.sujeto_descuento,
       fechaSolicitud: sol.fecha_solicitud,
+      empresa: empresaData,
     });
   };
 

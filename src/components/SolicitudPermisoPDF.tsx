@@ -1,4 +1,15 @@
 import jsPDF from "jspdf";
+import { aplicarMembrete, aplicarFooterMembrete } from "./MembretePDF";
+
+interface MembreteInfo {
+  nombre: string;
+  razonSocial?: string | null;
+  cuit?: string | null;
+  domicilio?: string | null;
+  telefono?: string | null;
+  email?: string | null;
+  logoUrl?: string | null;
+}
 
 interface SolicitudData {
   empleadoNombre: string;
@@ -10,12 +21,17 @@ interface SolicitudData {
   horaReintegro?: string | null;
   sujetoDescuento: boolean;
   fechaSolicitud: string;
+  empresa?: MembreteInfo | null;
+  grupo?: MembreteInfo | null;
 }
 
-export function generarSolicitudPermisoPDF(data: SolicitudData) {
+export async function generarSolicitudPermisoPDF(data: SolicitudData) {
   const doc = new jsPDF();
   const w = doc.internal.pageSize.getWidth();
-  let y = 25;
+
+  // Apply letterhead if empresa or grupo data available
+  const membreteConfig = data.empresa || data.grupo || null;
+  let y = membreteConfig ? await aplicarMembrete(doc, membreteConfig) : 25;
 
   doc.setFontSize(10);
   doc.text("REGISTRO", w - 30, y);
@@ -86,6 +102,10 @@ export function generarSolicitudPermisoPDF(data: SolicitudData) {
   y += 25;
   doc.line(20, y, 80, y);
   doc.text("Firma y sello Recursos Humanos", 22, y + 5);
+
+  if (membreteConfig) {
+    aplicarFooterMembrete(doc, membreteConfig);
+  }
 
   doc.save(`solicitud_permiso_${data.empleadoNombre.replace(/\s+/g, "_")}.pdf`);
 }

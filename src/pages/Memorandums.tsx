@@ -65,7 +65,7 @@ export default function Memorandums() {
       id: dialog.memo?.id,
       titulo: form.titulo,
       contenido: form.contenido,
-      empresa_id: form.empresa_id || null,
+      empresa_id: form.empresa_id === "grupo" ? null : (form.empresa_id || null),
       destinatario_empleado_id: form.destinatario_empleado_id || null,
       destinatario_nombre: form.destinatario_nombre || null,
       fecha: form.fecha,
@@ -123,7 +123,10 @@ export default function Memorandums() {
                 <Label className="text-xs">Empresa</Label>
                 <Select value={form.empresa_id} onValueChange={(v) => setForm({ ...form, empresa_id: v })}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                  <SelectContent>{empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    <SelectItem value="grupo">Total Group (Grupo Empresario)</SelectItem>
+                    {empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5"><Label className="text-xs">Fecha</Label><Input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} /></div>
@@ -133,7 +136,7 @@ export default function Memorandums() {
                 <Label className="text-xs">Destinatario (empleado)</Label>
                 <Select value={form.destinatario_empleado_id} onValueChange={(v) => {
                   const emp = empleados.find((e) => e.id === v);
-                  setForm({ ...form, destinatario_empleado_id: v, destinatario_nombre: emp ? `${emp.apellido}, ${emp.nombre}` : "" });
+                  setForm({ ...form, destinatario_empleado_id: v, destinatario_nombre: emp ? `${emp.apellido}, ${emp.nombre}` : "", empresa_id: emp?.empresa_id || form.empresa_id });
                 }}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                   <SelectContent>{empleados.filter((e) => e.estado === "Activo").map((e) => <SelectItem key={e.id} value={e.id}>{e.apellido}, {e.nombre}</SelectItem>)}</SelectContent>
