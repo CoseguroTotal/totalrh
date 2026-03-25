@@ -20,6 +20,7 @@ import Reportes from "@/pages/Reportes";
 import Vacaciones from "@/pages/Vacaciones";
 import NotFound from "./pages/NotFound";
 import EmployeeGuard from "@/components/EmployeeGuard";
+import AdminRoute from "@/components/AdminRoute";
 
 const queryClient = new QueryClient();
 
@@ -43,7 +44,7 @@ const App = () => (
                 <Route path="/memorandums" element={<Memorandums />} />
                 <Route path="/asistencia" element={<Asistencia />} />
                 <Route path="/vacaciones" element={<Vacaciones />} />
-                <Route path="/configuracion" element={<Configuracion />} />
+                <Route path="/configuracion" element={<AdminRoute><Configuracion /></AdminRoute>} />
                 <Route path="/reclutamiento" element={<Reclutamiento />} />
                 <Route path="/reportes" element={<Reportes />} />
               </Route>
