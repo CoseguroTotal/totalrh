@@ -193,9 +193,13 @@ function LiquidacionMasiva() {
   const activos = (conceptos ?? []).filter((c: any) => c.activo).sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0));
 
   const handleGenerar = async () => {
-    const basico = Number(sueldoBasico);
-    if (!empresaId || basico <= 0 || empleadosEmpresa.length === 0) {
-      toast.error("Seleccioná empresa, ingresá sueldo básico y verificá que haya empleados activos");
+    const globalBasico = Number(sueldoBasico);
+    if (!empresaId || empleadosEmpresa.length === 0) {
+      toast.error("Seleccioná empresa y verificá que haya empleados activos");
+      return;
+    }
+    if (globalBasico <= 0 && empleadosEmpresa.every((e) => !e.sueldo_basico || e.sueldo_basico <= 0)) {
+      toast.error("Ingresá un sueldo básico global o asegurate de que los empleados tengan sueldo cargado");
       return;
     }
 
@@ -206,6 +210,8 @@ function LiquidacionMasiva() {
 
     for (let i = 0; i < empleadosEmpresa.length; i++) {
       const emp = empleadosEmpresa[i];
+      const basico = (emp.sueldo_basico && emp.sueldo_basico > 0) ? emp.sueldo_basico : globalBasico;
+      if (basico <= 0) { errors++; setProgress(((i + 1) / empleadosEmpresa.length) * 100); continue; }
       try {
         const lineas = calcularLiquidacion(basico, activos);
         const totales = calcTotales(basico, lineas);
@@ -269,7 +275,7 @@ function LiquidacionMasiva() {
           <Input type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
         </div>
         <div>
-          <Label className="text-xs">Sueldo Básico ($)</Label>
+          <Label className="text-xs">Sueldo Básico global ($) <span className="text-muted-foreground">(se usa si el empleado no tiene cargado)</span></Label>
           <Input type="number" value={sueldoBasico} onChange={(e) => setSueldoBasico(e.target.value)} />
         </div>
       </div>
