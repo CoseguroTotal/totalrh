@@ -72,7 +72,7 @@ function ConfiguracionContent() {
 function GeneralTab() {
   const { data: config, isLoading } = useConfigGrupo();
   const qc = useQueryClient();
-  const [form, setForm] = useState({ nombre_grupo: "", logo_url: "", domicilio: "", cuit: "", telefono: "", email: "" });
+  const [form, setForm] = useState({ nombre_grupo: "", logo_url: "", domicilio: "", cuit: "", telefono: "", email: "", email_remitente: "" });
 
   useEffect(() => {
     if (config) {

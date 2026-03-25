@@ -164,6 +164,7 @@ export default function Liquidacion() {
                       <th className="px-3 py-2 text-right font-medium text-muted-foreground text-xs">Neto</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Estado</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Fecha</th>
+                      <th className="px-3 py-2 w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -179,6 +180,11 @@ export default function Liquidacion() {
                           )}>{l.estado}</span>
                         </td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">{new Date(l.created_at).toLocaleDateString("es-AR")}</td>
+                        <td className="px-3 py-2">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Enviar por email" onClick={() => setEmailDialog({ open: true, liq: l })}>
+                            <Mail className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -186,6 +192,17 @@ export default function Liquidacion() {
               </div>
             )}
           </div>
+
+          {emailDialog.liq && (
+            <EnviarEmailDialog
+              open={emailDialog.open}
+              onOpenChange={(o) => setEmailDialog({ open: o })}
+              defaultTo={emailDialog.liq.empleado?.email || ""}
+              defaultSubject={`Recibo de sueldo — ${emailDialog.liq.periodo} — ${emailDialog.liq.empleado?.apellido}, ${emailDialog.liq.empleado?.nombre}`}
+              htmlContent={getReciboHtml(emailDialog.liq)}
+              previewText={`Neto: $${Number(emailDialog.liq.neto).toLocaleString("es-AR")} | Período: ${emailDialog.liq.periodo}`}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>
