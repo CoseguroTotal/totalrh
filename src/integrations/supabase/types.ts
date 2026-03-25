@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      asignaciones_turno: {
+        Row: {
+          created_at: string
+          dia_semana: number
+          empleado_id: string
+          hora_entrada: string
+          hora_salida: string
+          id: string
+          vigente_desde: string
+        }
+        Insert: {
+          created_at?: string
+          dia_semana: number
+          empleado_id: string
+          hora_entrada: string
+          hora_salida: string
+          id?: string
+          vigente_desde?: string
+        }
+        Update: {
+          created_at?: string
+          dia_semana?: number
+          empleado_id?: string
+          hora_entrada?: string
+          hora_salida?: string
+          id?: string
+          vigente_desde?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asignaciones_turno_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conceptos_liquidacion: {
         Row: {
           activo: boolean
@@ -47,6 +85,39 @@ export type Database = {
           nombre?: string
           porcentaje?: number | null
           tipo?: Database["public"]["Enums"]["tipo_concepto"]
+        }
+        Relationships: []
+      }
+      configuracion_grupo: {
+        Row: {
+          cuit: string | null
+          domicilio: string | null
+          email: string | null
+          id: string
+          logo_url: string | null
+          nombre_grupo: string
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          cuit?: string | null
+          domicilio?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          nombre_grupo?: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cuit?: string | null
+          domicilio?: string | null
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          nombre_grupo?: string
+          telefono?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -267,6 +338,7 @@ export type Database = {
           fecha_inicio_actividades: string | null
           id: string
           localidad: string | null
+          logo_url: string | null
           nombre: string
           provincia: string | null
           razon_social: string | null
@@ -283,6 +355,7 @@ export type Database = {
           fecha_inicio_actividades?: string | null
           id?: string
           localidad?: string | null
+          logo_url?: string | null
           nombre: string
           provincia?: string | null
           razon_social?: string | null
@@ -299,6 +372,7 @@ export type Database = {
           fecha_inicio_actividades?: string | null
           id?: string
           localidad?: string | null
+          logo_url?: string | null
           nombre?: string
           provincia?: string | null
           razon_social?: string | null
@@ -578,6 +652,99 @@ export type Database = {
           },
         ]
       }
+      memorandums: {
+        Row: {
+          contenido: string
+          created_at: string
+          created_by: string | null
+          destinatario_empleado_id: string | null
+          destinatario_nombre: string | null
+          empresa_id: string | null
+          estado: Database["public"]["Enums"]["estado_memorandum"]
+          fecha: string
+          fecha_firma: string | null
+          firmado_por: string | null
+          id: string
+          numero: number
+          titulo: string
+        }
+        Insert: {
+          contenido?: string
+          created_at?: string
+          created_by?: string | null
+          destinatario_empleado_id?: string | null
+          destinatario_nombre?: string | null
+          empresa_id?: string | null
+          estado?: Database["public"]["Enums"]["estado_memorandum"]
+          fecha?: string
+          fecha_firma?: string | null
+          firmado_por?: string | null
+          id?: string
+          numero?: number
+          titulo: string
+        }
+        Update: {
+          contenido?: string
+          created_at?: string
+          created_by?: string | null
+          destinatario_empleado_id?: string | null
+          destinatario_nombre?: string | null
+          empresa_id?: string | null
+          estado?: Database["public"]["Enums"]["estado_memorandum"]
+          fecha?: string
+          fecha_firma?: string | null
+          firmado_por?: string | null
+          id?: string
+          numero?: number
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorandums_destinatario_empleado_id_fkey"
+            columns: ["destinatario_empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memorandums_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notificaciones: {
+        Row: {
+          created_at: string
+          id: string
+          leida: boolean
+          link: string | null
+          mensaje: string
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          leida?: boolean
+          link?: string | null
+          mensaje?: string
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          leida?: boolean
+          link?: string | null
+          mensaje?: string
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       novedades_asistencia: {
         Row: {
           created_at: string
@@ -728,17 +895,43 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "usuario"
       estado_empleado: "Activo" | "Licencia" | "Baja"
       estado_estudio: "completo" | "en_curso" | "incompleto"
       estado_liquidacion: "borrador" | "confirmada"
+      estado_memorandum: "borrador" | "enviado" | "recibido" | "firmado"
       estado_solicitud: "pendiente" | "aprobada" | "rechazada"
       nivel_estudio:
         | "primario"
@@ -881,9 +1074,11 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "usuario"],
       estado_empleado: ["Activo", "Licencia", "Baja"],
       estado_estudio: ["completo", "en_curso", "incompleto"],
       estado_liquidacion: ["borrador", "confirmada"],
+      estado_memorandum: ["borrador", "enviado", "recibido", "firmado"],
       estado_solicitud: ["pendiente", "aprobada", "rechazada"],
       nivel_estudio: [
         "primario",
