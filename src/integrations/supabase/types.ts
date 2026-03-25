@@ -316,6 +316,7 @@ export type Database = {
           puesto: string
           sexo: string | null
           sucursal_id: string
+          sueldo_basico: number | null
           telefono: string | null
           updated_at: string
         }
@@ -346,6 +347,7 @@ export type Database = {
           puesto: string
           sexo?: string | null
           sucursal_id: string
+          sueldo_basico?: number | null
           telefono?: string | null
           updated_at?: string
         }
@@ -376,6 +378,7 @@ export type Database = {
           puesto?: string
           sexo?: string | null
           sucursal_id?: string
+          sueldo_basico?: number | null
           telefono?: string | null
           updated_at?: string
         }
@@ -912,6 +915,56 @@ export type Database = {
           },
         ]
       }
+      solicitudes_vacaciones: {
+        Row: {
+          aprobado_por: string | null
+          created_at: string
+          dias_correspondientes: number
+          dias_solicitados: number
+          empleado_id: string
+          estado: Database["public"]["Enums"]["estado_vacacion"]
+          fecha_desde: string
+          fecha_hasta: string
+          id: string
+          observaciones: string | null
+          periodo_anual: string
+        }
+        Insert: {
+          aprobado_por?: string | null
+          created_at?: string
+          dias_correspondientes?: number
+          dias_solicitados?: number
+          empleado_id: string
+          estado?: Database["public"]["Enums"]["estado_vacacion"]
+          fecha_desde: string
+          fecha_hasta: string
+          id?: string
+          observaciones?: string | null
+          periodo_anual?: string
+        }
+        Update: {
+          aprobado_por?: string | null
+          created_at?: string
+          dias_correspondientes?: number
+          dias_solicitados?: number
+          empleado_id?: string
+          estado?: Database["public"]["Enums"]["estado_vacacion"]
+          fecha_desde?: string
+          fecha_hasta?: string
+          id?: string
+          observaciones?: string | null
+          periodo_anual?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitudes_vacaciones_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sucursales: {
         Row: {
           created_at: string
@@ -988,6 +1041,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vacaciones_config: {
+        Row: {
+          anios_antiguedad_max: number
+          anios_antiguedad_min: number
+          created_at: string
+          dias_correspondientes: number
+          empresa_id: string
+          id: string
+        }
+        Insert: {
+          anios_antiguedad_max?: number
+          anios_antiguedad_min?: number
+          created_at?: string
+          dias_correspondientes?: number
+          empresa_id: string
+          id?: string
+        }
+        Update: {
+          anios_antiguedad_max?: number
+          anios_antiguedad_min?: number
+          created_at?: string
+          dias_correspondientes?: number
+          empresa_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vacaciones_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vacantes: {
         Row: {
@@ -1066,6 +1154,7 @@ export type Database = {
       estado_liquidacion: "borrador" | "confirmada"
       estado_memorandum: "borrador" | "enviado" | "recibido" | "firmado"
       estado_solicitud: "pendiente" | "aprobada" | "rechazada"
+      estado_vacacion: "pendiente" | "aprobada" | "rechazada" | "cancelada"
       estado_vacante: "abierta" | "cerrada" | "pausada"
       nivel_estudio:
         | "primario"
@@ -1222,6 +1311,7 @@ export const Constants = {
       estado_liquidacion: ["borrador", "confirmada"],
       estado_memorandum: ["borrador", "enviado", "recibido", "firmado"],
       estado_solicitud: ["pendiente", "aprobada", "rechazada"],
+      estado_vacacion: ["pendiente", "aprobada", "rechazada", "cancelada"],
       estado_vacante: ["abierta", "cerrada", "pausada"],
       nivel_estudio: [
         "primario",
