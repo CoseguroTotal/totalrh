@@ -2,9 +2,12 @@ import { useState } from "react";
 import { useMiEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
 import { useDocumentosLegajo } from "@/hooks/useEmpleados";
 import { useMemorandumsEmpleado, useUpdateEstadoMemorandum } from "@/hooks/useMemorandums";
-import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck } from "lucide-react";
+import { useSolicitudesVacacionesEmpleado, useSaveSolicitudVacaciones, useVacacionesConfig, calcDiasCorrespondientes, calcDiasHabiles } from "@/hooks/useVacaciones";
+import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import SolicitudPermisoFormDialog from "@/components/SolicitudPermisoFormDialog";
 import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
@@ -15,6 +18,13 @@ const estadoBadge: Record<string, string> = {
   pendiente: "bg-warning/15 text-warning",
   aprobada: "bg-success/15 text-success",
   rechazada: "bg-destructive/15 text-destructive",
+};
+
+const vacEstadoBadge: Record<string, string> = {
+  pendiente: "bg-warning/15 text-warning",
+  aprobada: "bg-success/15 text-success",
+  rechazada: "bg-destructive/15 text-destructive",
+  cancelada: "bg-muted text-muted-foreground",
 };
 
 const memoEstadoBadge: Record<string, string> = {
@@ -28,8 +38,12 @@ export default function Autogestion() {
   const { data: solicitudes = [] } = useSolicitudesPermiso(emp?.id);
   const { data: documentos = [] } = useDocumentosLegajo(emp?.id);
   const { data: memos = [] } = useMemorandumsEmpleado(emp?.id);
+  const { data: solicitudesVac = [] } = useSolicitudesVacacionesEmpleado(emp?.id);
+  const { data: vacConfig = [] } = useVacacionesConfig(emp?.empresa_id);
+  const saveSolVac = useSaveSolicitudVacaciones();
   const updateEstadoMemo = useUpdateEstadoMemorandum();
   const [solicitudOpen, setSolicitudOpen] = useState(false);
+  const [vacForm, setVacForm] = useState({ fecha_desde: "", fecha_hasta: "", observaciones: "" });
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -98,6 +112,7 @@ export default function Autogestion() {
         <TabsList className="flex-wrap">
           <TabsTrigger value="datos"><User className="h-3.5 w-3.5 mr-1.5" />Mis Datos</TabsTrigger>
           <TabsTrigger value="permisos"><ClipboardList className="h-3.5 w-3.5 mr-1.5" />Solicitudes</TabsTrigger>
+          <TabsTrigger value="vacaciones"><Palmtree className="h-3.5 w-3.5 mr-1.5" />Vacaciones</TabsTrigger>
           <TabsTrigger value="documentos"><FileText className="h-3.5 w-3.5 mr-1.5" />Documentos</TabsTrigger>
           <TabsTrigger value="memorandums"><FileCheck className="h-3.5 w-3.5 mr-1.5" />Memorándums</TabsTrigger>
         </TabsList>
