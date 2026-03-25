@@ -83,6 +83,7 @@ function GeneralTab() {
         cuit: config.cuit || "",
         telefono: config.telefono || "",
         email: config.email || "",
+        email_remitente: (config as any).email_remitente || "onboarding@resend.dev",
       });
     }
   }, [config]);
@@ -96,7 +97,8 @@ function GeneralTab() {
         cuit: form.cuit || null,
         telefono: form.telefono || null,
         email: form.email || null,
-      }).eq("id", config!.id);
+        email_remitente: form.email_remitente || null,
+      } as any).eq("id", config!.id);
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Configuración guardada"); qc.invalidateQueries({ queryKey: ["configuracion_grupo"] }); },
