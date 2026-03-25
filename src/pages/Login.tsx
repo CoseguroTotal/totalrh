@@ -31,7 +31,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
         <div className="flex flex-col items-center gap-3">
-          <img src={logoTotalRH} alt="TotalRH" className="h-16 w-auto" />
+          <img src={logoTotalRH} alt="TotalRH" className="h-40 w-auto" />
           <div className="text-center">
             <h1 className="text-xl font-semibold">TotalRH</h1>
             <p className="text-sm text-muted-foreground mt-1">Iniciá sesión para continuar</p>
