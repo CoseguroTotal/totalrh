@@ -22,3 +22,13 @@ export function useIsAdmin() {
   const { data: role, isLoading } = useUserRole();
   return { isAdmin: role === "admin", isLoading };
 }
+
+export function useHasRole(targetRole: string) {
+  const { data: role, isLoading } = useUserRole();
+  return { hasRole: role === targetRole, isLoading };
+}
+
+export function useHasAnyRole(...roles: string[]) {
+  const { data: role, isLoading } = useUserRole();
+  return { hasRole: role ? roles.includes(role) : false, isLoading };
+}

@@ -6,6 +6,11 @@ interface LineaRecibo {
   tipo: string;
   monto: number;
   codigo?: string;
+  base?: number;
+  cantidad?: number;
+  unidad?: string;
+  es_haber?: boolean;
+  grupo?: string;
 }
 
 interface ReciboData {
@@ -25,103 +30,89 @@ export function generarReciboPDF(data: ReciboData) {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   // Header
-  doc.setFontSize(16);
+  doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("RECIBO DE SUELDO", pageWidth / 2, 20, { align: "center" });
+  doc.text("RECIBO DE SUELDO", pageWidth / 2, 18, { align: "center" });
 
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text(`Empleado: ${data.empleadoNombre}`, 14, 35);
-  doc.text(`Legajo: ${data.empleadoLegajo}`, 14, 41);
-  doc.text(`Período: ${data.periodo}`, pageWidth - 14, 35, { align: "right" });
+  doc.text(`Empleado: ${data.empleadoNombre}`, 14, 30);
+  doc.text(`Legajo: ${data.empleadoLegajo}`, 14, 35);
+  doc.text(`Período: ${data.periodo}`, pageWidth - 14, 30, { align: "right" });
 
-  doc.setDrawColor(200);
-  doc.line(14, 46, pageWidth - 14, 46);
+  doc.setDrawColor(180);
+  doc.line(14, 39, pageWidth - 14, 39);
 
-  // Haberes table
-  const haberes: (string | number)[][] = [
-    ["Sueldo Básico", fmt(data.sueldoBasico)],
-  ];
-  data.lineas
-    .filter((l) => l.tipo === "remunerativo")
-    .forEach((l) => haberes.push([l.descripcion, fmt(l.monto)]));
-  data.lineas
-    .filter((l) => l.tipo === "no_remunerativo")
-    .forEach((l) => haberes.push([`${l.descripcion} (NR)`, fmt(l.monto)]));
+  // Build table rows grouped
+  const rows: (string | number)[][] = [];
+  rows.push(["Sueldo Básico", "—", "30 días", fmt(data.sueldoBasico), ""]);
 
-  const deducciones: (string | number)[][] = [];
-  data.lineas
-    .filter((l) => l.tipo === "deduccion")
-    .forEach((l) => deducciones.push([l.descripcion, fmt(l.monto)]));
+  // Group lines
+  const groupMap = new Map<string, LineaRecibo[]>();
+  for (const l of data.lineas) {
+    const g = l.grupo || "General";
+    if (!groupMap.has(g)) groupMap.set(g, []);
+    groupMap.get(g)!.push(l);
+  }
 
-  let yPos = 50;
-
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text("HABERES", 14, yPos);
-  yPos += 2;
-
-  autoTable(doc, {
-    startY: yPos,
-    head: [["Concepto", "Monto"]],
-    body: haberes,
-    theme: "grid",
-    headStyles: { fillColor: [66, 66, 66], fontSize: 9 },
-    bodyStyles: { fontSize: 9 },
-    columnStyles: { 1: { halign: "right" } },
-    margin: { left: 14, right: pageWidth / 2 + 5 },
-    tableWidth: pageWidth / 2 - 19,
-  });
-
-  doc.setFont("helvetica", "bold");
-  doc.text("DEDUCCIONES", pageWidth / 2 + 5, 50);
+  for (const [grupo, items] of groupMap) {
+    // Group header
+    rows.push([{ content: grupo, colSpan: 5, styles: { fontStyle: "bold", fillColor: [240, 240, 240] } } as any]);
+    for (const l of items) {
+      const esHaber = l.es_haber !== false && l.tipo !== "deduccion";
+      const unidadStr = l.unidad === "dias" ? `${l.cantidad || 1} d` : l.unidad === "horas" ? `${l.cantidad || 1} hs` : l.cantidad && l.cantidad > 1 ? `${l.cantidad}` : "—";
+      rows.push([
+        `  ${l.descripcion}`,
+        l.base && l.base > 0 ? fmt(l.base) : "—",
+        unidadStr,
+        esHaber ? fmt(l.monto) : "",
+        !esHaber ? fmt(l.monto) : "",
+      ]);
+    }
+  }
 
   autoTable(doc, {
-    startY: 52,
-    head: [["Concepto", "Monto"]],
-    body: deducciones.length > 0 ? deducciones : [["Sin deducciones", "-"]],
+    startY: 42,
+    head: [["Concepto", "Base", "Unidad", "Haberes", "Descuentos"]],
+    body: rows,
     theme: "grid",
-    headStyles: { fillColor: [66, 66, 66], fontSize: 9 },
-    bodyStyles: { fontSize: 9 },
-    columnStyles: { 1: { halign: "right" } },
-    margin: { left: pageWidth / 2 + 5, right: 14 },
-    tableWidth: pageWidth / 2 - 19,
+    headStyles: { fillColor: [50, 50, 50], fontSize: 8, halign: "center" },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: {
+      0: { cellWidth: 70 },
+      1: { halign: "right", cellWidth: 28 },
+      2: { halign: "center", cellWidth: 22 },
+      3: { halign: "right", cellWidth: 30 },
+      4: { halign: "right", cellWidth: 30 },
+    },
+    margin: { left: 14, right: 14 },
   });
+
+  const finalY = (doc as any).lastAutoTable?.finalY ?? 160;
 
   // Totals
-  const finalY = Math.max(
-    (doc as any).lastAutoTable?.finalY ?? 120,
-    120
-  );
-
-  const totalsY = finalY + 10;
-  doc.setDrawColor(200);
-  doc.line(14, totalsY - 3, pageWidth - 14, totalsY - 3);
-
-  doc.setFontSize(10);
+  const ty = finalY + 5;
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text("Total Remunerativo:", 14, totalsY + 4);
-  doc.text(fmt(data.totalRemunerativo), pageWidth / 2 - 5, totalsY + 4, { align: "right" });
+  doc.text("Total Haberes:", 14, ty);
+  doc.text(fmt(data.sueldoBasico + data.lineas.filter(l => l.es_haber !== false && l.tipo !== "deduccion").reduce((s, l) => s + l.monto, 0)), 100, ty, { align: "right" });
 
-  doc.text("Total No Remunerativo:", 14, totalsY + 10);
-  doc.text(fmt(data.totalNoRemunerativo), pageWidth / 2 - 5, totalsY + 10, { align: "right" });
-
-  doc.text("Total Deducciones:", pageWidth / 2 + 5, totalsY + 4);
-  doc.text(`-${fmt(data.totalDeducciones)}`, pageWidth - 14, totalsY + 4, { align: "right" });
+  doc.text("Total Descuentos:", 110, ty);
+  doc.text(fmt(data.totalDeducciones), pageWidth - 14, ty, { align: "right" });
 
   doc.setDrawColor(0);
-  doc.line(14, totalsY + 15, pageWidth - 14, totalsY + 15);
+  doc.line(14, ty + 4, pageWidth - 14, ty + 4);
 
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("NETO A COBRAR:", 14, totalsY + 23);
-  doc.text(fmt(data.neto), pageWidth - 14, totalsY + 23, { align: "right" });
+  doc.text("NETO A COBRAR:", 14, ty + 11);
+  doc.text(fmt(data.neto), pageWidth - 14, ty + 11, { align: "right" });
 
-  // Footer
-  const footerY = totalsY + 45;
+  // Signatures
+  const footerY = ty + 30;
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.setDrawColor(200);
+  doc.setDrawColor(180);
   doc.line(14, footerY, 80, footerY);
   doc.line(pageWidth - 80, footerY, pageWidth - 14, footerY);
   doc.text("Firma Empleado", 47, footerY + 5, { align: "center" });

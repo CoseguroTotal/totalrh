@@ -8,7 +8,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -16,10 +15,7 @@ export default function Login() {
     setLoading(true);
     setError(null);
 
-    const { error: authError } =
-      mode === "login"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
       setError(authError.message);
@@ -39,9 +35,7 @@ export default function Login() {
           </div>
           <div className="text-center">
             <h1 className="text-xl font-semibold">GrupoRH</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {mode === "login" ? "Iniciá sesión para continuar" : "Creá tu cuenta"}
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Iniciá sesión para continuar</p>
           </div>
         </div>
 
@@ -82,18 +76,12 @@ export default function Login() {
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 active:scale-[0.98]"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {mode === "login" ? "Iniciar Sesión" : "Crear Cuenta"}
+            Iniciar Sesión
           </button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground">
-          {mode === "login" ? "¿No tenés cuenta?" : "¿Ya tenés cuenta?"}{" "}
-          <button
-            onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(null); }}
-            className="text-primary hover:underline font-medium"
-          >
-            {mode === "login" ? "Registrate" : "Iniciá sesión"}
-          </button>
+        <p className="text-center text-xs text-muted-foreground">
+          Los usuarios son creados por un administrador desde el panel de configuración.
         </p>
       </div>
     </div>

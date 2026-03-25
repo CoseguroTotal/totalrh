@@ -5,12 +5,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
-import { Download } from "lucide-react";
+import { Download, ChevronDown, ChevronRight } from "lucide-react";
 import { generarReciboPDF } from "@/components/ReciboPDF";
+import { cn } from "@/lib/utils";
+
+interface LineaCalc {
+  concepto_id: string;
+  descripcion: string;
+  tipo: string;
+  base: number;
+  cantidad: number;
+  unidad: string;
+  monto: number;
+  grupo: string;
+  orden: number;
+  es_haber: boolean;
+}
+
+function fmt(n: number) {
+  return n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 export default function SimuladorRecibo() {
   const { data: empleados } = useEmpleados();
@@ -23,23 +42,153 @@ export default function SimuladorRecibo() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
   const [sueldoBasico, setSueldoBasico] = useState("0");
+  const [calcSAC, setCalcSAC] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const basico = Number(sueldoBasico) || 0;
-  const activos = useMemo(() => (conceptos ?? []).filter((c) => c.activo), [conceptos]);
+  const activos = useMemo(() => (conceptos ?? []).filter((c: any) => c.activo).sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0)), [conceptos]);
 
-  const lineas = useMemo(() => {
-    return activos.map((c) => {
+  // Advanced calculation engine
+  const lineas = useMemo<LineaCalc[]>(() => {
+    if (basico <= 0) return [];
+
+    // First pass: calculate all lines
+    const results: LineaCalc[] = [];
+    const conceptoMontos = new Map<string, number>();
+
+    // Add basico as implicit first line
+    conceptoMontos.set("__basico__", basico);
+
+    // Calculate total remunerativo incrementally
+    let totalRem = basico;
+
+    // First pass for non-deduccion items (haberes)
+    for (const c of activos.filter((c: any) => c.tipo !== "deduccion")) {
+      let base = basico;
+      const bc = c.base_calculo || "basico";
+
+      if (bc === "fijo") {
+        base = 0;
+      } else if (bc === "monto_concepto" && c.concepto_base_id) {
+        base = conceptoMontos.get(c.concepto_base_id) || 0;
+      }
+      // remunerativo_total will be resolved in second pass
+
       let monto = 0;
-      if (c.porcentaje) monto = basico * (Number(c.porcentaje) / 100);
-      if (c.monto_fijo) monto += Number(c.monto_fijo);
-      return { concepto_id: c.id, descripcion: c.nombre, tipo: c.tipo, monto, codigo: c.codigo };
-    });
-  }, [activos, basico]);
+      const cant = c.cantidad_default || 1;
+      if (c.porcentaje && bc !== "fijo") {
+        monto = base * (Number(c.porcentaje) / 100) * cant;
+      }
+      if (c.monto_fijo) {
+        monto += Number(c.monto_fijo) * cant;
+      }
 
-  const totalRem = lineas.filter((l) => l.tipo === "remunerativo").reduce((s, l) => s + l.monto, 0) + basico;
+      conceptoMontos.set(c.id, monto);
+      if (c.tipo === "remunerativo") totalRem += monto;
+
+      results.push({
+        concepto_id: c.id,
+        descripcion: c.nombre,
+        tipo: c.tipo,
+        base,
+        cantidad: cant,
+        unidad: c.unidad || "porcentaje",
+        monto,
+        grupo: c.grupo || "General",
+        orden: c.orden || 0,
+        es_haber: true,
+      });
+    }
+
+    // Second pass: resolve remunerativo_total base and deducciones
+    for (const r of results) {
+      const c = activos.find((ac: any) => ac.id === r.concepto_id);
+      if (c?.base_calculo === "remunerativo_total") {
+        r.base = totalRem;
+        const cant = c.cantidad_default || 1;
+        let monto = 0;
+        if (c.porcentaje) monto = totalRem * (Number(c.porcentaje) / 100) * cant;
+        if (c.monto_fijo) monto += Number(c.monto_fijo) * cant;
+        r.monto = monto;
+        conceptoMontos.set(c.id, monto);
+      }
+    }
+
+    // Deducciones
+    for (const c of activos.filter((c: any) => c.tipo === "deduccion")) {
+      let base = basico;
+      const bc = c.base_calculo || "basico";
+
+      if (bc === "remunerativo_total") base = totalRem;
+      else if (bc === "fijo") base = 0;
+      else if (bc === "monto_concepto" && c.concepto_base_id) {
+        base = conceptoMontos.get(c.concepto_base_id) || 0;
+      }
+
+      const cant = c.cantidad_default || 1;
+      let monto = 0;
+      if (c.porcentaje) monto = base * (Number(c.porcentaje) / 100) * cant;
+      if (c.monto_fijo) monto += Number(c.monto_fijo) * cant;
+
+      conceptoMontos.set(c.id, monto);
+
+      results.push({
+        concepto_id: c.id,
+        descripcion: c.nombre,
+        tipo: c.tipo,
+        base,
+        cantidad: cant,
+        unidad: c.unidad || "porcentaje",
+        monto,
+        grupo: c.grupo || "General",
+        orden: c.orden || 0,
+        es_haber: false,
+      });
+    }
+
+    // SAC
+    if (calcSAC) {
+      const sacMonto = totalRem / 12;
+      results.push({
+        concepto_id: "__sac__",
+        descripcion: "SAC Proporcional (1/12)",
+        tipo: "remunerativo",
+        base: totalRem,
+        cantidad: 1,
+        unidad: "porcentaje",
+        monto: sacMonto,
+        grupo: "SAC",
+        orden: 9999,
+        es_haber: true,
+      });
+    }
+
+    return results;
+  }, [activos, basico, calcSAC]);
+
+  const totalHaberes = basico + lineas.filter((l) => l.es_haber).reduce((s, l) => s + l.monto, 0);
+  const totalDeducciones = lineas.filter((l) => !l.es_haber).reduce((s, l) => s + l.monto, 0);
+  const totalRem = basico + lineas.filter((l) => l.tipo === "remunerativo").reduce((s, l) => s + l.monto, 0);
   const totalNoRem = lineas.filter((l) => l.tipo === "no_remunerativo").reduce((s, l) => s + l.monto, 0);
-  const totalDed = lineas.filter((l) => l.tipo === "deduccion").reduce((s, l) => s + l.monto, 0);
-  const neto = totalRem + totalNoRem - totalDed;
+  const neto = totalHaberes - totalDeducciones;
+
+  // Group lines
+  const groups = useMemo(() => {
+    const map = new Map<string, LineaCalc[]>();
+    for (const l of lineas) {
+      if (!map.has(l.grupo)) map.set(l.grupo, []);
+      map.get(l.grupo)!.push(l);
+    }
+    return Array.from(map.entries()).sort((a, b) => (a[1][0]?.orden || 0) - (b[1][0]?.orden || 0));
+  }, [lineas]);
+
+  const toggleGroup = (g: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
+  };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -51,7 +200,7 @@ export default function SimuladorRecibo() {
           sueldo_basico: basico,
           total_remunerativo: totalRem,
           total_no_remunerativo: totalNoRem,
-          total_deducciones: totalDed,
+          total_deducciones: totalDeducciones,
           neto,
           estado: "borrador" as any,
         })
@@ -61,11 +210,13 @@ export default function SimuladorRecibo() {
 
       const rows = lineas.map((l) => ({
         liquidacion_id: liq.id,
-        concepto_id: l.concepto_id,
+        concepto_id: l.concepto_id.startsWith("__") ? null : l.concepto_id,
         descripcion: l.descripcion,
-        cantidad: 1,
+        cantidad: l.cantidad,
         monto: l.monto,
         tipo: l.tipo as any,
+        base: l.base,
+        es_haber: l.es_haber,
       }));
       if (rows.length > 0) {
         const { error } = await supabase.from("liquidacion_lineas").insert(rows);
@@ -105,75 +256,104 @@ export default function SimuladorRecibo() {
         </div>
       </div>
 
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2">
+          <Checkbox id="sac" checked={calcSAC} onCheckedChange={(v) => setCalcSAC(!!v)} />
+          <Label htmlFor="sac" className="text-xs cursor-pointer">Calcular SAC proporcional</Label>
+        </div>
+      </div>
+
       {basico > 0 && (
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
-          <h4 className="text-sm font-semibold mb-1">
-            Recibo de Sueldo — {emp ? `${emp.apellido}, ${emp.nombre}` : ""}
-          </h4>
-          <p className="text-xs text-muted-foreground mb-4">Período: {periodo}</p>
-
-          <div className="grid grid-cols-2 gap-6">
-            {/* Haberes */}
-            <div>
-              <h5 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Haberes</h5>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Sueldo Básico</span>
-                  <span className="tabular-nums">${basico.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span>
-                </div>
-                {lineas.filter((l) => l.tipo === "remunerativo").map((l) => (
-                  <div key={l.concepto_id} className="flex justify-between">
-                    <span>{l.descripcion}</span>
-                    <span className="tabular-nums">${l.monto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span>
-                  </div>
-                ))}
-                {lineas.filter((l) => l.tipo === "no_remunerativo").map((l) => (
-                  <div key={l.concepto_id} className="flex justify-between text-muted-foreground">
-                    <span>{l.descripcion} (NR)</span>
-                    <span className="tabular-nums">${l.monto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Deducciones */}
-            <div>
-              <h5 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Deducciones</h5>
-              <div className="space-y-1 text-sm">
-                {lineas.filter((l) => l.tipo === "deduccion").map((l) => (
-                  <div key={l.concepto_id} className="flex justify-between">
-                    <span>{l.descripcion}</span>
-                    <span className="tabular-nums text-destructive">${l.monto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span>
-                  </div>
-                ))}
-                {lineas.filter((l) => l.tipo === "deduccion").length === 0 && (
-                  <p className="text-xs text-muted-foreground">Sin deducciones</p>
-                )}
-              </div>
-            </div>
+        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+          <div className="p-5 pb-2">
+            <h4 className="text-sm font-semibold">
+              Recibo de Sueldo — {emp ? `${emp.apellido}, ${emp.nombre}` : ""}
+            </h4>
+            <p className="text-xs text-muted-foreground">Período: {periodo} {emp?.categoria ? `| Cat: ${emp.categoria}` : ""} {emp?.cct ? `| CCT: ${emp.cct}` : ""}</p>
           </div>
 
-          <Separator className="my-4" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/60">
+                  <th className="px-4 py-2 text-left font-medium text-muted-foreground text-xs">Concepto</th>
+                  <th className="px-3 py-2 text-right font-medium text-muted-foreground text-xs w-24">Base</th>
+                  <th className="px-3 py-2 text-center font-medium text-muted-foreground text-xs w-20">Unidad</th>
+                  <th className="px-3 py-2 text-right font-medium text-muted-foreground text-xs w-28">Haberes</th>
+                  <th className="px-3 py-2 text-right font-medium text-muted-foreground text-xs w-28">Descuentos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Sueldo Básico row */}
+                <tr className="border-b hover:bg-muted/20">
+                  <td className="px-4 py-1.5 font-medium">Sueldo Básico</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-xs">—</td>
+                  <td className="px-3 py-1.5 text-center text-xs">30 días</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">${fmt(basico)}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">—</td>
+                </tr>
 
-          <div className="flex justify-between text-sm">
-            <span>Total Remunerativo</span>
-            <span className="tabular-nums font-medium">${totalRem.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span>Total No Remunerativo</span>
-            <span className="tabular-nums">${totalNoRem.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span>Total Deducciones</span>
-            <span className="tabular-nums text-destructive">-${totalDed.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span>
-          </div>
-          <Separator className="my-3" />
-          <div className="flex justify-between text-base font-semibold">
-            <span>NETO A COBRAR</span>
-            <span className="tabular-nums">${neto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span>
+                {groups.map(([grupo, items]) => {
+                  const collapsed = collapsedGroups.has(grupo);
+                  const subtotalHab = items.filter((i) => i.es_haber).reduce((s, i) => s + i.monto, 0);
+                  const subtotalDesc = items.filter((i) => !i.es_haber).reduce((s, i) => s + i.monto, 0);
+
+                  return [
+                    <tr key={`gh-${grupo}`} className="bg-muted/40 cursor-pointer" onClick={() => toggleGroup(grupo)}>
+                      <td colSpan={3} className="px-4 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                        {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        {grupo}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-xs font-medium">
+                        {subtotalHab > 0 ? `$${fmt(subtotalHab)}` : ""}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-xs font-medium text-destructive">
+                        {subtotalDesc > 0 ? `$${fmt(subtotalDesc)}` : ""}
+                      </td>
+                    </tr>,
+                    ...(!collapsed
+                      ? items.map((l) => (
+                          <tr key={l.concepto_id} className="border-b last:border-0 hover:bg-muted/20">
+                            <td className="px-4 py-1.5 pl-8">{l.descripcion}</td>
+                            <td className="px-3 py-1.5 text-right tabular-nums text-xs">{l.base > 0 ? `$${fmt(l.base)}` : "—"}</td>
+                            <td className="px-3 py-1.5 text-center text-xs">
+                              {l.unidad === "porcentaje" && l.cantidad !== 1
+                                ? `${l.cantidad}`
+                                : l.unidad === "dias"
+                                ? `${l.cantidad} d`
+                                : l.unidad === "horas"
+                                ? `${l.cantidad} hs`
+                                : l.cantidad > 1
+                                ? `${l.cantidad}`
+                                : "—"}
+                            </td>
+                            <td className="px-3 py-1.5 text-right tabular-nums">
+                              {l.es_haber ? `$${fmt(l.monto)}` : "—"}
+                            </td>
+                            <td className="px-3 py-1.5 text-right tabular-nums text-destructive">
+                              {!l.es_haber ? `$${fmt(l.monto)}` : "—"}
+                            </td>
+                          </tr>
+                        ))
+                      : []),
+                  ];
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border bg-muted/30">
+                  <td colSpan={3} className="px-4 py-2 font-semibold text-xs uppercase">Totales</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold">${fmt(totalHaberes)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-destructive">${fmt(totalDeducciones)}</td>
+                </tr>
+                <tr className="bg-primary/5">
+                  <td colSpan={3} className="px-4 py-3 font-bold text-base">NETO A COBRAR</td>
+                  <td colSpan={2} className="px-3 py-3 text-right tabular-nums font-bold text-base">${fmt(neto)}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
 
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="p-5 pt-3 flex justify-end gap-2 border-t">
             <Button variant="outline" onClick={() => {
               if (!emp) return;
               generarReciboPDF({
@@ -181,10 +361,10 @@ export default function SimuladorRecibo() {
                 empleadoLegajo: emp.legajo,
                 periodo,
                 sueldoBasico: basico,
-                lineas,
+                lineas: lineas.map((l) => ({ descripcion: l.descripcion, tipo: l.tipo, monto: l.monto, codigo: "", base: l.base, cantidad: l.cantidad, unidad: l.unidad, es_haber: l.es_haber, grupo: l.grupo })),
                 totalRemunerativo: totalRem,
                 totalNoRemunerativo: totalNoRem,
-                totalDeducciones: totalDed,
+                totalDeducciones: totalDeducciones,
                 neto,
               });
             }} disabled={!empleadoId}>
