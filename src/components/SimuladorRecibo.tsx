@@ -233,6 +233,7 @@ export default function SimuladorRecibo() {
           <div className="p-5 pt-3 flex justify-end gap-2 border-t">
             <Button variant="outline" onClick={() => {
               if (!emp) return;
+              const empresa = empresas?.find((e: any) => e.id === emp.empresa_id);
               generarReciboPDF({
                 empleadoNombre: `${emp.apellido}, ${emp.nombre}`,
                 empleadoLegajo: emp.legajo,
@@ -241,8 +242,9 @@ export default function SimuladorRecibo() {
                 lineas: lineas.map((l) => ({ descripcion: l.descripcion, tipo: l.tipo, monto: l.monto, codigo: "", base: l.base, cantidad: l.cantidad, unidad: l.unidad, es_haber: l.es_haber, grupo: l.grupo })),
                 totalRemunerativo: totalRem,
                 totalNoRemunerativo: totalNoRem,
-                totalDeducciones: totalDeducciones,
+                totalDeducciones,
                 neto,
+                empresa: empresa ? { nombre: empresa.nombre, razon_social: empresa.razon_social, cuit: empresa.cuit, domicilio_fiscal: empresa.domicilio_fiscal, telefono: empresa.telefono, email: empresa.email, logo_url: empresa.logo_url } : null,
               });
             }} disabled={!empleadoId}>
               <Download className="h-4 w-4 mr-1" /> Descargar PDF
