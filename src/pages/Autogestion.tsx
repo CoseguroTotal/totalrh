@@ -4,7 +4,8 @@ import { useDocumentosLegajo } from "@/hooks/useEmpleados";
 import { useMemorandumsEmpleado, useUpdateEstadoMemorandum } from "@/hooks/useMemorandums";
 import { useSolicitudesVacacionesEmpleado, useSaveSolicitudVacaciones, useVacacionesConfig, calcDiasCorrespondientes, calcDiasHabiles } from "@/hooks/useVacaciones";
 import { useSanciones, useUpdateDescargo } from "@/hooks/useSanciones";
-import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, KeyRound } from "lucide-react";
+import { useFichadasEmpleado } from "@/hooks/useAsistencia";
+import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, KeyRound, Clock } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -162,6 +163,7 @@ export default function Autogestion() {
           <TabsTrigger value="documentos"><FileText className="h-3.5 w-3.5 mr-1.5" />Documentos</TabsTrigger>
           <TabsTrigger value="memorandums"><FileCheck className="h-3.5 w-3.5 mr-1.5" />Memorándums</TabsTrigger>
           <TabsTrigger value="sanciones"><ShieldAlert className="h-3.5 w-3.5 mr-1.5" />Sanciones</TabsTrigger>
+          <TabsTrigger value="fichadas"><Clock className="h-3.5 w-3.5 mr-1.5" />Fichadas</TabsTrigger>
           <TabsTrigger value="token"><KeyRound className="h-3.5 w-3.5 mr-1.5" />Token</TabsTrigger>
         </TabsList>
 
@@ -437,10 +439,71 @@ export default function Autogestion() {
           </div>
         </TabsContent>
 
+        <TabsContent value="fichadas">
+          <FichadasTab empleadoId={emp.id} />
+        </TabsContent>
+
         <TabsContent value="token">
           <TokenAsistenciaTab empleadoId={emp.id} />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+const fichadaEstadoBadge: Record<string, string> = {
+  presente: "bg-success/15 text-success",
+  ausente: "bg-destructive/15 text-destructive",
+  tardanza: "bg-warning/15 text-warning",
+  justificado: "bg-info/15 text-info",
+};
+
+function FichadasTab({ empleadoId }: { empleadoId: string }) {
+  const [mes, setMes] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const { data: fichadas = [], isLoading } = useFichadasEmpleado(empleadoId, mes);
+
+  return (
+    <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium flex items-center gap-2"><Clock className="h-4 w-4" />Mis Fichadas</h3>
+        <Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="w-auto" />
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      ) : fichadas.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Sin fichadas en este período.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground">
+                <th className="py-2 pr-4">Fecha</th>
+                <th className="py-2 pr-4">Entrada</th>
+                <th className="py-2 pr-4">Salida</th>
+                <th className="py-2">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fichadas.map((f: any) => (
+                <tr key={f.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                  <td className="py-2.5 pr-4 font-medium">{new Date(f.fecha + "T12:00:00").toLocaleDateString("es-AR")}</td>
+                  <td className="py-2.5 pr-4">{f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                  <td className="py-2.5 pr-4">{f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                  <td className="py-2.5">
+                    <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", fichadaEstadoBadge[f.estado] || "bg-muted text-muted-foreground")}>
+                      {f.estado}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
