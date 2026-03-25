@@ -1,112 +1,127 @@
 
 
-# Plan: Legajo reforzado, Autogestión, PWA de Asistencia, Formulario de Permisos y Empresas ampliadas
+# Plan: Roles de usuario, configuración admin, memorándums, membrete, carga Excel de asistencia y notificaciones
 
 ## Resumen
 
-Seis bloques de trabajo:
-1. Reforzar legajo: agregar sección de estudios/formación al empleado
-2. Módulo de Autogestión para empleados (portal self-service)
-3. Asistencia como PWA instalable
-4. Formulario de Solicitud de Permisos (basado en el PDF adjunto) con generación PDF y firma
-5. Ampliar datos de empresa y gestión de sucursales
-6. Notificaciones de solicitudes de permisos
+8 bloques de trabajo que agregan sistema de roles, módulo de configuración, memorándums con firma digital, PDFs membretados, logo de empresa, y carga masiva de horarios en asistencia.
 
 ---
 
-## 1. Reforzar Legajo del Trabajador
+## 1. Sistema de roles de usuario
 
 ### Migración
-- Nueva tabla `estudios_empleado`: id, empleado_id (FK), titulo, institucion, nivel (enum: primario/secundario/terciario/universitario/posgrado), estado (enum: completo/en_curso/incompleto), fecha_inicio, fecha_fin, created_at
-- RLS CRUD para authenticated
+- Crear enum `app_role` (admin, usuario)
+- Crear tabla `user_roles` (id, user_id FK auth.users, role app_role, unique user_id+role)
+- RLS con security definer function `has_role(user_id, role)`
+- Insertar rol admin para mcponce.torres@gmail.com
 
-### UI en LegajoDetail
-- Nuevo tab "Estudios" junto a Familia/Médico
-- Tabla listando estudios con botón agregar/editar/eliminar
-- Dialog `EstudioFormDialog.tsx`
-
-### Documentos: ya soporta categorías (documento_personal, permiso, médico, contrato, otro). Agregar categoría "certificado" para certificados de estudio, cursos, etc.
+### Lógica
+- Hook `useUserRole()` que consulta `user_roles` para el usuario autenticado
+- Componente `AdminRoute` que verifica rol admin antes de renderizar
 
 ---
 
-## 2. Módulo de Autogestión
+## 2. Módulo de Configuración (solo admin)
+
+### Página `/configuracion`
+- Visible solo en sidebar para admins
+- Tabs: **Usuarios**, **General**
+- **Usuarios**: listado de usuarios auth con asignación de rol, crear nuevos usuarios (invitación por email via supabase.auth.admin o signup link)
+- **General**: configuraciones del grupo empresario (nombre, logo, datos fiscales para membrete)
 
 ### Migración
-- Nueva tabla `solicitudes_permiso`: id, empleado_id (FK), fecha_solicitud (default now), motivo (text), motivo_detalle (text nullable), fecha_desde (date), fecha_hasta (date), hora_reintegro (text nullable), sujeto_descuento (bool), estado (enum: pendiente/aprobada/rechazada), aprobado_por (uuid nullable), observaciones (text nullable), created_at
-- RLS: authenticated puede SELECT/INSERT; UPDATE solo para admin (o todos authenticated por ahora)
-
-### Página `/autogestion`
-- Reemplazar PlaceholderModule
-- Tabs: **Mis Datos**, **Solicitudes de Permiso**, **Mis Documentos**
-
-#### Tab "Mis Datos"
-- Vista read-only de datos personales del empleado logueado (busca por email del auth user)
-- Botón para solicitar actualización de datos (crea un evento o notificación)
-
-#### Tab "Solicitudes de Permiso"
-- Listado de solicitudes del empleado
-- Botón "Nueva Solicitud" abre formulario basado en el PDF adjunto:
-  - Motivo (radio/select): Lic. Paternidad, Lic. Estudio, Mudanza, Trámites Personales, Lic. Fallecimiento (+ campo pariente), Lic. Sin goce, Otros (+ campo detalle)
-  - Fecha desde, fecha hasta, hora reintegro
-  - Sujeto a descuento (sí/no)
-- Botón "Descargar PDF" genera el formulario completado para firma
-- Estado badge: pendiente/aprobada/rechazada
-
-#### Tab "Mis Documentos"
-- Lista documentos del empleado (read-only)
-
-### Lógica de matching
-- Al cargar autogestión, buscar en `empleados` el registro cuyo `email` coincida con el email del usuario autenticado
-- Si no hay match, mostrar mensaje "Tu email no está asociado a un legajo"
+- Tabla `configuracion_grupo` (id, nombre_grupo, logo_url, domicilio, cuit, telefono, email, updated_at) — registro único
 
 ---
 
-## 3. Formulario de Solicitud de Permisos (PDF)
+## 3. Logo y datos de empresa para informes
 
-- Componente `SolicitudPermisoPDF.tsx` que genera con jsPDF un PDF replicando el formulario adjunto
-- Datos pre-llenados: nombre del empleado, área de trabajo, fechas, motivo
-- Espacios para firma del empleado, responsable directo y RRHH
-- Descargable desde autogestión y desde el legajo (sección permisos)
+### Migración
+- Agregar columna `logo_url` a tabla `empresas`
 
----
+### Storage
+- Crear bucket `logos-empresas` (público) para logos
 
-## 4. Asistencia como PWA
-
-- Instalar `vite-plugin-pwa`
-- Configurar en `vite.config.ts` con manifest, iconos y service worker
-- Meta tags mobile en `index.html`
-- Agregar ruta `/install` con instrucciones de instalación
-- `navigateFallbackDenylist: [/^\/~oauth/]`
-- La app completa se vuelve instalable (beneficia especialmente al módulo de asistencia para fichada desde el celular)
+### UI en Empresas
+- Agregar campo de upload de logo en `EmpresaFormDialog`
+- Mostrar logo en la card de empresa
 
 ---
 
-## 5. Ampliar Empresas
+## 4. Memorándums
 
-### Migración — Nuevas columnas en `empresas`:
-- razon_social, domicilio_fiscal, localidad, provincia, cp, telefono, email, actividad_principal, fecha_inicio_actividades, convenio_colectivo (todos text nullable)
+### Migración
+- Nueva tabla `memorandums`: id, numero (serial autoincremental), empresa_id (FK), titulo, contenido (text), destinatario_empleado_id (FK nullable), destinatario_nombre (text), fecha, estado (enum: borrador/enviado/recibido/firmado), firmado_por (uuid nullable), fecha_firma (timestamp nullable), created_by (uuid), created_at
+- Secuencia para numeración automática
 
 ### UI
-- Ampliar `EmpresaFormDialog` con más campos organizados en secciones
-- Mostrar datos completos en la card de empresa
-- Sucursales: ya funciona el CRUD, sin cambios
+- Nueva página `/memorandums` o sección dentro de Empresas
+- CRUD de memorándums con editor de contenido
+- Generación de PDF membretado (logo empresa o grupo + datos fiscales)
+- Botón "Enviar por email" (invoca edge function para envío)
+- Registro de recepción y firma digital (el empleado desde autogestión puede marcar como recibido/firmado)
+- Archivo numerado con búsqueda y filtros
+
+### Autogestión
+- Nueva tab "Memorándums" donde el empleado ve los que le fueron enviados
+- Botón "Acusar recibo" y "Firmar digitalmente" (actualiza estado)
 
 ---
 
-## 6. Gestión de permisos desde el admin (LegajoDetail)
+## 5. PDFs membretados
 
-- En LegajoDetail, nuevo tab "Permisos" que lista las solicitudes del empleado
-- Botones para aprobar/rechazar solicitudes pendientes
-- Al aprobar/rechazar se actualiza el estado y se registra quién aprobó
+### Componente `MembretePDF.ts`
+- Función reutilizable que agrega header con logo (grupo o empresa), razón social, CUIT, domicilio, teléfono
+- Footer con datos legales
+- Usado por: recibos de sueldo, memorándums, solicitud de permisos, cualquier documento futuro
+- Parámetro para elegir membrete de grupo empresario o empresa específica
+
+---
+
+## 6. Notificaciones al aprobar/rechazar permisos
+
+### Enfoque: notificaciones in-app (sin email externo)
+- Nueva tabla `notificaciones`: id, user_id (uuid, del auth user), titulo, mensaje, leida (bool default false), link (text nullable), created_at
+- RLS: cada usuario solo ve sus propias notificaciones
+- Hook `useNotificaciones()` con query + realtime subscription
+- Componente `NotificacionesBell` en el header/layout con badge de no leídas
+- Al aprobar/rechazar solicitud de permiso, insertar notificación para el empleado (buscar user por email del empleado)
+
+---
+
+## 7. Carga Excel de horarios en Asistencia
+
+### UI en Asistencia
+- Nuevo tab "Planillas" o botón en tab Turnos
+- Upload de archivo Excel (.xlsx) con columnas: legajo, lunes_entrada, lunes_salida, martes_entrada... (o formato flexible)
+- Parseo client-side con `xlsx` (SheetJS) library
+- Preview de datos antes de confirmar
+- Al confirmar: insertar/actualizar asignaciones de turno por empleado
+
+### Migración
+- Nueva tabla `asignaciones_turno`: id, empleado_id (FK), dia_semana (int 0-6), hora_entrada (time), hora_salida (time), vigente_desde (date), created_at
+- Lógica de comparación: al registrar fichada, comparar hora real vs hora asignada para computar tardanzas y horas extra
+
+### Cómputo de tardanzas y horas extra
+- Función client-side o DB function que compara fichadas vs asignaciones_turno
+- Columnas calculadas en la vista de fichadas: minutos_tarde, horas_extra
+
+---
+
+## 8. Ruta y navegación
+
+- Agregar `/configuracion` y `/memorandums` a App.tsx
+- Sidebar: mostrar "Configuración" solo si el usuario es admin
+- Sidebar: agregar "Memorándums"
 
 ---
 
 ## Detalle técnico
 
-- **Migración**: Una sola migración con tablas `estudios_empleado`, `solicitudes_permiso`, columnas nuevas en `empresas`
-- **PWA**: vite-plugin-pwa con workbox, manifest.json, iconos 192/512px
-- **PDF**: jsPDF (ya instalado) para generar solicitud de permisos
-- **Hooks nuevos**: `useEstudios(empleadoId)`, `useSolicitudesPermiso(empleadoId)`, `useMiEmpleado()`
-- **Archivos nuevos**: ~6 componentes/páginas, 1 hook file
-- **Archivos editados**: vite.config.ts, index.html, LegajoDetail.tsx, Empresas.tsx, App.tsx
+- **Migraciones**: 2 migraciones — (1) roles + configuración + logo + memorándums + notificaciones + asignaciones_turno, (2) datos seed del admin
+- **Archivos nuevos**: ~8 (página Configuración, página Memorándums, MembretePDF, NotificacionesBell, hooks useUserRole/useNotificaciones/useMemorandums, AdminRoute)
+- **Archivos editados**: AppSidebar (roles + nuevos links), AppLayout (bell notificaciones), App.tsx (rutas), Empresas.tsx (logo upload), Asistencia.tsx (tab planillas + cómputo), LegajoDetail.tsx (notificación en aprobación), Autogestion.tsx (tab memorándums), ReciboPDF/SolicitudPermisoPDF (membrete)
+- **Dependencias**: `xlsx` (SheetJS) para parseo de Excel
+- **No se modifica** client.ts ni types.ts
 
