@@ -1,102 +1,93 @@
 
 
-# Plan: Rol empleado, conceptos CCT seed, liquidación masiva, logo por empresa, reclutamiento y reportes BI
+# Plan: Sueldo en legajo, vinculación con asistencia, y gestión de vacaciones
 
 ## Resumen
 
-6 bloques: (1) rol "empleado" con acceso restringido a autogestión, (2) seed de conceptos CCT 130/75, (3) liquidación masiva por empresa, (4) logo por empresa en PDFs, (5) módulo de reclutamiento, (6) módulo de reportes BI.
+Tres bloques: (1) agregar campo de sueldo básico al empleado para usarlo en liquidación y legajo, (2) vincular empleado con asistencia mostrando resumen en el legajo, (3) módulo completo de vacaciones con calendario por empresa y solicitud desde autogestión.
 
 ---
 
-## 1. Rol "empleado" con acceso restringido
+## 1. Sueldo básico en el legajo del empleado
 
 ### Migración
-- `ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'empleado';`
+- Agregar columna `sueldo_basico` (numeric, nullable, default null) a tabla `empleados`
 
-### Lógica de acceso
-- Actualizar `ROLES` en `Configuracion.tsx` para incluir "Empleado"
-- Crear componente `EmployeeRoute` (o modificar `AppLayout`) que detecta si el rol es `empleado` y solo permite acceso a `/autogestion`
-- En `AppSidebar.tsx`: si rol es `empleado`, mostrar solo el link a Autogestión y Cerrar Sesión
-- En `App.tsx`: envolver las rutas admin/rrhh con un guard que redirige empleados a `/autogestion`
+### UI
+- En `EmpleadoFormDialog.tsx`: agregar campo "Sueldo básico" en la sección laboral (input numérico)
+- En `LegajoDetail.tsx`: mostrar el sueldo en la ficha del empleado (sección datos laborales)
+- En `SimuladorRecibo.tsx`: al seleccionar empleado, auto-cargar su `sueldo_basico` si tiene valor
+- En liquidación masiva: usar `sueldo_basico` del empleado en vez de pedir uno global
 
----
-
-## 2. Conceptos CCT 130/75 pre-cargados (seed)
-
-Usar la herramienta de inserción de datos (no migración) para insertar en `conceptos_liquidacion`:
-
-| Código | Nombre | Tipo | Grupo | Base | % | Orden |
-|--------|--------|------|-------|------|---|-------|
-| 100 | Sueldo Básico | remunerativo | Haberes | basico | — | 1 |
-| 110 | Presentismo | remunerativo | Haberes | basico | 8.33 | 2 |
-| 200 | Jubilación | deduccion | Aportes del Trabajador | remunerativo_total | 11 | 10 |
-| 210 | Obra Social | deduccion | Aportes del Trabajador | remunerativo_total | 3 | 11 |
-| 220 | Ley 19.032 (PAMI) | deduccion | Aportes del Trabajador | remunerativo_total | 3 | 12 |
-| 230 | Cuota Sindical | deduccion | Aportes del Trabajador | remunerativo_total | 2 | 13 |
+### Hook
+- Actualizar tipo `EmpleadoConEmpresa` en `useEmpleados.ts` para incluir `sueldo_basico`
 
 ---
 
-## 3. Liquidación masiva por empresa
+## 2. Vinculación legajo con asistencia
 
-### UI en `Liquidacion.tsx`
-- Nuevo tab "Masiva" o botón en tab Simulador
-- Seleccionar empresa + período + sueldo básico (o tomar de cada empleado si existe)
-- Botón "Generar para todos los activos"
-- Progress bar mientras se procesan
-- Al confirmar: insertar una liquidación por cada empleado activo de la empresa, aplicando todos los conceptos activos
-- Opción de descarga masiva de PDFs (zip o secuencial)
+### UI en LegajoDetail
+- Nuevo tab "Asistencia" en el detalle del legajo
+- Muestra: fichadas del mes actual del empleado (query a `fichadas` filtrado por `empleado_id`)
+- Resumen: días presentes, ausencias, tardanzas, horas extra (calculado comparando fichadas vs `asignaciones_turno`)
+- Tabla con últimas fichadas (fecha, entrada, salida, estado, observaciones)
 
-### Lógica
-- Reutilizar el motor de cálculo del SimuladorRecibo como función extractable
-- Iterar sobre empleados activos filtrando por empresa_id
+### Hook
+- Función `useFichadasEmpleado(empleadoId, mes)` en `useAsistencia.ts` para obtener fichadas filtradas por empleado y período
 
 ---
 
-## 4. Logo por empresa en PDFs
-
-- La columna `logo_url` ya existe en `empresas`
-- El upload de logo ya funciona en `Empresas.tsx`
-- Integrar `MembretePDF.ts` (ya existente) en `ReciboPDF.tsx`, `SolicitudPermisoPDF.tsx` y `MemorandumPDF.ts`
-- Al generar un PDF, buscar la empresa del empleado y pasar sus datos (nombre, CUIT, logo_url, domicilio) al membrete
-- Fallback a datos del grupo empresario (`configuracion_grupo`) si la empresa no tiene logo
-
----
-
-## 5. Módulo de Reclutamiento
+## 3. Gestión de vacaciones
 
 ### Migración
-- Tabla `vacantes`: id, empresa_id (FK), titulo, descripcion, requisitos (text), estado (enum: abierta/cerrada/pausada), fecha_publicacion, created_by, created_at
-- Tabla `candidatos`: id, vacante_id (FK), nombre, email, telefono, cv_url (text), estado (enum: postulado/entrevista/evaluacion/oferta/contratado/descartado), notas, created_at
-- RLS CRUD para authenticated
+- Nueva tabla `vacaciones_config`: id, empresa_id (FK), anios_antiguedad_min (int), anios_antiguedad_max (int), dias_correspondientes (int), created_at — para configurar los días de vacaciones según antigüedad por empresa
+- Nueva tabla `solicitudes_vacaciones`: id, empleado_id (FK), fecha_desde (date), fecha_hasta (date), dias_solicitados (int), dias_correspondientes (int), periodo_anual (text, ej "2026"), estado (enum: pendiente/aprobada/rechazada/cancelada), aprobado_por (uuid nullable), observaciones (text nullable), created_at
+- RLS CRUD para authenticated en ambas tablas
 
-### UI — Página `/reclutamiento`
-- Tabs: **Vacantes** y **Pipeline**
-- **Vacantes**: CRUD de vacantes con estado, empresa asociada
-- **Pipeline**: Vista Kanban con columnas por estado del candidato (drag & drop con estados)
-- Dialog para agregar candidato a una vacante con datos básicos y upload de CV
+### Configuración de vacaciones por empresa
+- En la página de Empresas o en una sección dedicada: CRUD de rangos de antigüedad → días correspondientes
+- Ejemplo: 0-5 años = 14 días, 5-10 = 21, 10-20 = 28, 20+ = 35 (estándar LCT Argentina)
 
----
+### Calendario de vacaciones
+- Nueva página `/vacaciones` o tab en Asistencia
+- Calendario mensual/anual que muestra las vacaciones aprobadas de todos los empleados de la empresa seleccionada
+- Vista de lista con filtros por empresa, estado, período
+- Indicadores de solapamiento (alerta si muchos empleados de la misma área coinciden)
 
-## 6. Módulo de Reportes BI
+### Solicitud desde Autogestión
+- Nuevo tab "Vacaciones" en `/autogestion`
+- Muestra: días correspondientes (calculados por antigüedad del empleado), días usados, saldo disponible
+- Formulario para solicitar vacaciones: fecha desde, fecha hasta (auto-calcula días hábiles), período anual
+- Validación: no puede exceder saldo disponible
+- Historial de solicitudes con estado
 
-### Página `/reportes`
-- Reutilizar y ampliar `useDashboardStats`
-- Secciones:
-  - **Dotación**: headcount por empresa con filtro de fecha
-  - **Rotación**: tasa mensual con gráfico de línea (últimos 12 meses, calculado por fecha de baja)
-  - **Distribución**: por estado, antigüedad, sexo, CCT
-  - **Liquidaciones**: total liquidado por período y empresa
-  - **Asistencia**: resumen de tardanzas/ausencias por período
-- Botón "Exportar a Excel" usando `xlsx` (SheetJS) para descargar tabla filtrada
-- Gráficos con recharts (ya disponible como dependencia de shadcn chart)
+### Aprobación desde admin
+- En LegajoDetail: nuevo sub-tab o sección en "Permisos" para ver solicitudes de vacaciones
+- Botones aprobar/rechazar con notificación al empleado
+- En la página de vacaciones: vista centralizada de todas las solicitudes pendientes
 
 ---
 
 ## Detalle técnico
 
-- **Migración**: 1 migración con enum empleado + tablas vacantes/candidatos
-- **Seed**: INSERT via herramienta de inserción para conceptos CCT
-- **Archivos nuevos**: `src/pages/Reclutamiento.tsx`, `src/pages/Reportes.tsx`, `src/hooks/useReclutamiento.ts`
-- **Archivos editados**: `Configuracion.tsx` (rol empleado), `AppSidebar.tsx` (restricción por rol), `App.tsx` (rutas + guards), `Liquidacion.tsx` (tab masiva), `ReciboPDF.tsx` y `MemorandumPDF.ts` (integrar membrete con logo empresa), `SimuladorRecibo.tsx` (extraer motor de cálculo)
-- **Dependencias**: ninguna nueva (xlsx y recharts ya disponibles)
+### Migración (1 sola)
+- `ALTER TABLE empleados ADD COLUMN sueldo_basico numeric;`
+- `CREATE TABLE vacaciones_config (...)`
+- `CREATE TABLE solicitudes_vacaciones (...)`
+- Seed de rangos LCT por defecto (insertados via migration como datos iniciales universales)
+
+### Archivos nuevos
+- `src/pages/Vacaciones.tsx` — calendario y gestión centralizada
+- `src/hooks/useVacaciones.ts` — queries para config, solicitudes, cálculo de días
+
+### Archivos editados
+- `src/hooks/useEmpleados.ts` — agregar `sueldo_basico` al tipo
+- `src/components/EmpleadoFormDialog.tsx` — campo sueldo
+- `src/pages/LegajoDetail.tsx` — mostrar sueldo + tab asistencia + sección vacaciones
+- `src/components/SimuladorRecibo.tsx` — auto-cargar sueldo del empleado
+- `src/pages/Liquidacion.tsx` — usar sueldo del empleado en masiva
+- `src/pages/Autogestion.tsx` — nuevo tab Vacaciones con solicitud y saldo
+- `src/hooks/useAsistencia.ts` — hook fichadasEmpleado
+- `src/components/AppSidebar.tsx` — link a Vacaciones
+- `src/App.tsx` — ruta `/vacaciones`
 
