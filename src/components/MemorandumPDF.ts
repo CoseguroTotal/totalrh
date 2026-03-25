@@ -11,11 +11,10 @@ interface MemoData {
   grupo?: { nombre: string; cuit?: string | null; domicilio?: string | null; telefono?: string | null; email?: string | null; logo_url?: string | null } | null;
 }
 
-export async function generarMemorandumPDF(data: MemoData) {
+async function buildMemorandumDoc(data: MemoData) {
   const doc = new jsPDF();
   const w = doc.internal.pageSize.getWidth();
 
-  // Apply letterhead
   const config = data.empresa
     ? { nombre: data.empresa.nombre, razonSocial: data.empresa.razon_social, cuit: data.empresa.cuit, domicilio: data.empresa.domicilio, telefono: data.empresa.telefono, email: data.empresa.email, logoUrl: data.empresa.logo_url }
     : data.grupo
@@ -24,7 +23,6 @@ export async function generarMemorandumPDF(data: MemoData) {
 
   let y = await aplicarMembrete(doc, config);
 
-  // Memo header
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.text(`MEMORÁNDUM N° ${data.numero}`, w / 2, y, { align: "center" });
@@ -45,12 +43,10 @@ export async function generarMemorandumPDF(data: MemoData) {
   doc.line(20, y, w - 20, y);
   y += 8;
 
-  // Content
   doc.setFontSize(10);
   const lines = doc.splitTextToSize(data.contenido, w - 40);
   doc.text(lines, 20, y);
 
-  // Signature area
   const sigY = Math.max(y + lines.length * 5 + 30, 220);
   doc.line(20, sigY, 80, sigY);
   doc.setFontSize(8);
@@ -61,5 +57,16 @@ export async function generarMemorandumPDF(data: MemoData) {
 
   aplicarFooterMembrete(doc, config);
 
+  return doc;
+}
+
+export async function generarMemorandumPDF(data: MemoData) {
+  const doc = await buildMemorandumDoc(data);
   doc.save(`memorandum_${data.numero}.pdf`);
+}
+
+/** Returns the PDF as a Blob for upload/attachment purposes */
+export async function generarMemorandumBlob(data: MemoData): Promise<Blob> {
+  const doc = await buildMemorandumDoc(data);
+  return doc.output("blob");
 }
