@@ -109,12 +109,21 @@ export default function SimuladorRecibo() {
 
   const emp = empleados?.find((e) => e.id === empleadoId);
 
+  // Auto-load sueldo_basico when employee is selected
+  const handleEmpleadoChange = (id: string) => {
+    setEmpleadoId(id);
+    const selected = empleados?.find((e) => e.id === id);
+    if (selected?.sueldo_basico != null && selected.sueldo_basico > 0) {
+      setSueldoBasico(String(selected.sueldo_basico));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <Label className="text-xs">Empleado</Label>
-          <Select value={empleadoId} onValueChange={setEmpleadoId}>
+          <Select value={empleadoId} onValueChange={handleEmpleadoChange}>
             <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
             <SelectContent>
               {(empleados ?? []).filter((e) => e.estado === "Activo").map((e) => (
