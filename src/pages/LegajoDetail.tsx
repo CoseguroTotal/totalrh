@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useEmpleado, useEventosLegajo, useDocumentosLegajo, useGrupoFamiliar, useDatosMedicos } from "@/hooks/useEmpleados";
 import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2 } from "lucide-react";
@@ -16,6 +16,7 @@ import EmpleadoFormDialog from "@/components/EmpleadoFormDialog";
 import EventoFormDialog from "@/components/EventoFormDialog";
 import FamiliarFormDialog from "@/components/FamiliarFormDialog";
 import DatosMedicosForm from "@/components/DatosMedicosForm";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const eventIcon: Record<string, { icon: typeof Award; color: string }> = {
   ingreso: { icon: Award, color: "text-success bg-success/15" },
@@ -45,6 +46,7 @@ const categoriasDocumento = [
 
 export default function LegajoDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [eventoOpen, setEventoOpen] = useState(false);
   const [familiarOpen, setFamiliarOpen] = useState<{ open: boolean; familiar?: any }>({ open: false });
@@ -57,6 +59,28 @@ export default function LegajoDetail() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadCategoria, setUploadCategoria] = useState("otro");
   const [uploadVencimiento, setUploadVencimiento] = useState("");
+
+  const deleteEmpleadoMutation = useMutation({
+    mutationFn: async () => {
+      await supabase.from("eventos_legajo").delete().eq("empleado_id", id!);
+      await supabase.from("documentos_legajo").delete().eq("empleado_id", id!);
+      await supabase.from("grupo_familiar").delete().eq("empleado_id", id!);
+      await supabase.from("datos_medicos").delete().eq("empleado_id", id!);
+      const liqs = await supabase.from("liquidaciones").select("id").eq("empleado_id", id!);
+      if (liqs.data?.length) {
+        await supabase.from("liquidacion_lineas").delete().in("liquidacion_id", liqs.data.map((l) => l.id));
+      }
+      await supabase.from("liquidaciones").delete().eq("empleado_id", id!);
+      const { error } = await supabase.from("empleados").delete().eq("id", id!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Empleado eliminado");
+      queryClient.invalidateQueries({ queryKey: ["empleados"] });
+      navigate("/legajos");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
   const deleteFamiliarMutation = useMutation({
     mutationFn: async (familiarId: string) => {
@@ -136,9 +160,32 @@ export default function LegajoDetail() {
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl font-semibold">{emp.apellido}, {emp.nombre}</h1>
               <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", estadoBadge[emp.estado])}>{emp.estado}</span>
-              <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)} className="ml-auto">
-                <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
-              </Button>
+              <div className="ml-auto flex gap-1">
+                <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />Dar de Baja
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar empleado?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Se eliminará a {emp.apellido}, {emp.nombre} y todos sus registros asociados. Esta acción no se puede deshacer.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteEmpleadoMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
             <EmpleadoFormDialog open={editOpen} onOpenChange={setEditOpen} empleado={emp} />
             <p className="text-sm text-muted-foreground mt-1">{emp.puesto}{emp.categoria ? ` · ${emp.categoria}` : ""}</p>

@@ -11,6 +11,7 @@ import Legajos from "@/pages/Legajos";
 import LegajoDetail from "@/pages/LegajoDetail";
 import Empresas from "@/pages/Empresas";
 import PlaceholderModule from "@/pages/PlaceholderModule";
+import Liquidacion from "@/pages/Liquidacion";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,7 +30,7 @@ const App = () => (
               <Route path="/legajos" element={<Legajos />} />
               <Route path="/legajos/:id" element={<LegajoDetail />} />
               <Route path="/empresas" element={<Empresas />} />
-              <Route path="/liquidacion" element={<PlaceholderModule />} />
+              <Route path="/liquidacion" element={<Liquidacion />} />
               <Route path="/autogestion" element={<PlaceholderModule />} />
               <Route path="/asistencia" element={<PlaceholderModule />} />
               <Route path="/reclutamiento" element={<PlaceholderModule />} />

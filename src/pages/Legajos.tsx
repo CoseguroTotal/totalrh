@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { useEmpleados, useEmpresas } from "@/hooks/useEmpleados";
-import { Search, Filter, ChevronRight, Loader2, Plus } from "lucide-react";
+import { Search, Filter, ChevronRight, Loader2, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import EmpleadoFormDialog from "@/components/EmpleadoFormDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const estadoBadge: Record<string, string> = {
   Activo: "bg-success/15 text-success",
@@ -18,6 +22,28 @@ export default function Legajos() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const { data: empleados, isLoading } = useEmpleados();
   const { data: empresas } = useEmpresas();
+  const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Delete related records first (in case no CASCADE)
+      await supabase.from("eventos_legajo").delete().eq("empleado_id", id);
+      await supabase.from("documentos_legajo").delete().eq("empleado_id", id);
+      await supabase.from("grupo_familiar").delete().eq("empleado_id", id);
+      await supabase.from("datos_medicos").delete().eq("empleado_id", id);
+      await supabase.from("liquidacion_lineas").delete().in("liquidacion_id",
+        (await supabase.from("liquidaciones").select("id").eq("empleado_id", id)).data?.map((l) => l.id) ?? []
+      );
+      await supabase.from("liquidaciones").delete().eq("empleado_id", id);
+      const { error } = await supabase.from("empleados").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Empleado eliminado");
+      queryClient.invalidateQueries({ queryKey: ["empleados"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
   const empresaOptions = ["Todas", ...(empresas?.map((e) => e.nombre) ?? [])];
 
@@ -84,7 +110,7 @@ export default function Legajos() {
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground hidden lg:table-cell">Empresa</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground hidden lg:table-cell">Puesto</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Estado</th>
-                  <th className="px-4 py-3 w-10"></th>
+                  <th className="px-4 py-3 w-20"></th>
                 </tr>
               </thead>
               <tbody>
@@ -110,12 +136,35 @@ export default function Legajos() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <Link
-                        to={`/legajos/${emp.id}`}
-                        className="p-1.5 rounded-md hover:bg-muted transition-colors inline-flex"
-                      >
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </Link>
+                      <div className="flex items-center gap-1">
+                        <Link
+                          to={`/legajos/${emp.id}`}
+                          className="p-1.5 rounded-md hover:bg-muted transition-colors inline-flex"
+                        >
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </Link>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors inline-flex">
+                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                            </button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar empleado?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Se eliminará a {emp.apellido}, {emp.nombre} y todos sus registros asociados. Esta acción no se puede deshacer.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteMutation.mutate(emp.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </td>
                   </tr>
                 ))}
