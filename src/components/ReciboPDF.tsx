@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { aplicarMembrete, aplicarFooterMembrete } from "./MembretePDF";
 
 interface LineaRecibo {
   descripcion: string;
@@ -13,6 +14,16 @@ interface LineaRecibo {
   grupo?: string;
 }
 
+interface EmpresaData {
+  nombre: string;
+  razon_social?: string | null;
+  cuit?: string | null;
+  domicilio_fiscal?: string | null;
+  telefono?: string | null;
+  email?: string | null;
+  logo_url?: string | null;
+}
+
 interface ReciboData {
   empleadoNombre: string;
   empleadoLegajo: string;
@@ -23,31 +34,46 @@ interface ReciboData {
   totalNoRemunerativo: number;
   totalDeducciones: number;
   neto: number;
+  empresa?: EmpresaData | null;
 }
 
-export function generarReciboPDF(data: ReciboData) {
+export async function generarReciboPDF(data: ReciboData) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+
+  let startY = 18;
+
+  // Apply letterhead if empresa data available
+  if (data.empresa) {
+    startY = await aplicarMembrete(doc, {
+      nombre: data.empresa.nombre,
+      razonSocial: data.empresa.razon_social,
+      cuit: data.empresa.cuit,
+      domicilio: data.empresa.domicilio_fiscal,
+      telefono: data.empresa.telefono,
+      email: data.empresa.email,
+      logoUrl: data.empresa.logo_url,
+    });
+  }
 
   // Header
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("RECIBO DE SUELDO", pageWidth / 2, 18, { align: "center" });
+  doc.text("RECIBO DE SUELDO", pageWidth / 2, startY, { align: "center" });
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text(`Empleado: ${data.empleadoNombre}`, 14, 30);
-  doc.text(`Legajo: ${data.empleadoLegajo}`, 14, 35);
-  doc.text(`Período: ${data.periodo}`, pageWidth - 14, 30, { align: "right" });
+  doc.text(`Empleado: ${data.empleadoNombre}`, 14, startY + 12);
+  doc.text(`Legajo: ${data.empleadoLegajo}`, 14, startY + 17);
+  doc.text(`Período: ${data.periodo}`, pageWidth - 14, startY + 12, { align: "right" });
 
   doc.setDrawColor(180);
-  doc.line(14, 39, pageWidth - 14, 39);
+  doc.line(14, startY + 21, pageWidth - 14, startY + 21);
 
   // Build table rows grouped
   const rows: (string | number)[][] = [];
   rows.push(["Sueldo Básico", "—", "30 días", fmt(data.sueldoBasico), ""]);
 
-  // Group lines
   const groupMap = new Map<string, LineaRecibo[]>();
   for (const l of data.lineas) {
     const g = l.grupo || "General";
@@ -56,7 +82,6 @@ export function generarReciboPDF(data: ReciboData) {
   }
 
   for (const [grupo, items] of groupMap) {
-    // Group header
     rows.push([{ content: grupo, colSpan: 5, styles: { fontStyle: "bold", fillColor: [240, 240, 240] } } as any]);
     for (const l of items) {
       const esHaber = l.es_haber !== false && l.tipo !== "deduccion";
@@ -72,7 +97,7 @@ export function generarReciboPDF(data: ReciboData) {
   }
 
   autoTable(doc, {
-    startY: 42,
+    startY: startY + 24,
     head: [["Concepto", "Base", "Unidad", "Haberes", "Descuentos"]],
     body: rows,
     theme: "grid",
@@ -90,7 +115,6 @@ export function generarReciboPDF(data: ReciboData) {
 
   const finalY = (doc as any).lastAutoTable?.finalY ?? 160;
 
-  // Totals
   const ty = finalY + 5;
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
@@ -108,7 +132,6 @@ export function generarReciboPDF(data: ReciboData) {
   doc.text("NETO A COBRAR:", 14, ty + 11);
   doc.text(fmt(data.neto), pageWidth - 14, ty + 11, { align: "right" });
 
-  // Signatures
   const footerY = ty + 30;
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
@@ -117,6 +140,14 @@ export function generarReciboPDF(data: ReciboData) {
   doc.line(pageWidth - 80, footerY, pageWidth - 14, footerY);
   doc.text("Firma Empleado", 47, footerY + 5, { align: "center" });
   doc.text("Firma Empleador", pageWidth - 47, footerY + 5, { align: "center" });
+
+  if (data.empresa) {
+    aplicarFooterMembrete(doc, {
+      nombre: data.empresa.nombre,
+      razonSocial: data.empresa.razon_social,
+      cuit: data.empresa.cuit,
+    });
+  }
 
   doc.save(`recibo_${data.empleadoLegajo}_${data.periodo}.pdf`);
 }
