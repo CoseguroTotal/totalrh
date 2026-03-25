@@ -1273,6 +1273,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_server_time: { Args: never; Returns: string }
       get_users_with_roles: {
         Args: never
         Returns: {
