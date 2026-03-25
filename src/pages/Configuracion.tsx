@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, Users, Settings2, Plus, UserPlus, Bell } from "lucide-react";
+import { Loader2, Save, Users, Settings2, Plus, UserPlus, Bell, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import AdminRoute from "@/components/AdminRoute";
 
@@ -19,6 +19,7 @@ const ROLES = [
   { value: "rrhh", label: "Recursos Humanos" },
   { value: "usuario", label: "Usuario" },
   { value: "empleado", label: "Empleado" },
+  { value: "registro_asistencia", label: "Registro Asistencia" },
 ];
 
 function useConfigGrupo() {
@@ -62,10 +63,12 @@ function ConfiguracionContent() {
         <TabsList>
           <TabsTrigger value="general"><Settings2 className="h-3.5 w-3.5 mr-1.5" />General</TabsTrigger>
           <TabsTrigger value="notificaciones"><Bell className="h-3.5 w-3.5 mr-1.5" />Notificaciones</TabsTrigger>
+          <TabsTrigger value="horarios"><Clock className="h-3.5 w-3.5 mr-1.5" />Horarios Acceso</TabsTrigger>
           <TabsTrigger value="usuarios"><Users className="h-3.5 w-3.5 mr-1.5" />Usuarios</TabsTrigger>
         </TabsList>
         <TabsContent value="general"><GeneralTab /></TabsContent>
         <TabsContent value="notificaciones"><NotificacionesTab /></TabsContent>
+        <TabsContent value="horarios"><HorariosAccesoTab /></TabsContent>
         <TabsContent value="usuarios"><UsuariosTab /></TabsContent>
       </Tabs>
     </div>
@@ -189,6 +192,78 @@ function NotificacionesTab() {
           onCheckedChange={(checked) => toggleMutation.mutate(checked)}
           disabled={toggleMutation.isPending}
         />
+      </div>
+    </div>
+  );
+}
+
+function HorariosAccesoTab() {
+  const { data: restricciones = [], isLoading } = useQuery({
+    queryKey: ["restricciones_horario"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("restricciones_horario").select("*").order("role");
+      if (error) throw error;
+      return data;
+    },
+  });
+  const qc = useQueryClient();
+
+  const updateMutation = useMutation({
+    mutationFn: async (params: { id: string; hora_desde?: string; hora_hasta?: string; activo?: boolean }) => {
+      const { id, ...updates } = params;
+      const { error } = await supabase.from("restricciones_horario").update(updates as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Restricción actualizada");
+      qc.invalidateQueries({ queryKey: ["restricciones_horario"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const roleLabel = (role: string) => ROLES.find((r) => r.value === role)?.label || role;
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
+      <div>
+        <h3 className="text-sm font-medium">Restricción de Horario por Rol</h3>
+        <p className="text-xs text-muted-foreground mt-1">Configurá el rango horario en que cada rol puede acceder al sistema. Admin no tiene restricción.</p>
+      </div>
+
+      <div className="space-y-2">
+        {restricciones.map((r: any) => (
+          <div key={r.id} className="flex items-center gap-4 rounded-lg border px-4 py-3">
+            <div className="w-40">
+              <p className="text-sm font-medium">{roleLabel(r.role)}</p>
+            </div>
+            <Switch
+              checked={r.activo}
+              onCheckedChange={(v) => updateMutation.mutate({ id: r.id, activo: v })}
+            />
+            <div className="flex items-center gap-2">
+              <Label className="text-xs">Desde</Label>
+              <Input
+                type="time"
+                value={r.hora_desde}
+                onChange={(e) => updateMutation.mutate({ id: r.id, hora_desde: e.target.value })}
+                className="w-28 h-8 text-xs"
+                disabled={!r.activo}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs">Hasta</Label>
+              <Input
+                type="time"
+                value={r.hora_hasta}
+                onChange={(e) => updateMutation.mutate({ id: r.id, hora_hasta: e.target.value })}
+                className="w-28 h-8 text-xs"
+                disabled={!r.activo}
+              />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
