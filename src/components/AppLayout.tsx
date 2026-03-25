@@ -31,9 +31,13 @@ export default function AppLayout() {
               </div>
             </div>
           </header>
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto p-6 pb-16">
             <Outlet />
           </main>
+          <footer className="shrink-0 border-t bg-card/50 px-4 py-2 flex items-center justify-center gap-2 text-[11px] text-muted-foreground/60">
+            <img src="/logo_total_rh.png" alt="TotalRH" className="h-4 w-4 opacity-50" />
+            <span>TotalRH — Gestión de Personal · Sky Studio 2026 todos los derechos reservados</span>
+          </footer>
         </div>
       </div>
     </SidebarProvider>
