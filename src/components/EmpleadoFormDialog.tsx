@@ -46,6 +46,7 @@ const schema = z.object({
   domicilio_localidad: z.string().max(100).optional().or(z.literal("")),
   domicilio_provincia: z.string().max(100).optional().or(z.literal("")),
   domicilio_cp: z.string().max(10).optional().or(z.literal("")),
+  sueldo_basico: z.string().optional().or(z.literal("")),
 });
 
 type FormValues = z.infer<typeof schema>;
