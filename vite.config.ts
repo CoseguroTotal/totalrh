@@ -19,17 +19,17 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["placeholder.svg", "robots.txt"],
       manifest: {
-        name: "GrupoRH - Gestión de Personal",
-        short_name: "GrupoRH",
+        name: "TotalRH - Gestión de Personal",
+        short_name: "TotalRH",
         description: "Sistema de gestión de recursos humanos",
-        theme_color: "#1e3a5f",
+        theme_color: "#26A69A",
         background_color: "#f8fafc",
         display: "standalone",
         scope: "/",
         start_url: "/",
         icons: [
-          { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
-          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
+          { src: "/logo_total_rh.png", sizes: "192x192", type: "image/png" },
+          { src: "/logo_total_rh.png", sizes: "512x512", type: "image/png" },
         ],
       },
       workbox: {
