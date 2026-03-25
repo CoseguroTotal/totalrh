@@ -1,76 +1,53 @@
 
 
-# Plan: Verificación sueldo, exportación vacaciones, notificaciones, y permisos gerente/RRHH
+# Plan: Rebranding a TotalRH
 
 ## Resumen
 
-5 bloques: (1) verificar auto-carga de sueldo básico en simulador, (2) exportar calendario vacaciones a PDF/Excel, (3) notificaciones automáticas al aprobar/rechazar vacaciones, (4) rol gerente accede a todo excepto Configuración, (5) rol RRHH accede a todo excepto Configuración.
+Reemplazar toda la identidad "GrupoRH" por "TotalRH", incorporar el logo subido como favicon e imagen de marca, y ajustar la paleta de colores para alinearse con los tonos del logo (celeste/cyan `#4FC3F7` y verde-teal `#26A69A`).
 
 ---
 
-## 1. Verificación sueldo básico
+## Cambios
 
-El campo `sueldo_basico` ya existe en `EmpleadoFormDialog.tsx` (línea 49) y `SimuladorRecibo.tsx` ya tiene `handleEmpleadoChange` que auto-carga el sueldo. Solo se necesita verificar visualmente que funciona. No hay cambios de código necesarios aquí — el flujo ya está implementado.
+### 1. Logo e imágenes
+- Copiar `user-uploads://logo_Total_RH.png` a `public/logo_total_rh.png` (favicon y PWA) y a `src/assets/logo_total_rh.png` (componentes React)
+- Actualizar `index.html`: favicon apuntando a `/logo_total_rh.png`, title y metas OG → "TotalRH"
+- Actualizar `public/manifest.json`: name, short_name, icons
+- Actualizar `vite.config.ts`: PWA manifest name/short_name/theme_color
 
----
+### 2. Textos "GrupoRH" → "TotalRH"
+- `src/pages/Login.tsx`: título y reemplazar ícono Building2 por el logo importado
+- `src/components/AppSidebar.tsx`: nombre en header del sidebar + reemplazar ícono por logo
+- `src/components/MemorandumPDF.ts`: fallback name
+- `vite.config.ts`, `index.html`, `manifest.json`: ya mencionados arriba
 
-## 2. Exportación calendario vacaciones a PDF/Excel
+### 3. Paleta de colores (alineada al logo)
+Ajustar variables CSS en `src/index.css`:
+- `--primary`: de navy oscuro a un teal más alineado al logo (~`174 60% 38%`)
+- `--accent`: mantener pero ajustar al cyan del logo (~`199 90% 63%`)
+- `--sidebar-primary`: teal del logo
+- `--sidebar-background`: navy oscuro compatible
+- `--theme-color` en metas: actualizar a `#26A69A`
 
-### En `Vacaciones.tsx` — CalendarioTab
-- Agregar botón "Exportar PDF" que genera un PDF con reportlab-style usando jsPDF:
-  - Membrete de empresa (reutilizar `MembretePDF.ts`)
-  - Tabla con columnas: Empleado, Desde, Hasta, Días, Estado
-  - Filtrado por mes seleccionado
-- Agregar botón "Exportar Excel" usando `xlsx` (SheetJS):
-  - Mismo contenido en formato .xlsx
-
-### Archivos editados
-- `src/pages/Vacaciones.tsx` — agregar botones de exportación y lógica
-
----
-
-## 3. Notificaciones automáticas al aprobar/rechazar vacaciones
-
-### Lógica
-- En `useUpdateSolicitudVacaciones` (hook `useVacaciones.ts`): después de actualizar el estado, buscar el `empleado_id` de la solicitud, luego buscar si ese empleado tiene un `user_id` vinculado (vía email match en auth o tabla de vinculación)
-- Alternativa más simple: insertar una notificación en la tabla `notificaciones` dirigida al usuario que creó la solicitud
-
-### Implementación
-- En `Vacaciones.tsx` — `SolicitudesTab`, al aprobar/rechazar:
-  1. Obtener el empleado de la solicitud
-  2. Buscar el `user_id` del empleado (matching por email en `user_roles` o directamente si hay vínculo)
-  3. Insertar en `notificaciones`: título "Solicitud de vacaciones [aprobada/rechazada]", mensaje con fechas, link a `/autogestion`
-
-- Como no hay vínculo directo empleado→user_id, la notificación se insertará buscando el user por email del empleado. Si no hay match, no se envía notificación.
-
-### Archivos editados
-- `src/pages/Vacaciones.tsx` — agregar inserción de notificación en `handleEstado`
-- `src/hooks/useVacaciones.ts` — opcionalmente mover la lógica de notificación aquí
+### 4. Login con logo
+- Reemplazar el ícono `Building2` con cuadrado por una `<img>` del logo importado desde `@/assets/logo_total_rh.png`
 
 ---
 
-## 4 y 5. Roles gerente y RRHH — acceso a todo excepto Configuración
-
-### Lógica actual
-- `EmployeeGuard` redirige solo a empleados con rol `empleado`
-- `AppSidebar` muestra Configuración solo para admin
-- `App.tsx` tiene `/configuracion` dentro del `EmployeeGuard` (accesible para todos los no-empleados)
-
-### Cambios necesarios
-- En `App.tsx`: envolver `/configuracion` con `AdminRoute` para que solo admin acceda
-- En `AppSidebar.tsx`: ya está correcto (Configuración solo visible para admin)
-- `EmployeeGuard` ya funciona correctamente: redirige solo a empleados, gerente y RRHH pasan como no-empleados y acceden a todos los módulos
-
-### Archivos editados
-- `src/App.tsx` — envolver ruta `/configuracion` con `AdminRoute`
-
----
-
-## Archivos a editar
+## Archivos editados
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/App.tsx` | Proteger `/configuracion` con `AdminRoute` |
-| `src/pages/Vacaciones.tsx` | Exportación PDF/Excel + notificaciones en aprobación |
-| `src/hooks/useVacaciones.ts` | Posible refactor de notificación |
+| `index.html` | Favicon, title, metas OG |
+| `public/manifest.json` | name, short_name, theme_color |
+| `vite.config.ts` | PWA manifest fields |
+| `src/index.css` | Variables de color primary/accent/sidebar |
+| `src/pages/Login.tsx` | Logo + texto "TotalRH" |
+| `src/components/AppSidebar.tsx` | Logo + texto "TotalRH" |
+| `src/components/MemorandumPDF.ts` | Fallback "TotalRH" |
+
+## Archivos nuevos (copias del logo)
+- `public/logo_total_rh.png`
+- `src/assets/logo_total_rh.png`
 
