@@ -6,9 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Send, Users, Building2, UserCheck } from "lucide-react";
+import { Loader2, Send, Users, Building2, UserCheck, FileText } from "lucide-react";
+import { uploadMemoPdfAndGetUrl } from "@/lib/uploadMemoPdf";
 
 type Modo = "todos" | "empresa" | "manual";
 
@@ -26,8 +28,9 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
   const [empresaId, setEmpresaId] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [memoId, setMemoId] = useState("");
+  const [adjuntarPdf, setAdjuntarPdf] = useState(true);
   const [sending, setSending] = useState(false);
-  const [progress, setProgress] = useState({ sent: 0, failed: 0, total: 0 });
+  const [progress, setProgress] = useState({ sent: 0, failed: 0, total: 0, status: "" });
 
   const activosConEmail = useMemo(
     () => empleados.filter((e) => e.estado === "Activo" && e.email),
@@ -62,7 +65,7 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
     }
   };
 
-  const getEmailHtml = (m: any, destinatarioNombre: string) => {
+  const getEmailHtml = (m: any, destinatarioNombre: string, pdfUrl?: string) => {
     const empresa = empresas.find((e: any) => e.id === m.empresa_id);
     const nombreEmpresa = empresa?.nombre || config?.nombre_grupo || "Grupo Empresario";
     return `
@@ -73,6 +76,12 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
         <p style="color:#666;font-size:14px;"><strong>Para:</strong> ${destinatarioNombre}</p>
         <h3 style="color:#333;margin-top:20px;">${m.titulo}</h3>
         <div style="color:#444;font-size:14px;line-height:1.6;white-space:pre-wrap;">${m.contenido}</div>
+        ${pdfUrl ? `
+        <div style="margin-top:25px;text-align:center;">
+          <a href="${pdfUrl}" target="_blank" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">
+            📄 Descargar PDF del Memorándum
+          </a>
+        </div>` : ""}
         <hr style="margin-top:30px;border:none;border-top:1px solid #ddd;"/>
         <p style="color:#999;font-size:12px;">${nombreEmpresa}</p>
       </div>
@@ -84,19 +93,37 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
     if (destinatarios.length === 0) { toast.error("No hay destinatarios seleccionados"); return; }
 
     setSending(true);
-    setProgress({ sent: 0, failed: 0, total: destinatarios.length });
+    setProgress({ sent: 0, failed: 0, total: destinatarios.length, status: "" });
+
+    // Generate PDF once if needed
+    let pdfUrl: string | undefined;
+    if (adjuntarPdf) {
+      setProgress((p) => ({ ...p, status: "Generando PDF..." }));
+      const empresa = empresas.find((e: any) => e.id === selectedMemo.empresa_id);
+      const url = await uploadMemoPdfAndGetUrl({
+        numero: selectedMemo.numero,
+        titulo: selectedMemo.titulo,
+        contenido: selectedMemo.contenido,
+        destinatarioNombre: "",
+        fecha: selectedMemo.fecha,
+        empresa: empresa ? { nombre: empresa.nombre, razon_social: empresa.razon_social, cuit: empresa.cuit, domicilio: empresa.domicilio_fiscal, telefono: empresa.telefono, email: empresa.email, logo_url: empresa.logo_url } : null,
+        grupo: config ? { nombre: config.nombre_grupo, cuit: config.cuit, domicilio: config.domicilio, telefono: config.telefono, email: config.email, logo_url: config.logo_url } : null,
+      });
+      pdfUrl = url || undefined;
+    }
 
     let sent = 0;
     let failed = 0;
 
     for (const emp of destinatarios) {
       const nombre = `${emp.apellido}, ${emp.nombre}`;
+      setProgress({ sent, failed, total: destinatarios.length, status: `Enviando a ${nombre}...` });
       try {
         const { data, error } = await supabase.functions.invoke("send-email", {
           body: {
             to: emp.email,
             subject: `Memorándum #${selectedMemo.numero} — ${selectedMemo.titulo}`,
-            html: getEmailHtml(selectedMemo, nombre),
+            html: getEmailHtml(selectedMemo, nombre, pdfUrl),
           },
         });
         if (error || data?.error) throw new Error(data?.error || "Error");
@@ -104,8 +131,7 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
       } catch {
         failed++;
       }
-      setProgress({ sent, failed, total: destinatarios.length });
-      // Small delay to avoid rate limiting
+      setProgress({ sent, failed, total: destinatarios.length, status: "" });
       await new Promise((r) => setTimeout(r, 300));
     }
 
@@ -124,7 +150,8 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
       setEmpresaId("");
       setSelectedIds(new Set());
       setMemoId("");
-      setProgress({ sent: 0, failed: 0, total: 0 });
+      setAdjuntarPdf(true);
+      setProgress({ sent: 0, failed: 0, total: 0, status: "" });
     }
     onOpenChange(o);
   };
@@ -141,7 +168,6 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Memo selector */}
           <div className="space-y-1.5">
             <Label className="text-xs">Memorándum a enviar *</Label>
             <Select value={memoId} onValueChange={setMemoId}>
@@ -154,7 +180,14 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
             </Select>
           </div>
 
-          {/* Mode selector */}
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">Adjuntar PDF del memorándum</span>
+            </div>
+            <Switch checked={adjuntarPdf} onCheckedChange={setAdjuntarPdf} />
+          </div>
+
           <div className="space-y-1.5">
             <Label className="text-xs">Destinatarios</Label>
             <div className="flex gap-2">
@@ -176,7 +209,6 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
             </div>
           </div>
 
-          {/* Company selector */}
           {modo === "empresa" && (
             <div className="space-y-1.5">
               <Label className="text-xs">Empresa</Label>
@@ -191,7 +223,6 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
             </div>
           )}
 
-          {/* Manual selection */}
           {modo === "manual" && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -215,17 +246,16 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
             </div>
           )}
 
-          {/* Summary */}
           <div className="rounded-lg border bg-muted/30 p-3 text-sm">
             <span className="font-medium">{destinatarios.length}</span> destinatario{destinatarios.length !== 1 ? "s" : ""} con email
+            {adjuntarPdf && <span className="text-muted-foreground"> · con PDF adjunto</span>}
           </div>
 
-          {/* Progress */}
           {sending && (
             <div className="space-y-2">
               <Progress value={pct} className="h-2" />
               <p className="text-xs text-muted-foreground text-center">
-                {processed} de {progress.total} · ✓ {progress.sent} · ✗ {progress.failed}
+                {progress.status || `${processed} de ${progress.total} · ✓ ${progress.sent} · ✗ ${progress.failed}`}
               </p>
             </div>
           )}
@@ -235,7 +265,7 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
           <Button variant="outline" onClick={() => resetState(false)} disabled={sending}>Cancelar</Button>
           <Button onClick={handleEnviar} disabled={sending || !memoId || destinatarios.length === 0}>
             {sending ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Send className="h-4 w-4 mr-1.5" />}
-            {sending ? `Enviando...` : `Enviar a ${destinatarios.length}`}
+            {sending ? "Enviando..." : `Enviar a ${destinatarios.length}`}
           </Button>
         </DialogFooter>
       </DialogContent>
