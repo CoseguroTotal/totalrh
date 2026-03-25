@@ -205,6 +205,17 @@ export default function Memorandums() {
           ))}
         </div>
       )}
+
+      {emailDialog.memo && (
+        <EnviarEmailDialog
+          open={emailDialog.open}
+          onOpenChange={(o) => setEmailDialog({ open: o })}
+          defaultTo={emailDialog.memo.destinatario?.email || ""}
+          defaultSubject={`Memorándum #${emailDialog.memo.numero} — ${emailDialog.memo.titulo}`}
+          htmlContent={getEmailHtml(emailDialog.memo)}
+          previewText={emailDialog.memo.contenido?.substring(0, 200)}
+        />
+      )}
     </div>
   );
 }

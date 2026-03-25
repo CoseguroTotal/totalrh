@@ -6,13 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Pencil, Loader2, Zap } from "lucide-react";
+import { Plus, Pencil, Loader2, Zap, Mail } from "lucide-react";
 import { useConceptos, useToggleConcepto, useLiquidaciones } from "@/hooks/useLiquidacion";
 import { useEmpleados, useEmpresas } from "@/hooks/useEmpleados";
 import { supabase } from "@/integrations/supabase/client";
 import { calcularLiquidacion, calcTotales } from "@/lib/liquidacionEngine";
 import ConceptoFormDialog from "@/components/ConceptoFormDialog";
 import SimuladorRecibo from "@/components/SimuladorRecibo";
+import EnviarEmailDialog from "@/components/EnviarEmailDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
