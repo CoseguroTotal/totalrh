@@ -529,8 +529,15 @@ export default function LegajoDetail() {
                         </Button>
                       </div>
                     )}
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                      generarSolicitudPermisoPDF({
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={async () => {
+                      let empresaData = null;
+                      if (emp.empresa) {
+                        const { data: empFull } = await supabase.from("empresas").select("*").eq("id", emp.empresa.id).single();
+                        if (empFull) {
+                          empresaData = { nombre: empFull.nombre, razonSocial: empFull.razon_social, cuit: empFull.cuit, domicilio: empFull.domicilio_fiscal, telefono: empFull.telefono, email: empFull.email, logoUrl: empFull.logo_url };
+                        }
+                      }
+                      await generarSolicitudPermisoPDF({
                         empleadoNombre: `${emp.apellido}, ${emp.nombre}`,
                         areaTrabajo: emp.puesto,
                         motivo: sol.motivo,
@@ -540,6 +547,7 @@ export default function LegajoDetail() {
                         horaReintegro: sol.hora_reintegro,
                         sujetoDescuento: sol.sujeto_descuento,
                         fechaSolicitud: sol.fecha_solicitud,
+                        empresa: empresaData,
                       });
                     }} title="Descargar PDF">
                       <Download className="h-3.5 w-3.5" />
