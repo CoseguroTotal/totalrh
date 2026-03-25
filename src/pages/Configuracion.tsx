@@ -131,6 +131,11 @@ function GeneralTab() {
         <div className="space-y-1.5"><Label className="text-xs">Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
       </div>
       <div className="space-y-1.5">
+        <Label className="text-xs">Email Remitente (Resend)</Label>
+        <Input value={form.email_remitente} onChange={(e) => setForm({ ...form, email_remitente: e.target.value })} placeholder="rrhh@tudominio.com" />
+        <p className="text-xs text-muted-foreground">Dirección desde la que se envían los emails. Usá onboarding@resend.dev para testing.</p>
+      </div>
+      <div className="space-y-1.5">
         <Label className="text-xs">Logo del Grupo</Label>
         <div className="flex items-center gap-3">
           {form.logo_url && <img src={form.logo_url} alt="Logo" className="h-12 w-12 object-contain rounded border" />}
