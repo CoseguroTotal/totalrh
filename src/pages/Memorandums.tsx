@@ -126,7 +126,10 @@ export default function Memorandums() {
           <h1 className="text-2xl font-semibold">Memorándums</h1>
           <p className="text-sm text-muted-foreground mt-1">Archivo de memorándums numerados</p>
         </div>
-        <Button onClick={openNew} size="sm"><Plus className="h-4 w-4 mr-1.5" />Nuevo</Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setMasivoOpen(true)} size="sm" variant="outline"><Users className="h-4 w-4 mr-1.5" />Envío Masivo</Button>
+          <Button onClick={openNew} size="sm"><Plus className="h-4 w-4 mr-1.5" />Nuevo</Button>
+        </div>
       </div>
 
       <Input placeholder="Buscar por título o número..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
