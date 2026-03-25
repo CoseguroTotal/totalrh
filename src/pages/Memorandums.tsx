@@ -123,7 +123,10 @@ export default function Memorandums() {
                 <Label className="text-xs">Empresa</Label>
                 <Select value={form.empresa_id} onValueChange={(v) => setForm({ ...form, empresa_id: v })}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                  <SelectContent>{empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    <SelectItem value="grupo">Total Group (Grupo Empresario)</SelectItem>
+                    {empresas.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5"><Label className="text-xs">Fecha</Label><Input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} /></div>
