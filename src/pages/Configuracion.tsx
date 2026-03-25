@@ -17,6 +17,7 @@ const ROLES = [
   { value: "gerente", label: "Gerente" },
   { value: "rrhh", label: "Recursos Humanos" },
   { value: "usuario", label: "Usuario" },
+  { value: "empleado", label: "Empleado" },
 ];
 
 function useConfigGrupo() {
