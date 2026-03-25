@@ -868,6 +868,33 @@ export type Database = {
           },
         ]
       }
+      restricciones_horario: {
+        Row: {
+          activo: boolean
+          created_at: string | null
+          hora_desde: string
+          hora_hasta: string
+          id: string
+          role: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string | null
+          hora_desde?: string
+          hora_hasta?: string
+          id?: string
+          role: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string | null
+          hora_desde?: string
+          hora_hasta?: string
+          id?: string
+          role?: string
+        }
+        Relationships: []
+      }
       sanciones: {
         Row: {
           created_at: string | null
