@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import SolicitudPermisoFormDialog from "@/components/SolicitudPermisoFormDialog";
 import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
+import InstallPWAPrompt from "@/components/InstallPWAPrompt";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -149,28 +150,29 @@ export default function Autogestion() {
   const domicilioFull = [domicilio, emp.domicilio_localidad, emp.domicilio_provincia].filter(Boolean).join(", ");
 
   return (
-    <div className="space-y-6 max-w-4xl animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 max-w-4xl animate-fade-in px-1 sm:px-0">
+      <InstallPWAPrompt />
       <div>
-        <h1 className="text-2xl font-semibold">Portal de Autogestión</h1>
-        <p className="text-sm text-muted-foreground mt-1">Consultá tus datos, solicitá permisos y accedé a tus documentos.</p>
+        <h1 className="text-xl sm:text-2xl font-semibold">Portal de Autogestión</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-1">Consultá tus datos, solicitá permisos y accedé a tus documentos.</p>
       </div>
 
       <Tabs defaultValue="datos">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="datos"><User className="h-3.5 w-3.5 mr-1.5" />Mis Datos</TabsTrigger>
-          <TabsTrigger value="permisos"><ClipboardList className="h-3.5 w-3.5 mr-1.5" />Solicitudes</TabsTrigger>
-          <TabsTrigger value="vacaciones"><Palmtree className="h-3.5 w-3.5 mr-1.5" />Vacaciones</TabsTrigger>
-          <TabsTrigger value="documentos"><FileText className="h-3.5 w-3.5 mr-1.5" />Documentos</TabsTrigger>
-          <TabsTrigger value="memorandums"><FileCheck className="h-3.5 w-3.5 mr-1.5" />Memorándums</TabsTrigger>
-          <TabsTrigger value="sanciones"><ShieldAlert className="h-3.5 w-3.5 mr-1.5" />Sanciones</TabsTrigger>
-          <TabsTrigger value="fichadas"><Clock className="h-3.5 w-3.5 mr-1.5" />Fichadas</TabsTrigger>
-          <TabsTrigger value="token"><KeyRound className="h-3.5 w-3.5 mr-1.5" />Token</TabsTrigger>
+        <TabsList className="w-full overflow-x-auto flex-nowrap justify-start scrollbar-none h-auto p-1">
+          <TabsTrigger value="datos" className="text-xs sm:text-sm shrink-0"><User className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Datos</TabsTrigger>
+          <TabsTrigger value="permisos" className="text-xs sm:text-sm shrink-0"><ClipboardList className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Permisos</TabsTrigger>
+          <TabsTrigger value="vacaciones" className="text-xs sm:text-sm shrink-0"><Palmtree className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Vacaciones</TabsTrigger>
+          <TabsTrigger value="documentos" className="text-xs sm:text-sm shrink-0"><FileText className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Docs</TabsTrigger>
+          <TabsTrigger value="memorandums" className="text-xs sm:text-sm shrink-0"><FileCheck className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Memos</TabsTrigger>
+          <TabsTrigger value="sanciones" className="text-xs sm:text-sm shrink-0"><ShieldAlert className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Sanciones</TabsTrigger>
+          <TabsTrigger value="fichadas" className="text-xs sm:text-sm shrink-0"><Clock className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Fichadas</TabsTrigger>
+          <TabsTrigger value="token" className="text-xs sm:text-sm shrink-0"><KeyRound className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Token</TabsTrigger>
         </TabsList>
 
         <TabsContent value="datos">
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
+          <div className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
             <h3 className="text-sm font-medium mb-4">Datos Personales</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {[
                 { label: "Nombre", value: `${emp.apellido}, ${emp.nombre}` },
                 { label: "Legajo", value: emp.legajo },
@@ -207,7 +209,7 @@ export default function Autogestion() {
             ) : (
               <div className="space-y-2">
                 {solicitudes.map((sol: any) => (
-                  <div key={sol.id} className="flex items-center gap-3 rounded-lg border px-4 py-3 hover:bg-muted/30 transition-colors">
+                  <div key={sol.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-lg border px-3 sm:px-4 py-3 hover:bg-muted/30 transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{sol.motivo}{sol.motivo_detalle ? ` — ${sol.motivo_detalle}` : ""}</p>
                       <p className="text-xs text-muted-foreground">
@@ -215,12 +217,14 @@ export default function Autogestion() {
                         {sol.sujeto_descuento && " · Con descuento"}
                       </p>
                     </div>
-                    <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoBadge[sol.estado])}>
-                      {sol.estado}
-                    </span>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadPDF(sol)} title="Descargar PDF">
-                      <Download className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoBadge[sol.estado])}>
+                        {sol.estado}
+                      </span>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadPDF(sol)} title="Descargar PDF">
+                        <Download className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -239,10 +243,10 @@ export default function Autogestion() {
                 .reduce((sum: number, s: any) => sum + s.dias_solicitados, 0);
               const saldo = diasCorr - diasUsados;
               return (
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="rounded-lg border p-3 text-center"><p className="text-2xl font-bold text-primary">{diasCorr}</p><p className="text-xs text-muted-foreground">Corresponden</p></div>
-                  <div className="rounded-lg border p-3 text-center"><p className="text-2xl font-bold text-warning">{diasUsados}</p><p className="text-xs text-muted-foreground">Usados</p></div>
-                  <div className="rounded-lg border p-3 text-center"><p className="text-2xl font-bold text-success">{saldo}</p><p className="text-xs text-muted-foreground">Disponibles</p></div>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  <div className="rounded-lg border p-2 sm:p-3 text-center"><p className="text-xl sm:text-2xl font-bold text-primary">{diasCorr}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Corresponden</p></div>
+                  <div className="rounded-lg border p-2 sm:p-3 text-center"><p className="text-xl sm:text-2xl font-bold text-warning">{diasUsados}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Usados</p></div>
+                  <div className="rounded-lg border p-2 sm:p-3 text-center"><p className="text-xl sm:text-2xl font-bold text-success">{saldo}</p><p className="text-[10px] sm:text-xs text-muted-foreground">Disponibles</p></div>
                 </div>
               );
             })()}
@@ -284,7 +288,7 @@ export default function Autogestion() {
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Historial</h4>
                 {solicitudesVac.map((sol: any) => (
-                  <div key={sol.id} className="flex items-center gap-3 rounded-lg border px-4 py-3 hover:bg-muted/30 transition-colors">
+                  <div key={sol.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-lg border px-3 sm:px-4 py-3 hover:bg-muted/30 transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">
                         {new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al {new Date(sol.fecha_hasta).toLocaleDateString("es-AR")}
@@ -466,10 +470,10 @@ function FichadasTab({ empleadoId }: { empleadoId: string }) {
   const { data: fichadas = [], isLoading } = useFichadasEmpleado(empleadoId, mes);
 
   return (
-    <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h3 className="text-sm font-medium flex items-center gap-2"><Clock className="h-4 w-4" />Mis Fichadas</h3>
-        <Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="w-auto" />
+        <Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="w-full sm:w-auto" />
       </div>
 
       {isLoading ? (
@@ -478,7 +482,7 @@ function FichadasTab({ empleadoId }: { empleadoId: string }) {
         <p className="text-sm text-muted-foreground">Sin fichadas en este período.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs sm:text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">
                 <th className="py-2 pr-4">Fecha</th>
@@ -568,7 +572,7 @@ function TokenAsistenciaTab({ empleadoId }: { empleadoId: string }) {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         ) : code ? (
           <>
-            <div className="text-5xl font-mono font-bold tracking-[0.4em] text-primary">
+            <div className="text-3xl sm:text-5xl font-mono font-bold tracking-[0.2em] sm:tracking-[0.4em] text-primary">
               {code}
             </div>
             <div className="w-full max-w-xs">
