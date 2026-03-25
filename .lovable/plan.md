@@ -1,127 +1,100 @@
 
 
-# Plan: Roles de usuario, configuración admin, memorándums, membrete, carga Excel de asistencia y notificaciones
+# Plan: Roles expandidos, creación de usuarios admin-only, y liquidación avanzada estilo CCT Comercio
 
 ## Resumen
 
-8 bloques de trabajo que agregan sistema de roles, módulo de configuración, memorándums con firma digital, PDFs membretados, logo de empresa, y carga masiva de horarios en asistencia.
+Tres bloques: (1) expandir el sistema de roles con Contador/Gerente/RRHH, restringir creación de usuarios solo a admin, (2) rediseñar el módulo de liquidación basado en el modelo de referencia CCT 130/75 con agrupación de conceptos, bases de cálculo y estructura de recibo profesional.
 
 ---
 
-## 1. Sistema de roles de usuario
+## 1. Roles expandidos y gestión de usuarios
 
 ### Migración
-- Crear enum `app_role` (admin, usuario)
-- Crear tabla `user_roles` (id, user_id FK auth.users, role app_role, unique user_id+role)
-- RLS con security definer function `has_role(user_id, role)`
-- Insertar rol admin para mcponce.torres@gmail.com
+- Alterar enum `app_role`: agregar valores `contador`, `gerente`, `rrhh` (además de los existentes `admin`, `usuario`)
+- No se modifica la tabla `user_roles` ni la función `has_role`
 
-### Lógica
-- Hook `useUserRole()` que consulta `user_roles` para el usuario autenticado
-- Componente `AdminRoute` que verifica rol admin antes de renderizar
+### Restricción de registro
+- **Eliminar** el modo signup del `Login.tsx` (quitar botón "Registrate" y lógica de signup)
+- Solo queda login. Los usuarios se crean desde Configuración por un admin
 
----
+### Creación de usuarios desde Configuración
+- Crear edge function `create-user` que usa el service role key para invocar `supabase.auth.admin.createUser({ email, password, email_confirm: true })`
+- En `Configuracion.tsx` tab Usuarios: agregar formulario "Crear Usuario" con campos email, contraseña, rol
+- Al crear: invocar edge function, luego insertar en `user_roles` el rol seleccionado
+- Mostrar lista de usuarios con su rol y email (query a `user_roles` + lookup)
 
-## 2. Módulo de Configuración (solo admin)
-
-### Página `/configuracion`
-- Visible solo en sidebar para admins
-- Tabs: **Usuarios**, **General**
-- **Usuarios**: listado de usuarios auth con asignación de rol, crear nuevos usuarios (invitación por email via supabase.auth.admin o signup link)
-- **General**: configuraciones del grupo empresario (nombre, logo, datos fiscales para membrete)
-
-### Migración
-- Tabla `configuracion_grupo` (id, nombre_grupo, logo_url, domicilio, cuit, telefono, email, updated_at) — registro único
+### Hook `useUserRole`
+- Ampliar para soportar los nuevos roles
+- Agregar helper `useHasRole(role)` para verificar permisos granulares
+- Sidebar: Configuración visible para admin; otros módulos se pueden restringir por rol si se desea en el futuro
 
 ---
 
-## 3. Logo y datos de empresa para informes
+## 2. Liquidación avanzada — Modelo CCT Comercio
 
-### Migración
-- Agregar columna `logo_url` a tabla `empresas`
+### Rediseño del modelo de conceptos
 
-### Storage
-- Crear bucket `logos-empresas` (público) para logos
+Basado en la imagen de referencia, la liquidación se organiza en **grupos de conceptos**:
 
-### UI en Empresas
-- Agregar campo de upload de logo en `EmpresaFormDialog`
-- Mostrar logo en la card de empresa
+#### Migración — Nuevas columnas en `conceptos_liquidacion`:
+- `grupo` (text): "Sumas remunerativas", "No remunerativo FIJO Diciembre 2025", "Otros conceptos", etc.
+- `base_calculo` (text): "basico", "remunerativo_total", "monto_concepto" (para conceptos que calculan sobre otro concepto), "fijo"
+- `concepto_base_id` (uuid FK nullable): referencia a otro concepto cuando calcula sobre su monto
+- `unidad` (text): "dias", "porcentaje", "unidades" — para mostrar la columna "Unidad" del recibo
+- `cantidad_default` (numeric): valor por defecto de la columna "Unidad" (ej: 30 días)
+- `orden` (integer): para controlar el orden de aparición en el recibo
 
----
+#### Nuevas columnas en `liquidacion_lineas`:
+- `base` (numeric): monto base sobre el que se calculó
+- `cantidad` ya existe
+- `es_haber` (boolean): true = columna Haberes, false = columna Descuentos
 
-## 4. Memorándums
+### Rediseño del Simulador de Recibo
 
-### Migración
-- Nueva tabla `memorandums`: id, numero (serial autoincremental), empresa_id (FK), titulo, contenido (text), destinatario_empleado_id (FK nullable), destinatario_nombre (text), fecha, estado (enum: borrador/enviado/recibido/firmado), firmado_por (uuid nullable), fecha_firma (timestamp nullable), created_by (uuid), created_at
-- Secuencia para numeración automática
+El simulador actual es simple. Rediseñar para reflejar el modelo de referencia:
 
-### UI
-- Nueva página `/memorandums` o sección dentro de Empresas
-- CRUD de memorándums con editor de contenido
-- Generación de PDF membretado (logo empresa o grupo + datos fiscales)
-- Botón "Enviar por email" (invoca edge function para envío)
-- Registro de recepción y firma digital (el empleado desde autogestión puede marcar como recibido/firmado)
-- Archivo numerado con búsqueda y filtros
+1. **Selección de empleado** con auto-carga de categoría, CCT, antigüedad
+2. **Sueldo básico** auto-calculable o manual
+3. **Tabla de liquidación** con columnas: Concepto, Base, Unidad, Haberes, Descuentos
+4. **Agrupación** por grupo de conceptos (colapsables como en la imagen)
+5. **Motor de cálculo**:
+   - Conceptos que calculan sobre el básico (ej: Adicional por asistencia 8.33%)
+   - Conceptos que calculan sobre el total remunerativo (ej: Jubilación 11%, Obra Social 3%)
+   - Conceptos con monto fijo por unidad (ej: $2.000 x 30 = $60.000)
+   - Conceptos que calculan sobre otro concepto específico (ej: Presentismo sobre un NR)
+6. **Totales**: Subtotal por grupo, Total Haberes, Total Descuentos, Sueldo Neto
+7. **Checkboxes** para opciones: Calcular SAC, Adicional por asistencia, Aporte solidario, Cuota sindical
 
-### Autogestión
-- Nueva tab "Memorándums" donde el empleado ve los que le fueron enviados
-- Botón "Acusar recibo" y "Firmar digitalmente" (actualiza estado)
+### Rediseño del PDF de Recibo
 
----
+Actualizar `ReciboPDF.tsx` para generar un recibo con formato profesional:
+- Membrete de empresa (usando `MembretePDF.ts`)
+- Tabla con columnas: Concepto | Base | Unidad | Haberes | Descuentos
+- Filas agrupadas por sección con subtotales
+- Fila final: Totales y Sueldo Neto
+- Firmas al pie
 
-## 5. PDFs membretados
-
-### Componente `MembretePDF.ts`
-- Función reutilizable que agrega header con logo (grupo o empresa), razón social, CUIT, domicilio, teléfono
-- Footer con datos legales
-- Usado por: recibos de sueldo, memorándums, solicitud de permisos, cualquier documento futuro
-- Parámetro para elegir membrete de grupo empresario o empresa específica
-
----
-
-## 6. Notificaciones al aprobar/rechazar permisos
-
-### Enfoque: notificaciones in-app (sin email externo)
-- Nueva tabla `notificaciones`: id, user_id (uuid, del auth user), titulo, mensaje, leida (bool default false), link (text nullable), created_at
-- RLS: cada usuario solo ve sus propias notificaciones
-- Hook `useNotificaciones()` con query + realtime subscription
-- Componente `NotificacionesBell` en el header/layout con badge de no leídas
-- Al aprobar/rechazar solicitud de permiso, insertar notificación para el empleado (buscar user por email del empleado)
+### ConceptoFormDialog
+- Agregar campos: grupo, base_calculo, concepto_base_id, unidad, cantidad_default, orden
+- Selector de base de cálculo con opciones: Básico, Total Remunerativo, Otro concepto, Fijo
 
 ---
 
-## 7. Carga Excel de horarios en Asistencia
+## 3. Archivos a crear/editar
 
-### UI en Asistencia
-- Nuevo tab "Planillas" o botón en tab Turnos
-- Upload de archivo Excel (.xlsx) con columnas: legajo, lunes_entrada, lunes_salida, martes_entrada... (o formato flexible)
-- Parseo client-side con `xlsx` (SheetJS) library
-- Preview de datos antes de confirmar
-- Al confirmar: insertar/actualizar asignaciones de turno por empleado
+### Nuevos:
+- `supabase/functions/create-user/index.ts` — edge function para crear usuarios
+- Migración SQL
 
-### Migración
-- Nueva tabla `asignaciones_turno`: id, empleado_id (FK), dia_semana (int 0-6), hora_entrada (time), hora_salida (time), vigente_desde (date), created_at
-- Lógica de comparación: al registrar fichada, comparar hora real vs hora asignada para computar tardanzas y horas extra
-
-### Cómputo de tardanzas y horas extra
-- Función client-side o DB function que compara fichadas vs asignaciones_turno
-- Columnas calculadas en la vista de fichadas: minutos_tarde, horas_extra
-
----
-
-## 8. Ruta y navegación
-
-- Agregar `/configuracion` y `/memorandums` a App.tsx
-- Sidebar: mostrar "Configuración" solo si el usuario es admin
-- Sidebar: agregar "Memorándums"
-
----
-
-## Detalle técnico
-
-- **Migraciones**: 2 migraciones — (1) roles + configuración + logo + memorándums + notificaciones + asignaciones_turno, (2) datos seed del admin
-- **Archivos nuevos**: ~8 (página Configuración, página Memorándums, MembretePDF, NotificacionesBell, hooks useUserRole/useNotificaciones/useMemorandums, AdminRoute)
-- **Archivos editados**: AppSidebar (roles + nuevos links), AppLayout (bell notificaciones), App.tsx (rutas), Empresas.tsx (logo upload), Asistencia.tsx (tab planillas + cómputo), LegajoDetail.tsx (notificación en aprobación), Autogestion.tsx (tab memorándums), ReciboPDF/SolicitudPermisoPDF (membrete)
-- **Dependencias**: `xlsx` (SheetJS) para parseo de Excel
-- **No se modifica** client.ts ni types.ts
+### Editados:
+- `src/pages/Login.tsx` — quitar signup
+- `src/pages/Configuracion.tsx` — formulario de creación de usuarios con rol
+- `src/pages/Liquidacion.tsx` — rediseño completo con tabla agrupada
+- `src/components/SimuladorRecibo.tsx` — motor de cálculo avanzado con grupos y bases
+- `src/components/ConceptoFormDialog.tsx` — nuevos campos
+- `src/components/ReciboPDF.tsx` — formato profesional con columnas Base/Unidad/Haberes/Descuentos
+- `src/hooks/useLiquidacion.ts` — adaptar queries a nuevos campos
+- `src/hooks/useUserRole.ts` — soportar nuevos roles
+- `src/components/AppSidebar.tsx` — permisos por rol si aplica
 
