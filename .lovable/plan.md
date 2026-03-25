@@ -1,78 +1,85 @@
 
 
-# Plan: Integrar Resend para envío de emails desde el sistema
+# Plan: Emails automáticos, permisos por rol, y sistema de sanciones
 
-## Resumen
+## 4 funcionalidades principales
 
-Configurar Resend como servicio de envío de emails para enviar recibos de sueldo, memorándums y notificaciones por email a los empleados directamente desde la aplicación.
+### 1. Emails automáticos al aprobar/rechazar permisos y vacaciones (con toggle en Configuración)
 
-## Requisitos previos
+**Migración SQL:**
+- Agregar columna `notificaciones_email_activas boolean DEFAULT false` a `configuracion_grupo`
 
-- **API Key de Resend**: Se necesita una clave API de Resend (se solicitará al usuario mediante el gestor de secretos).
-- **Dominio verificado en Resend**: El usuario debe tener un dominio verificado en su cuenta de Resend para enviar emails (o usar el dominio de prueba para testing).
+**Lógica:**
+- En `LegajoDetail.tsx` (aprobación de permisos) y `Vacaciones.tsx` (aprobación de vacaciones), después de cambiar el estado, si la config tiene `notificaciones_email_activas = true` y el empleado tiene email, invocar la Edge Function `send-email` existente con un HTML formateado informando la aprobación/rechazo.
+- Crear hook `useConfigGrupo()` reutilizable (o reusar el existente) para leer la config.
 
-## Cambios
+**Configuración:**
+- En `Configuracion.tsx`, agregar un Switch "Enviar notificaciones por email al aprobar/rechazar permisos y vacaciones" que actualiza `notificaciones_email_activas`.
 
-### 1. Guardar secreto RESEND_API_KEY
-- Usar la herramienta `add_secret` para solicitar al usuario su API Key de Resend.
+### 2. Rol Contador: solo liquidación completa + visualización de legajos/vacaciones/asistencia
 
-### 2. Crear Edge Function `send-email` 
-Archivo: `supabase/functions/send-email/index.ts`
-- Recibe: `to`, `subject`, `html`, `from` (opcional, default configurable)
-- Usa la API REST de Resend (`https://api.resend.com/emails`) con la API key almacenada
-- Incluye headers CORS para invocación desde el frontend
-- Valida inputs y maneja errores
+**Cambios en `AppSidebar.tsx`:**
+- Crear array `contadorModules` con acceso a: Dashboard, Legajos (read-only), Liquidación, Asistencia (read-only), Vacaciones (read-only).
+- Mostrar módulos según `role === "contador"`.
 
-### 3. Crear componente `EnviarEmailDialog`
-Archivo: `src/components/EnviarEmailDialog.tsx`
-- Dialog reutilizable con campos: destinatario (email), asunto, vista previa del contenido
-- Botón de envío que invoca la Edge Function
-- Feedback de éxito/error con toast
+**Cambios en componentes de edición:**
+- En `LegajoDetail.tsx`: ocultar botones de editar/eliminar/agregar cuando `role === "contador"`.
+- En `Vacaciones.tsx`: ocultar botones aprobar/rechazar para contadores.
+- En `Asistencia.tsx`: ocultar botones de edición para contadores.
+- Crear hook `useCanEdit(modulo)` que centraliza la lógica de permisos de escritura.
 
-### 4. Integrar envío en Recibos de Sueldo
-Archivo: `src/pages/Liquidacion.tsx` (tab "Guardadas")
-- Agregar botón "Enviar por email" en cada fila de liquidación
-- Al hacer click, abre el dialog con el email del empleado precargado y genera el PDF del recibo como HTML simplificado para el cuerpo del email (o adjunta link)
-- Usa el email del empleado desde la tabla `empleados`
+### 3. Sistema de Sanciones (admin, gerente, rrhh pueden emitir)
 
-### 5. Integrar envío en Memorándums
-Archivo: `src/pages/Memorandums.tsx`
-- Agregar botón "Enviar por email" en memorándums con estado "enviado" o superior
-- Precarga el email del empleado destinatario
-- Envía el contenido del memorándum como cuerpo del email
-
-### 6. Integrar envío de Notificaciones por email
-Archivo: `src/hooks/useNotificaciones.ts` o nuevo hook
-- Función opcional para enviar notificación también por email cuando se crea una notificación interna (permisos aprobados/rechazados, vacaciones, etc.)
-- Requiere que el empleado tenga email cargado
-
-### 7. Configuración del remitente
-Archivo: `src/pages/Configuracion.tsx`
-- Agregar campo para configurar el email "from" (ej: `rrhh@tudominio.com`)
-- Guardar en `configuracion_grupo` (requiere migración para agregar columna `email_remitente`)
-
-## Migración de base de datos
-
-Agregar columna `email_remitente` a `configuracion_grupo`:
+**Migración SQL:**
 ```sql
-ALTER TABLE configuracion_grupo ADD COLUMN email_remitente text DEFAULT 'onboarding@resend.dev';
+CREATE TABLE sanciones (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empleado_id uuid NOT NULL,
+  tipo text NOT NULL, -- 'apercibimiento', 'suspension', 'amonestacion'
+  motivo text NOT NULL,
+  descripcion text,
+  fecha date NOT NULL DEFAULT CURRENT_DATE,
+  emitido_por uuid,
+  descargo_texto text,
+  descargo_documento_url text,
+  descargo_fecha timestamptz,
+  descargo_cerrado boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE sanciones ENABLE ROW LEVEL SECURITY;
+-- Políticas RLS para authenticated
 ```
+
+**Nuevo componente `SancionFormDialog.tsx`:**
+- Dialog para emitir sanción: tipo (apercibimiento/suspensión/amonestación), motivo, descripción, fecha.
+- Solo visible para roles admin, gerente, rrhh.
+
+**Integración en `LegajoDetail.tsx`:**
+- Nueva tab "Sanciones" o sección dentro del historial.
+- Botón "Emitir Sanción" visible solo para admin/gerente/rrhh.
+- Al emitir, se registra automáticamente como evento de tipo "sancion" en `eventos_legajo`.
+- Lista de sanciones con estado de descargo.
+
+### 4. Visualización y descargo del empleado (Autogestión)
+
+**En `Autogestion.tsx`:**
+- Nueva tab "Sanciones" que lista las sanciones del empleado.
+- Cada sanción muestra: tipo, motivo, fecha, estado del descargo.
+- Si `descargo_cerrado = false` y no hay descargo previo: botón "Presentar Descargo" con textarea + upload de documento (una sola vez).
+- Una vez enviado el descargo, `descargo_cerrado = true` y queda fijo, sin posibilidad de edición.
 
 ## Archivos nuevos/modificados
 
 | Archivo | Cambio |
 |---------|--------|
-| `supabase/functions/send-email/index.ts` | Nueva Edge Function para envío vía Resend |
-| `src/components/EnviarEmailDialog.tsx` | Nuevo dialog reutilizable de envío |
-| `src/pages/Liquidacion.tsx` | Botón enviar recibo por email |
-| `src/pages/Memorandums.tsx` | Botón enviar memorándum por email |
-| `src/pages/Configuracion.tsx` | Campo email remitente |
-| Migración SQL | Columna `email_remitente` en `configuracion_grupo` |
-
-## Notas técnicas
-
-- Se usa la API REST de Resend directamente (no SDK) desde la Edge Function para compatibilidad con Deno
-- Los emails se envían en formato HTML con el contenido del documento
-- No se adjuntan PDFs (limitación de la infraestructura); en su lugar se incluye el contenido formateado en el cuerpo del email
-- El dominio de prueba de Resend (`onboarding@resend.dev`) permite testear sin dominio propio verificado
+| Migración SQL | `notificaciones_email_activas` + tabla `sanciones` |
+| `src/pages/Configuracion.tsx` | Switch para activar/desactivar emails |
+| `src/pages/LegajoDetail.tsx` | Email al aprobar permisos + tab sanciones + restricción contador |
+| `src/pages/Vacaciones.tsx` | Email al aprobar vacaciones + restricción contador |
+| `src/pages/Asistencia.tsx` | Restricción edición para contador |
+| `src/components/AppSidebar.tsx` | Módulos según rol contador |
+| `src/components/SancionFormDialog.tsx` | Nuevo dialog para emitir sanciones |
+| `src/hooks/useSanciones.ts` | Nuevo hook CRUD sanciones |
+| `src/hooks/useCanEdit.ts` | Nuevo hook permisos de escritura por rol |
+| `src/pages/Autogestion.tsx` | Tab sanciones con descargo |
 
