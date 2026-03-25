@@ -35,6 +35,10 @@ const employeeModules = [
   { title: "Autogestión", url: "/autogestion", icon: UserCircle },
 ];
 
+const registroModules = [
+  { title: "Registro", url: "/registro-asistencia", icon: Clock },
+];
+
 const contadorModules = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Legajos", url: "/legajos", icon: FileText },
@@ -51,7 +55,8 @@ export function AppSidebar() {
   const { data: role } = useUserRole();
   const isEmpleado = role === "empleado";
   const isContador = role === "contador";
-  const visibleModules = isEmpleado ? employeeModules : isContador ? contadorModules : modules;
+  const isRegistro = role === "registro_asistencia";
+  const visibleModules = isRegistro ? registroModules : isEmpleado ? employeeModules : isContador ? contadorModules : modules;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

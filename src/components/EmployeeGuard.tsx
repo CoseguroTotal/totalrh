@@ -17,5 +17,9 @@ export default function EmployeeGuard() {
     return <Navigate to="/autogestion" replace />;
   }
 
+  if (role === "registro_asistencia") {
+    return <Navigate to="/registro-asistencia" replace />;
+  }
+
   return <Outlet />;
 }

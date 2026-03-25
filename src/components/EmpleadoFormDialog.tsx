@@ -47,6 +47,7 @@ const schema = z.object({
   domicilio_provincia: z.string().max(100).optional().or(z.literal("")),
   domicilio_cp: z.string().max(10).optional().or(z.literal("")),
   sueldo_basico: z.string().optional().or(z.literal("")),
+  codigo_asistencia: z.string().max(20).optional().or(z.literal("")),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -72,6 +73,7 @@ export default function EmpleadoFormDialog({ open, onOpenChange, empleado }: Pro
       domicilio_calle: "", domicilio_numero: "", domicilio_piso: "",
       domicilio_localidad: "", domicilio_provincia: "", domicilio_cp: "",
       sueldo_basico: "",
+      codigo_asistencia: "",
     },
   });
 
@@ -99,6 +101,7 @@ export default function EmpleadoFormDialog({ open, onOpenChange, empleado }: Pro
         domicilio_provincia: empleado.domicilio_provincia ?? "",
         domicilio_cp: empleado.domicilio_cp ?? "",
         sueldo_basico: empleado.sueldo_basico != null ? String(empleado.sueldo_basico) : "",
+        codigo_asistencia: (empleado as any).codigo_asistencia ?? "",
       });
     } else if (open) {
       form.reset();
@@ -132,6 +135,7 @@ export default function EmpleadoFormDialog({ open, onOpenChange, empleado }: Pro
         domicilio_provincia: values.domicilio_provincia || null,
         domicilio_cp: values.domicilio_cp || null,
         sueldo_basico: values.sueldo_basico ? Number(values.sueldo_basico) : null,
+        codigo_asistencia: values.codigo_asistencia || null,
       };
       if (empleado) {
         const { error } = await supabase.from("empleados").update(payload).eq("id", empleado.id);
@@ -236,6 +240,9 @@ export default function EmpleadoFormDialog({ open, onOpenChange, empleado }: Pro
               </Field>
               <Field label="Sueldo Básico ($)" error={form.formState.errors.sueldo_basico?.message}>
                 <Input type="number" step="0.01" {...form.register("sueldo_basico")} placeholder="0.00" />
+              </Field>
+              <Field label="Cód. Asistencia" error={form.formState.errors.codigo_asistencia?.message}>
+                <Input {...form.register("codigo_asistencia")} placeholder="Ej: 1, 3, 20..." />
               </Field>
             </TabsContent>
 

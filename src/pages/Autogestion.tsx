@@ -1,10 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useMiEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
 import { useDocumentosLegajo } from "@/hooks/useEmpleados";
 import { useMemorandumsEmpleado, useUpdateEstadoMemorandum } from "@/hooks/useMemorandums";
 import { useSolicitudesVacacionesEmpleado, useSaveSolicitudVacaciones, useVacacionesConfig, calcDiasCorrespondientes, calcDiasHabiles } from "@/hooks/useVacaciones";
 import { useSanciones, useUpdateDescargo } from "@/hooks/useSanciones";
-import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload } from "lucide-react";
+import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, KeyRound } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -162,6 +162,7 @@ export default function Autogestion() {
           <TabsTrigger value="documentos"><FileText className="h-3.5 w-3.5 mr-1.5" />Documentos</TabsTrigger>
           <TabsTrigger value="memorandums"><FileCheck className="h-3.5 w-3.5 mr-1.5" />Memorándums</TabsTrigger>
           <TabsTrigger value="sanciones"><ShieldAlert className="h-3.5 w-3.5 mr-1.5" />Sanciones</TabsTrigger>
+          <TabsTrigger value="token"><KeyRound className="h-3.5 w-3.5 mr-1.5" />Token</TabsTrigger>
         </TabsList>
 
         <TabsContent value="datos">
@@ -435,7 +436,94 @@ export default function Autogestion() {
             )}
           </div>
         </TabsContent>
+
+        <TabsContent value="token">
+          <TokenAsistenciaTab empleadoId={emp.id} />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function TokenAsistenciaTab({ empleadoId }: { empleadoId: string }) {
+  const [code, setCode] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [loading, setLoading] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  const fetchToken = useCallback(async (action: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("validate-attendance-token", {
+        body: { action, empleado_id: empleadoId },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      setCode(data.code);
+      setSecondsLeft(data.seconds_remaining);
+      setInitialized(true);
+    } catch (err: any) {
+      toast.error(err.message || "Error al generar token");
+    } finally {
+      setLoading(false);
+    }
+  }, [empleadoId]);
+
+  useEffect(() => {
+    if (!initialized) {
+      fetchToken("generate-secret");
+    }
+  }, [initialized, fetchToken]);
+
+  useEffect(() => {
+    if (!initialized) return;
+    const interval = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          fetchToken("get-token");
+          return 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [initialized, fetchToken]);
+
+  const progress = (secondsLeft / 60) * 100;
+
+  return (
+    <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <h3 className="text-sm font-medium mb-6 flex items-center gap-2">
+        <KeyRound className="h-4 w-4" />Token de Asistencia
+      </h3>
+      <div className="flex flex-col items-center gap-6">
+        <p className="text-sm text-muted-foreground text-center max-w-md">
+          Mostrá este código en la terminal de fichada de tu sucursal. El código cambia cada 60 segundos.
+        </p>
+
+        {loading && !code ? (
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        ) : code ? (
+          <>
+            <div className="text-5xl font-mono font-bold tracking-[0.4em] text-primary">
+              {code}
+            </div>
+            <div className="w-full max-w-xs">
+              <div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary">
+                <div
+                  className="h-full bg-primary transition-all duration-1000 ease-linear"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                Expira en <span className="font-semibold">{secondsLeft}s</span>
+              </p>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">No se pudo generar el token.</p>
+        )}
+      </div>
     </div>
   );
 }

@@ -295,6 +295,7 @@ export default function LegajoDetail() {
             { label: "Sueldo Básico", value: emp.sueldo_basico != null ? `$${Number(emp.sueldo_basico).toLocaleString("es-AR")}` : null },
             { label: "Nacionalidad", value: emp.nacionalidad },
             { label: "Nacimiento", value: emp.fecha_nacimiento ? new Date(emp.fecha_nacimiento).toLocaleDateString("es-AR") : null },
+            { label: "Cód. Asistencia", value: (emp as any).codigo_asistencia },
           ].map((d) => (
             <div key={d.label}>
               <p className="text-xs text-muted-foreground">{d.label}</p>

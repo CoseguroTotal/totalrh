@@ -490,6 +490,57 @@ function PlanillasTab({ canEdit }: { canEdit: boolean }) {
 
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const handleImportBiometrico = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ab = await file.arrayBuffer();
+    const wb = XLSX.read(ab);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+    let imported = 0;
+    let notMatched = 0;
+
+    for (const row of rows) {
+      const userId = String(row["User ID"] || row["UserID"] || "").trim();
+      if (!userId) continue;
+      const emp = activos.find((e) => (e as any).codigo_asistencia === userId);
+      if (!emp) { notMatched++; continue; }
+
+      const dateStr = String(row["Date"] || "").trim();
+      if (!dateStr) continue;
+
+      // Parse date - handle formats like "03/15/2025" or "2025-03-15"
+      let fecha: string;
+      if (dateStr.includes("/")) {
+        const parts = dateStr.split("/");
+        fecha = `${parts[2]}-${parts[0].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
+      } else {
+        fecha = dateStr.slice(0, 10);
+      }
+
+      const p1In = String(row["Period1 In"] || row["P1 In"] || "").trim();
+      const p1Out = String(row["Period1 Out"] || row["P1 Out"] || "").trim();
+
+      if (!p1In && !p1Out) continue;
+
+      const horaEntrada = p1In ? `${fecha}T${p1In}:00` : null;
+      const horaSalida = p1Out ? `${fecha}T${p1Out}:00` : null;
+
+      await supabase.from("fichadas").insert({
+        empleado_id: emp.id,
+        fecha,
+        hora_entrada: horaEntrada,
+        hora_salida: horaSalida,
+        estado: "presente",
+        observaciones: "Importado desde lector biométrico",
+      });
+      imported++;
+    }
+
+    toast.success(`Importado: ${imported} fichadas. ${notMatched > 0 ? `${notMatched} sin match.` : ""}`);
+    queryClient.invalidateQueries({ queryKey: ["fichadas"] });
+  };
+
   return (
     <div className="rounded-xl border bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
@@ -497,8 +548,12 @@ function PlanillasTab({ canEdit }: { canEdit: boolean }) {
         {canEdit && (
           <div className="flex gap-2">
             <label className="inline-flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer">
-              <Upload className="h-3 w-3" />Importar XLSX
+              <Upload className="h-3 w-3" />Importar Horarios XLSX
               <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportXLSX} />
+            </label>
+            <label className="inline-flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer">
+              <FileSpreadsheet className="h-3 w-3" />Importar Lector Biométrico
+              <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportBiometrico} />
             </label>
           </div>
         )}

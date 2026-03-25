@@ -300,6 +300,7 @@ export type Database = {
           avatar_url: string | null
           categoria: string | null
           cct: string | null
+          codigo_asistencia: string | null
           created_at: string
           cuil: string
           dni: string
@@ -331,6 +332,7 @@ export type Database = {
           avatar_url?: string | null
           categoria?: string | null
           cct?: string | null
+          codigo_asistencia?: string | null
           created_at?: string
           cuil: string
           dni: string
@@ -362,6 +364,7 @@ export type Database = {
           avatar_url?: string | null
           categoria?: string | null
           cct?: string | null
+          codigo_asistencia?: string | null
           created_at?: string
           cuil?: string
           dni?: string
@@ -1056,6 +1059,64 @@ export type Database = {
           },
         ]
       }
+      tokens_asistencia: {
+        Row: {
+          created_at: string | null
+          empleado_id: string
+          id: string
+          secret: string
+        }
+        Insert: {
+          created_at?: string | null
+          empleado_id: string
+          id?: string
+          secret: string
+        }
+        Update: {
+          created_at?: string | null
+          empleado_id?: string
+          id?: string
+          secret?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tokens_asistencia_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: true
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tokens_consumidos: {
+        Row: {
+          empleado_id: string
+          id: string
+          token: string
+          usado_at: string | null
+        }
+        Insert: {
+          empleado_id: string
+          id?: string
+          token: string
+          usado_at?: string | null
+        }
+        Update: {
+          empleado_id?: string
+          id?: string
+          token?: string
+          usado_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tokens_consumidos_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       turnos: {
         Row: {
           created_at: string
@@ -1201,6 +1262,7 @@ export type Database = {
         | "gerente"
         | "rrhh"
         | "empleado"
+        | "registro_asistencia"
       estado_candidato:
         | "postulado"
         | "entrevista"
@@ -1356,7 +1418,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "usuario", "contador", "gerente", "rrhh", "empleado"],
+      app_role: [
+        "admin",
+        "usuario",
+        "contador",
+        "gerente",
+        "rrhh",
+        "empleado",
+        "registro_asistencia",
+      ],
       estado_candidato: [
         "postulado",
         "entrevista",

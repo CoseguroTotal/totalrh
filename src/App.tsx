@@ -18,6 +18,7 @@ import Memorandums from "@/pages/Memorandums";
 import Reclutamiento from "@/pages/Reclutamiento";
 import Reportes from "@/pages/Reportes";
 import Vacaciones from "@/pages/Vacaciones";
+import RegistroAsistencia from "@/pages/RegistroAsistencia";
 import NotFound from "./pages/NotFound";
 import EmployeeGuard from "@/components/EmployeeGuard";
 import AdminRoute from "@/components/AdminRoute";
@@ -33,6 +34,7 @@ const App = () => (
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
+            <Route path="/registro-asistencia" element={<RegistroAsistencia />} />
             <Route element={<AppLayout />}>
               <Route path="/autogestion" element={<Autogestion />} />
               <Route element={<EmployeeGuard />}>
