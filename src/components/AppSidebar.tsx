@@ -12,6 +12,8 @@ import {
   SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 
+import { useUserRole } from "@/hooks/useUserRole";
+
 const modules = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Legajos", url: "/legajos", icon: FileText },
@@ -24,11 +26,18 @@ const modules = [
   { title: "Reportes BI", url: "/reportes", icon: BarChart3 },
 ];
 
+const employeeModules = [
+  { title: "Autogestión", url: "/autogestion", icon: UserCircle },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const navigate = useNavigate();
   const { isAdmin } = useIsAdmin();
+  const { data: role } = useUserRole();
+  const isEmpleado = role === "empleado";
+  const visibleModules = isEmpleado ? employeeModules : modules;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -57,7 +66,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {modules.map((item) => (
+              {visibleModules.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink

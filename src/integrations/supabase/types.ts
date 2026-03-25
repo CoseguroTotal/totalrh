@@ -52,6 +52,50 @@ export type Database = {
           },
         ]
       }
+      candidatos: {
+        Row: {
+          created_at: string
+          cv_url: string | null
+          email: string | null
+          estado: Database["public"]["Enums"]["estado_candidato"]
+          id: string
+          nombre: string
+          notas: string | null
+          telefono: string | null
+          vacante_id: string
+        }
+        Insert: {
+          created_at?: string
+          cv_url?: string | null
+          email?: string | null
+          estado?: Database["public"]["Enums"]["estado_candidato"]
+          id?: string
+          nombre: string
+          notas?: string | null
+          telefono?: string | null
+          vacante_id: string
+        }
+        Update: {
+          created_at?: string
+          cv_url?: string | null
+          email?: string | null
+          estado?: Database["public"]["Enums"]["estado_candidato"]
+          id?: string
+          nombre?: string
+          notas?: string | null
+          telefono?: string | null
+          vacante_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidatos_vacante_id_fkey"
+            columns: ["vacante_id"]
+            isOneToOne: false
+            referencedRelation: "vacantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conceptos_liquidacion: {
         Row: {
           activo: boolean
@@ -945,6 +989,50 @@ export type Database = {
         }
         Relationships: []
       }
+      vacantes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          empresa_id: string
+          estado: Database["public"]["Enums"]["estado_vacante"]
+          fecha_publicacion: string | null
+          id: string
+          requisitos: string | null
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          empresa_id: string
+          estado?: Database["public"]["Enums"]["estado_vacante"]
+          fecha_publicacion?: string | null
+          id?: string
+          requisitos?: string | null
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          empresa_id?: string
+          estado?: Database["public"]["Enums"]["estado_vacante"]
+          fecha_publicacion?: string | null
+          id?: string
+          requisitos?: string | null
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vacantes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -959,12 +1047,26 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "usuario" | "contador" | "gerente" | "rrhh"
+      app_role:
+        | "admin"
+        | "usuario"
+        | "contador"
+        | "gerente"
+        | "rrhh"
+        | "empleado"
+      estado_candidato:
+        | "postulado"
+        | "entrevista"
+        | "evaluacion"
+        | "oferta"
+        | "contratado"
+        | "descartado"
       estado_empleado: "Activo" | "Licencia" | "Baja"
       estado_estudio: "completo" | "en_curso" | "incompleto"
       estado_liquidacion: "borrador" | "confirmada"
       estado_memorandum: "borrador" | "enviado" | "recibido" | "firmado"
       estado_solicitud: "pendiente" | "aprobada" | "rechazada"
+      estado_vacante: "abierta" | "cerrada" | "pausada"
       nivel_estudio:
         | "primario"
         | "secundario"
@@ -1106,12 +1208,21 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "usuario", "contador", "gerente", "rrhh"],
+      app_role: ["admin", "usuario", "contador", "gerente", "rrhh", "empleado"],
+      estado_candidato: [
+        "postulado",
+        "entrevista",
+        "evaluacion",
+        "oferta",
+        "contratado",
+        "descartado",
+      ],
       estado_empleado: ["Activo", "Licencia", "Baja"],
       estado_estudio: ["completo", "en_curso", "incompleto"],
       estado_liquidacion: ["borrador", "confirmada"],
       estado_memorandum: ["borrador", "enviado", "recibido", "firmado"],
       estado_solicitud: ["pendiente", "aprobada", "rechazada"],
+      estado_vacante: ["abierta", "cerrada", "pausada"],
       nivel_estudio: [
         "primario",
         "secundario",

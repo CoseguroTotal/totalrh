@@ -7,25 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Download, ChevronDown, ChevronRight } from "lucide-react";
 import { generarReciboPDF } from "@/components/ReciboPDF";
+import { calcularLiquidacion, calcTotales } from "@/lib/liquidacionEngine";
+import type { LineaCalc } from "@/lib/liquidacionEngine";
 import { cn } from "@/lib/utils";
-
-interface LineaCalc {
-  concepto_id: string;
-  descripcion: string;
-  tipo: string;
-  base: number;
-  cantidad: number;
-  unidad: string;
-  monto: number;
-  grupo: string;
-  orden: number;
-  es_haber: boolean;
-}
 
 function fmt(n: number) {
   return n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -34,6 +23,14 @@ function fmt(n: number) {
 export default function SimuladorRecibo() {
   const { data: empleados } = useEmpleados();
   const { data: conceptos } = useConceptos();
+  const { data: empresas } = useQuery({
+    queryKey: ["empresas-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("empresas").select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
   const qc = useQueryClient();
 
   const [empleadoId, setEmpleadoId] = useState("");
@@ -48,129 +45,9 @@ export default function SimuladorRecibo() {
   const basico = Number(sueldoBasico) || 0;
   const activos = useMemo(() => (conceptos ?? []).filter((c: any) => c.activo).sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0)), [conceptos]);
 
-  // Advanced calculation engine
-  const lineas = useMemo<LineaCalc[]>(() => {
-    if (basico <= 0) return [];
+  const lineas = useMemo<LineaCalc[]>(() => calcularLiquidacion(basico, activos, calcSAC), [activos, basico, calcSAC]);
 
-    // First pass: calculate all lines
-    const results: LineaCalc[] = [];
-    const conceptoMontos = new Map<string, number>();
-
-    // Add basico as implicit first line
-    conceptoMontos.set("__basico__", basico);
-
-    // Calculate total remunerativo incrementally
-    let totalRem = basico;
-
-    // First pass for non-deduccion items (haberes)
-    for (const c of activos.filter((c: any) => c.tipo !== "deduccion")) {
-      let base = basico;
-      const bc = c.base_calculo || "basico";
-
-      if (bc === "fijo") {
-        base = 0;
-      } else if (bc === "monto_concepto" && c.concepto_base_id) {
-        base = conceptoMontos.get(c.concepto_base_id) || 0;
-      }
-      // remunerativo_total will be resolved in second pass
-
-      let monto = 0;
-      const cant = c.cantidad_default || 1;
-      if (c.porcentaje && bc !== "fijo") {
-        monto = base * (Number(c.porcentaje) / 100) * cant;
-      }
-      if (c.monto_fijo) {
-        monto += Number(c.monto_fijo) * cant;
-      }
-
-      conceptoMontos.set(c.id, monto);
-      if (c.tipo === "remunerativo") totalRem += monto;
-
-      results.push({
-        concepto_id: c.id,
-        descripcion: c.nombre,
-        tipo: c.tipo,
-        base,
-        cantidad: cant,
-        unidad: c.unidad || "porcentaje",
-        monto,
-        grupo: c.grupo || "General",
-        orden: c.orden || 0,
-        es_haber: true,
-      });
-    }
-
-    // Second pass: resolve remunerativo_total base and deducciones
-    for (const r of results) {
-      const c = activos.find((ac: any) => ac.id === r.concepto_id);
-      if (c?.base_calculo === "remunerativo_total") {
-        r.base = totalRem;
-        const cant = c.cantidad_default || 1;
-        let monto = 0;
-        if (c.porcentaje) monto = totalRem * (Number(c.porcentaje) / 100) * cant;
-        if (c.monto_fijo) monto += Number(c.monto_fijo) * cant;
-        r.monto = monto;
-        conceptoMontos.set(c.id, monto);
-      }
-    }
-
-    // Deducciones
-    for (const c of activos.filter((c: any) => c.tipo === "deduccion")) {
-      let base = basico;
-      const bc = c.base_calculo || "basico";
-
-      if (bc === "remunerativo_total") base = totalRem;
-      else if (bc === "fijo") base = 0;
-      else if (bc === "monto_concepto" && c.concepto_base_id) {
-        base = conceptoMontos.get(c.concepto_base_id) || 0;
-      }
-
-      const cant = c.cantidad_default || 1;
-      let monto = 0;
-      if (c.porcentaje) monto = base * (Number(c.porcentaje) / 100) * cant;
-      if (c.monto_fijo) monto += Number(c.monto_fijo) * cant;
-
-      conceptoMontos.set(c.id, monto);
-
-      results.push({
-        concepto_id: c.id,
-        descripcion: c.nombre,
-        tipo: c.tipo,
-        base,
-        cantidad: cant,
-        unidad: c.unidad || "porcentaje",
-        monto,
-        grupo: c.grupo || "General",
-        orden: c.orden || 0,
-        es_haber: false,
-      });
-    }
-
-    // SAC
-    if (calcSAC) {
-      const sacMonto = totalRem / 12;
-      results.push({
-        concepto_id: "__sac__",
-        descripcion: "SAC Proporcional (1/12)",
-        tipo: "remunerativo",
-        base: totalRem,
-        cantidad: 1,
-        unidad: "porcentaje",
-        monto: sacMonto,
-        grupo: "SAC",
-        orden: 9999,
-        es_haber: true,
-      });
-    }
-
-    return results;
-  }, [activos, basico, calcSAC]);
-
-  const totalHaberes = basico + lineas.filter((l) => l.es_haber).reduce((s, l) => s + l.monto, 0);
-  const totalDeducciones = lineas.filter((l) => !l.es_haber).reduce((s, l) => s + l.monto, 0);
-  const totalRem = basico + lineas.filter((l) => l.tipo === "remunerativo").reduce((s, l) => s + l.monto, 0);
-  const totalNoRem = lineas.filter((l) => l.tipo === "no_remunerativo").reduce((s, l) => s + l.monto, 0);
-  const neto = totalHaberes - totalDeducciones;
+  const { totalHaberes, totalDeducciones, totalRem, totalNoRem, neto } = useMemo(() => calcTotales(basico, lineas), [basico, lineas]);
 
   // Group lines
   const groups = useMemo(() => {
@@ -356,6 +233,7 @@ export default function SimuladorRecibo() {
           <div className="p-5 pt-3 flex justify-end gap-2 border-t">
             <Button variant="outline" onClick={() => {
               if (!emp) return;
+              const empresa = empresas?.find((e: any) => e.id === emp.empresa_id);
               generarReciboPDF({
                 empleadoNombre: `${emp.apellido}, ${emp.nombre}`,
                 empleadoLegajo: emp.legajo,
@@ -364,8 +242,9 @@ export default function SimuladorRecibo() {
                 lineas: lineas.map((l) => ({ descripcion: l.descripcion, tipo: l.tipo, monto: l.monto, codigo: "", base: l.base, cantidad: l.cantidad, unidad: l.unidad, es_haber: l.es_haber, grupo: l.grupo })),
                 totalRemunerativo: totalRem,
                 totalNoRemunerativo: totalNoRem,
-                totalDeducciones: totalDeducciones,
+                totalDeducciones,
                 neto,
+                empresa: empresa ? { nombre: empresa.nombre, razon_social: empresa.razon_social, cuit: empresa.cuit, domicilio_fiscal: empresa.domicilio_fiscal, telefono: empresa.telefono, email: empresa.email, logo_url: empresa.logo_url } : null,
               });
             }} disabled={!empleadoId}>
               <Download className="h-4 w-4 mr-1" /> Descargar PDF
