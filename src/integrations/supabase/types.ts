@@ -314,6 +314,57 @@ export type Database = {
           },
         ]
       }
+      fichadas: {
+        Row: {
+          created_at: string
+          empleado_id: string
+          estado: string
+          fecha: string
+          hora_entrada: string | null
+          hora_salida: string | null
+          id: string
+          observaciones: string | null
+          turno_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          empleado_id: string
+          estado?: string
+          fecha?: string
+          hora_entrada?: string | null
+          hora_salida?: string | null
+          id?: string
+          observaciones?: string | null
+          turno_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          empleado_id?: string
+          estado?: string
+          fecha?: string
+          hora_entrada?: string | null
+          hora_salida?: string | null
+          id?: string
+          observaciones?: string | null
+          turno_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fichadas_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fichadas_turno_id_fkey"
+            columns: ["turno_id"]
+            isOneToOne: false
+            referencedRelation: "turnos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grupo_familiar: {
         Row: {
           a_cargo: boolean
@@ -453,6 +504,41 @@ export type Database = {
           },
         ]
       }
+      novedades_asistencia: {
+        Row: {
+          created_at: string
+          descripcion: string | null
+          empleado_id: string
+          fecha: string
+          id: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          descripcion?: string | null
+          empleado_id: string
+          fecha: string
+          id?: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          descripcion?: string | null
+          empleado_id?: string
+          fecha?: string
+          id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "novedades_asistencia_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sucursales: {
         Row: {
           created_at: string
@@ -484,6 +570,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      turnos: {
+        Row: {
+          created_at: string
+          hora_entrada: string
+          hora_salida: string
+          id: string
+          nombre: string
+          tolerancia_minutos: number
+        }
+        Insert: {
+          created_at?: string
+          hora_entrada: string
+          hora_salida: string
+          id?: string
+          nombre: string
+          tolerancia_minutos?: number
+        }
+        Update: {
+          created_at?: string
+          hora_entrada?: string
+          hora_salida?: string
+          id?: string
+          nombre?: string
+          tolerancia_minutos?: number
+        }
+        Relationships: []
       }
     }
     Views: {
