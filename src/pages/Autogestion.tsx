@@ -252,7 +252,7 @@ export default function Autogestion() {
                 <div><Label className="text-xs">Observaciones</Label><Input value={vacForm.observaciones} onChange={(e) => setVacForm({ ...vacForm, observaciones: e.target.value })} placeholder="Opcional" /></div>
               </div>
               {vacForm.fecha_desde && vacForm.fecha_hasta && (
-                <p className="text-xs text-muted-foreground">Días hábiles: <strong>{calcDiasHabiles(vacForm.fecha_desde, vacForm.fecha_hasta)}</strong></p>
+                <p className="text-xs text-muted-foreground">Días corridos: <strong>{calcDiasHabiles(vacForm.fecha_desde, vacForm.fecha_hasta)}</strong></p>
               )}
               <Button size="sm" disabled={!vacForm.fecha_desde || !vacForm.fecha_hasta || saveSolVac.isPending} onClick={() => {
                 const dias = calcDiasHabiles(vacForm.fecha_desde, vacForm.fecha_hasta);
