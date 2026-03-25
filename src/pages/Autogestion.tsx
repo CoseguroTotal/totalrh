@@ -5,7 +5,8 @@ import { useMemorandumsEmpleado, useUpdateEstadoMemorandum } from "@/hooks/useMe
 import { useSolicitudesVacacionesEmpleado, useSaveSolicitudVacaciones, useVacacionesConfig, calcDiasCorrespondientes, calcDiasHabiles } from "@/hooks/useVacaciones";
 import { useSanciones, useUpdateDescargo } from "@/hooks/useSanciones";
 import { useFichadasEmpleado } from "@/hooks/useAsistencia";
-import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, KeyRound, Clock } from "lucide-react";
+import { useLiquidacionesEmpleado } from "@/hooks/useLiquidacion";
+import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, KeyRound, Clock, DollarSign, Lock } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,9 @@ export default function Autogestion() {
   const [vacForm, setVacForm] = useState({ fecha_desde: "", fecha_hasta: "", observaciones: "" });
   const [descargoForm, setDescargoForm] = useState<{ sancionId: string; texto: string } | null>(null);
   const descargoFileRef = useRef<HTMLInputElement>(null);
+  const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const { data: misRecibos = [] } = useLiquidacionesEmpleado(emp?.id);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -166,7 +170,9 @@ export default function Autogestion() {
           <TabsTrigger value="memorandums" className="text-xs sm:text-sm shrink-0"><FileCheck className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Memos</TabsTrigger>
           <TabsTrigger value="sanciones" className="text-xs sm:text-sm shrink-0"><ShieldAlert className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Sanciones</TabsTrigger>
           <TabsTrigger value="fichadas" className="text-xs sm:text-sm shrink-0"><Clock className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Fichadas</TabsTrigger>
+          <TabsTrigger value="recibos" className="text-xs sm:text-sm shrink-0"><DollarSign className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Recibos</TabsTrigger>
           <TabsTrigger value="token" className="text-xs sm:text-sm shrink-0"><KeyRound className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Token</TabsTrigger>
+          <TabsTrigger value="password" className="text-xs sm:text-sm shrink-0"><Lock className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Clave</TabsTrigger>
         </TabsList>
 
         <TabsContent value="datos">
@@ -447,8 +453,62 @@ export default function Autogestion() {
           <FichadasTab empleadoId={emp.id} />
         </TabsContent>
 
+        <TabsContent value="recibos">
+          <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm space-y-4">
+            <h3 className="text-sm font-medium flex items-center gap-2"><DollarSign className="h-4 w-4" />Mis Recibos de Sueldo</h3>
+            {misRecibos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No tenés recibos disponibles aún.</p>
+            ) : (
+              <div className="space-y-2">
+                {misRecibos.map((liq: any) => (
+                  <div key={liq.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">Período: {liq.periodo}</p>
+                      <p className="text-xs text-muted-foreground">Neto: ${Number(liq.neto).toLocaleString("es-AR", { minimumFractionDigits: 2 })}</p>
+                    </div>
+                    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-success/15 text-success">Confirmada</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
         <TabsContent value="token">
           <TokenAsistenciaTab empleadoId={emp.id} />
+        </TabsContent>
+
+        <TabsContent value="password">
+          <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm space-y-4 max-w-md">
+            <h3 className="text-sm font-medium flex items-center gap-2"><Lock className="h-4 w-4" />Cambiar Contraseña</h3>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (passwordForm.new !== passwordForm.confirm) { toast.error("Las contraseñas no coinciden"); return; }
+                if (passwordForm.new.length < 6) { toast.error("Mínimo 6 caracteres"); return; }
+                setPasswordLoading(true);
+                const { error } = await supabase.auth.updateUser({ password: passwordForm.new });
+                setPasswordLoading(false);
+                if (error) { toast.error(error.message); return; }
+                toast.success("Contraseña actualizada");
+                setPasswordForm({ current: "", new: "", confirm: "" });
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <Label className="text-xs">Nueva Contraseña</Label>
+                <Input type="password" minLength={6} required value={passwordForm.new} onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">Confirmar Contraseña</Label>
+                <Input type="password" minLength={6} required value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} />
+              </div>
+              <Button type="submit" disabled={passwordLoading} size="sm">
+                {passwordLoading && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Cambiar Contraseña
+              </Button>
+            </form>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

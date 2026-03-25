@@ -12,12 +12,14 @@ import {
   SidebarHeader, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useEffect, useState } from "react";
 import logoTotalRH from "@/assets/logo_total_rh.png";
+import { Building2 } from "lucide-react";
 
 const modules = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Legajos", url: "/legajos", icon: FileText },
-  { title: "Empresas", url: "/empresas", icon: undefined },
+  { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Liquidación", url: "/liquidacion", icon: DollarSign },
   { title: "Memorándums", url: "/memorandums", icon: FileCheck },
   { title: "Autogestión", url: "/autogestion", icon: UserCircle },
@@ -26,10 +28,6 @@ const modules = [
   { title: "Reclutamiento", url: "/reclutamiento", icon: Briefcase },
   { title: "Reportes BI", url: "/reportes", icon: BarChart3 },
 ];
-
-// Keep Building2 for Empresas
-import { Building2 } from "lucide-react";
-modules[2].icon = Building2;
 
 const employeeModules = [
   { title: "Autogestión", url: "/autogestion", icon: UserCircle },
@@ -47,6 +45,16 @@ const contadorModules = [
   { title: "Vacaciones", url: "/vacaciones", icon: Palmtree },
 ];
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  usuario: "Usuario",
+  contador: "Contador",
+  gerente: "Gerente",
+  rrhh: "RRHH",
+  empleado: "Empleado",
+  registro_asistencia: "Registro",
+};
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -57,6 +65,13 @@ export function AppSidebar() {
   const isContador = role === "contador";
   const isRegistro = role === "registro_asistencia";
   const visibleModules = isRegistro ? registroModules : isEmpleado ? employeeModules : isContador ? contadorModules : modules;
+
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserEmail(user?.email ?? null);
+    });
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -126,6 +141,16 @@ export function AppSidebar() {
         )}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-2">
+        {!collapsed && userEmail && (
+          <div className="px-3 py-2 mb-1">
+            <p className="text-xs font-medium text-sidebar-foreground truncate">{userEmail}</p>
+            {role && (
+              <p className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wide mt-0.5">
+                {ROLE_LABELS[role] || role}
+              </p>
+            )}
+          </div>
+        )}
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleLogout} className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">

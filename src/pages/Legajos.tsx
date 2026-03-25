@@ -26,15 +26,7 @@ export default function Legajos() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Delete related records first (in case no CASCADE)
-      await supabase.from("eventos_legajo").delete().eq("empleado_id", id);
-      await supabase.from("documentos_legajo").delete().eq("empleado_id", id);
-      await supabase.from("grupo_familiar").delete().eq("empleado_id", id);
-      await supabase.from("datos_medicos").delete().eq("empleado_id", id);
-      await supabase.from("liquidacion_lineas").delete().in("liquidacion_id",
-        (await supabase.from("liquidaciones").select("id").eq("empleado_id", id)).data?.map((l) => l.id) ?? []
-      );
-      await supabase.from("liquidaciones").delete().eq("empleado_id", id);
+      // FK constraints have ON DELETE CASCADE, so just delete the employee
       const { error } = await supabase.from("empleados").delete().eq("id", id);
       if (error) throw error;
     },

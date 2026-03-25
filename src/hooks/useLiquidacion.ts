@@ -67,3 +67,20 @@ export function useLiquidacionDetalle(id?: string) {
     },
   });
 }
+
+export function useLiquidacionesEmpleado(empleadoId?: string) {
+  return useQuery({
+    queryKey: ["liquidaciones_empleado", empleadoId],
+    enabled: !!empleadoId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("liquidaciones")
+        .select("*")
+        .eq("empleado_id", empleadoId!)
+        .eq("estado", "confirmada")
+        .order("periodo", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
