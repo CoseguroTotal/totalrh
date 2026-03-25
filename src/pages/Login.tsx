@@ -16,12 +16,45 @@ export default function Login() {
     setLoading(true);
     setError(null);
 
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
       setError(authError.message);
       setLoading(false);
       return;
+    }
+
+    // Check time restrictions for the user's role
+    const userId = authData.user?.id;
+    if (userId) {
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const role = roleData?.role;
+
+      // Admin has no restrictions
+      if (role && role !== "admin") {
+        const { data: restriccion } = await supabase
+          .from("restricciones_horario")
+          .select("hora_desde, hora_hasta, activo")
+          .eq("role", role)
+          .maybeSingle();
+
+        if (restriccion?.activo) {
+          const now = new Date();
+          const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+          if (currentTime < restriccion.hora_desde || currentTime > restriccion.hora_hasta) {
+            await supabase.auth.signOut();
+            setError(`Acceso restringido. Tu horario es de ${restriccion.hora_desde} a ${restriccion.hora_hasta}.`);
+            setLoading(false);
+            return;
+          }
+        }
+      }
     }
 
     navigate("/");
