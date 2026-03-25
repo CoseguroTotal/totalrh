@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FileText, DollarSign, UserCircle,
-  Clock, Briefcase, BarChart3, Building2, LogOut, Settings, FileCheck,
+  Clock, Briefcase, BarChart3, Building2, LogOut, Settings, FileCheck, Palmtree,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,7 @@ const modules = [
   { title: "Memorándums", url: "/memorandums", icon: FileCheck },
   { title: "Autogestión", url: "/autogestion", icon: UserCircle },
   { title: "Asistencia", url: "/asistencia", icon: Clock },
+  { title: "Vacaciones", url: "/vacaciones", icon: Palmtree },
   { title: "Reclutamiento", url: "/reclutamiento", icon: Briefcase },
   { title: "Reportes BI", url: "/reportes", icon: BarChart3 },
 ];

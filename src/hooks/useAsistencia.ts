@@ -132,3 +132,23 @@ export function useSaveNovedad() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["novedades_asistencia"] }),
   });
 }
+
+export function useFichadasEmpleado(empleadoId: string | undefined, mes?: string) {
+  return useQuery({
+    queryKey: ["fichadas_empleado", empleadoId, mes],
+    enabled: !!empleadoId,
+    queryFn: async () => {
+      let q = supabase
+        .from("fichadas")
+        .select("*, turno:turnos(id, nombre)")
+        .eq("empleado_id", empleadoId!)
+        .order("fecha", { ascending: false });
+      if (mes) {
+        q = q.gte("fecha", `${mes}-01`).lte("fecha", `${mes}-31`);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    },
+  });
+}

@@ -2,7 +2,9 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useEmpleado, useEventosLegajo, useDocumentosLegajo, useGrupoFamiliar, useDatosMedicos } from "@/hooks/useEmpleados";
 import { useEstudiosEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2, GraduationCap, ClipboardList, Download, Check, X } from "lucide-react";
+import { useFichadasEmpleado } from "@/hooks/useAsistencia";
+import { useSolicitudesVacacionesEmpleado, useUpdateSolicitudVacaciones, useVacacionesConfig, calcDiasCorrespondientes } from "@/hooks/useVacaciones";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, DollarSign, Palmtree } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -75,6 +77,14 @@ export default function LegajoDetail() {
   const { data: datosMedicos, isLoading: loadingMedicos } = useDatosMedicos(id);
   const { data: estudios = [] } = useEstudiosEmpleado(id);
   const { data: solicitudes = [] } = useSolicitudesPermiso(id);
+  const [mesFichadas, setMesFichadas] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const { data: fichadas = [] } = useFichadasEmpleado(id, mesFichadas);
+  const { data: solicitudesVac = [] } = useSolicitudesVacacionesEmpleado(id);
+  const { data: vacConfig = [] } = useVacacionesConfig(emp?.empresa_id);
+  const updateVac = useUpdateSolicitudVacaciones();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadCategoria, setUploadCategoria] = useState("otro");
@@ -263,6 +273,7 @@ export default function LegajoDetail() {
             { label: "Ingreso", value: new Date(emp.fecha_ingreso).toLocaleDateString("es-AR") },
             { label: "CCT", value: emp.cct },
             { label: "Categoría", value: emp.categoria },
+            { label: "Sueldo Básico", value: emp.sueldo_basico != null ? `$${Number(emp.sueldo_basico).toLocaleString("es-AR")}` : null },
             { label: "Nacionalidad", value: emp.nacionalidad },
             { label: "Nacimiento", value: emp.fecha_nacimiento ? new Date(emp.fecha_nacimiento).toLocaleDateString("es-AR") : null },
           ].map((d) => (
@@ -282,7 +293,9 @@ export default function LegajoDetail() {
           <TabsTrigger value="familia">Familia</TabsTrigger>
           <TabsTrigger value="medico">Médico</TabsTrigger>
           <TabsTrigger value="estudios">Estudios</TabsTrigger>
+          <TabsTrigger value="asistencia"><Clock className="h-3.5 w-3.5 mr-1" />Asistencia</TabsTrigger>
           <TabsTrigger value="permisos">Permisos</TabsTrigger>
+          <TabsTrigger value="vacaciones"><Palmtree className="h-3.5 w-3.5 mr-1" />Vacaciones</TabsTrigger>
         </TabsList>
 
         {/* Historial */}
@@ -531,6 +544,109 @@ export default function LegajoDetail() {
                     }} title="Descargar PDF">
                       <Download className="h-3.5 w-3.5" />
                     </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Asistencia */}
+        <TabsContent value="asistencia">
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium flex items-center gap-2"><Clock className="h-4 w-4" />Asistencia</h3>
+              <Input type="month" value={mesFichadas} onChange={(e) => setMesFichadas(e.target.value)} className="w-40 h-8 text-xs" />
+            </div>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-2xl font-bold text-success">{fichadas.filter((f: any) => f.estado === "presente").length}</p>
+                <p className="text-xs text-muted-foreground">Presentes</p>
+              </div>
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-2xl font-bold text-warning">{fichadas.filter((f: any) => f.estado === "tardanza").length}</p>
+                <p className="text-xs text-muted-foreground">Tardanzas</p>
+              </div>
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-2xl font-bold text-destructive">{fichadas.filter((f: any) => f.estado === "ausente").length}</p>
+                <p className="text-xs text-muted-foreground">Ausencias</p>
+              </div>
+            </div>
+            {fichadas.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin fichadas para este período.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Fecha</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Entrada</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Salida</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Estado</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Observaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fichadas.map((f: any) => (
+                      <tr key={f.id} className="border-b last:border-0 hover:bg-muted/30">
+                        <td className="px-3 py-2">{new Date(f.fecha).toLocaleDateString("es-AR")}</td>
+                        <td className="px-3 py-2">{f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                        <td className="px-3 py-2">{f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                        <td className="px-3 py-2">
+                          <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                            f.estado === "presente" ? "bg-success/15 text-success" : f.estado === "tardanza" ? "bg-warning/15 text-warning" : "bg-destructive/15 text-destructive"
+                          )}>{f.estado}</span>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{f.observaciones || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Vacaciones */}
+        <TabsContent value="vacaciones">
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium flex items-center gap-2"><Palmtree className="h-4 w-4" />Vacaciones</h3>
+            </div>
+            {emp && vacConfig.length > 0 && (
+              <div className="rounded-lg border p-3 mb-4 bg-muted/30">
+                <p className="text-sm">Días correspondientes por antigüedad: <strong>{calcDiasCorrespondientes(emp.fecha_ingreso, vacConfig)}</strong></p>
+                <p className="text-xs text-muted-foreground">Días usados este año: <strong>{solicitudesVac.filter((s: any) => s.estado === "aprobada" && s.periodo_anual === String(new Date().getFullYear())).reduce((sum: number, s: any) => sum + s.dias_solicitados, 0)}</strong></p>
+              </div>
+            )}
+            {solicitudesVac.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin solicitudes de vacaciones.</p>
+            ) : (
+              <div className="space-y-2">
+                {solicitudesVac.map((sol: any) => (
+                  <div key={sol.id} className="flex items-center gap-3 rounded-lg border px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">
+                        {new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al {new Date(sol.fecha_hasta).toLocaleDateString("es-AR")}
+                        {" · "}{sol.dias_solicitados} días · Período {sol.periodo_anual}
+                      </p>
+                      {sol.observaciones && <p className="text-xs text-muted-foreground">{sol.observaciones}</p>}
+                    </div>
+                    <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoSolicitudBadge[sol.estado] || "bg-muted text-muted-foreground")}>
+                      {sol.estado}
+                    </span>
+                    {sol.estado === "pendiente" && (
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={async () => {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          updateVac.mutate({ id: sol.id, estado: "aprobada", aprobado_por: user?.id });
+                        }} title="Aprobar"><Check className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={async () => {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          updateVac.mutate({ id: sol.id, estado: "rechazada", aprobado_por: user?.id });
+                        }} title="Rechazar"><X className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

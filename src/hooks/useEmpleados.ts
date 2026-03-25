@@ -30,6 +30,7 @@ export type EmpleadoConEmpresa = {
   fecha_nacimiento: string | null;
   sexo: string | null;
   estado_civil: string | null;
+  sueldo_basico: number | null;
 };
 
 export function useEmpleados() {

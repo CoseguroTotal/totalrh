@@ -46,6 +46,7 @@ const schema = z.object({
   domicilio_localidad: z.string().max(100).optional().or(z.literal("")),
   domicilio_provincia: z.string().max(100).optional().or(z.literal("")),
   domicilio_cp: z.string().max(10).optional().or(z.literal("")),
+  sueldo_basico: z.string().optional().or(z.literal("")),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -70,6 +71,7 @@ export default function EmpleadoFormDialog({ open, onOpenChange, empleado }: Pro
       nacionalidad: "", fecha_nacimiento: "", sexo: "", estado_civil: "",
       domicilio_calle: "", domicilio_numero: "", domicilio_piso: "",
       domicilio_localidad: "", domicilio_provincia: "", domicilio_cp: "",
+      sueldo_basico: "",
     },
   });
 
@@ -96,6 +98,7 @@ export default function EmpleadoFormDialog({ open, onOpenChange, empleado }: Pro
         domicilio_localidad: empleado.domicilio_localidad ?? "",
         domicilio_provincia: empleado.domicilio_provincia ?? "",
         domicilio_cp: empleado.domicilio_cp ?? "",
+        sueldo_basico: empleado.sueldo_basico != null ? String(empleado.sueldo_basico) : "",
       });
     } else if (open) {
       form.reset();
@@ -128,6 +131,7 @@ export default function EmpleadoFormDialog({ open, onOpenChange, empleado }: Pro
         domicilio_localidad: values.domicilio_localidad || null,
         domicilio_provincia: values.domicilio_provincia || null,
         domicilio_cp: values.domicilio_cp || null,
+        sueldo_basico: values.sueldo_basico ? Number(values.sueldo_basico) : null,
       };
       if (empleado) {
         const { error } = await supabase.from("empleados").update(payload).eq("id", empleado.id);
@@ -229,6 +233,9 @@ export default function EmpleadoFormDialog({ open, onOpenChange, empleado }: Pro
               </Field>
               <Field label="Teléfono" error={form.formState.errors.telefono?.message}>
                 <Input {...form.register("telefono")} />
+              </Field>
+              <Field label="Sueldo Básico ($)" error={form.formState.errors.sueldo_basico?.message}>
+                <Input type="number" step="0.01" {...form.register("sueldo_basico")} placeholder="0.00" />
               </Field>
             </TabsContent>
 

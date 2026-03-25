@@ -17,6 +17,7 @@ import Configuracion from "@/pages/Configuracion";
 import Memorandums from "@/pages/Memorandums";
 import Reclutamiento from "@/pages/Reclutamiento";
 import Reportes from "@/pages/Reportes";
+import Vacaciones from "@/pages/Vacaciones";
 import NotFound from "./pages/NotFound";
 import EmployeeGuard from "@/components/EmployeeGuard";
 
@@ -41,6 +42,7 @@ const App = () => (
                 <Route path="/liquidacion" element={<Liquidacion />} />
                 <Route path="/memorandums" element={<Memorandums />} />
                 <Route path="/asistencia" element={<Asistencia />} />
+                <Route path="/vacaciones" element={<Vacaciones />} />
                 <Route path="/configuracion" element={<Configuracion />} />
                 <Route path="/reclutamiento" element={<Reclutamiento />} />
                 <Route path="/reportes" element={<Reportes />} />
