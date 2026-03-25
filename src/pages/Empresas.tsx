@@ -40,7 +40,7 @@ export default function Empresas() {
         </div>
       ) : (
         <div className="space-y-4">
-          {empresas.map((empresa) => (
+          {empresas.map((empresa: any) => (
             <EmpresaCard
               key={empresa.id}
               empresa={empresa}
@@ -70,6 +70,13 @@ export default function Empresas() {
 }
 
 function EmpresaCard({ empresa, expanded, onToggle, onEdit, onAddSucursal, onEditSucursal }: any) {
+  const details = [
+    empresa.razon_social && `Razón Social: ${empresa.razon_social}`,
+    empresa.cuit && `CUIT: ${empresa.cuit}`,
+    empresa.actividad_principal && `Actividad: ${empresa.actividad_principal}`,
+    empresa.convenio_colectivo && `CCT: ${empresa.convenio_colectivo}`,
+  ].filter(Boolean);
+
   return (
     <div className="animate-slide-up rounded-xl border bg-card shadow-sm overflow-hidden">
       <div
@@ -81,7 +88,12 @@ function EmpresaCard({ empresa, expanded, onToggle, onEdit, onAddSucursal, onEdi
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium">{empresa.nombre}</p>
-          {empresa.cuit && <p className="text-xs text-muted-foreground">CUIT: {empresa.cuit}</p>}
+          {details.length > 0 && (
+            <p className="text-xs text-muted-foreground">{details.join(" · ")}</p>
+          )}
+          {empresa.domicilio_fiscal && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" />{[empresa.domicilio_fiscal, empresa.localidad, empresa.provincia].filter(Boolean).join(", ")}</p>
+          )}
         </div>
         <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
           <Pencil className="h-3.5 w-3.5" />
@@ -146,23 +158,52 @@ function SucursalesList({ empresaId, onAdd, onEdit }: { empresaId: string; onAdd
 }
 
 function EmpresaFormDialog({ open, onOpenChange, empresa }: { open: boolean; onOpenChange: (o: boolean) => void; empresa?: any }) {
-  const [nombre, setNombre] = useState("");
-  const [cuit, setCuit] = useState("");
+  const [form, setForm] = useState({
+    nombre: "", cuit: "", razon_social: "", domicilio_fiscal: "", localidad: "",
+    provincia: "", cp: "", telefono: "", email: "", actividad_principal: "",
+    fecha_inicio_actividades: "", convenio_colectivo: "",
+  });
   const queryClient = useQueryClient();
 
   const resetAndOpen = () => {
-    setNombre(empresa?.nombre ?? "");
-    setCuit(empresa?.cuit ?? "");
+    setForm({
+      nombre: empresa?.nombre ?? "",
+      cuit: empresa?.cuit ?? "",
+      razon_social: empresa?.razon_social ?? "",
+      domicilio_fiscal: empresa?.domicilio_fiscal ?? "",
+      localidad: empresa?.localidad ?? "",
+      provincia: empresa?.provincia ?? "",
+      cp: empresa?.cp ?? "",
+      telefono: empresa?.telefono ?? "",
+      email: empresa?.email ?? "",
+      actividad_principal: empresa?.actividad_principal ?? "",
+      fecha_inicio_actividades: empresa?.fecha_inicio_actividades ?? "",
+      convenio_colectivo: empresa?.convenio_colectivo ?? "",
+    });
   };
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!nombre.trim()) throw new Error("El nombre es requerido");
+      if (!form.nombre.trim()) throw new Error("El nombre es requerido");
+      const payload = {
+        nombre: form.nombre.trim(),
+        cuit: form.cuit.trim() || null,
+        razon_social: form.razon_social.trim() || null,
+        domicilio_fiscal: form.domicilio_fiscal.trim() || null,
+        localidad: form.localidad.trim() || null,
+        provincia: form.provincia.trim() || null,
+        cp: form.cp.trim() || null,
+        telefono: form.telefono.trim() || null,
+        email: form.email.trim() || null,
+        actividad_principal: form.actividad_principal.trim() || null,
+        fecha_inicio_actividades: form.fecha_inicio_actividades || null,
+        convenio_colectivo: form.convenio_colectivo.trim() || null,
+      };
       if (empresa) {
-        const { error } = await supabase.from("empresas").update({ nombre: nombre.trim(), cuit: cuit.trim() || null }).eq("id", empresa.id);
+        const { error } = await supabase.from("empresas").update(payload).eq("id", empresa.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("empresas").insert({ nombre: nombre.trim(), cuit: cuit.trim() || null });
+        const { error } = await supabase.from("empresas").insert(payload);
         if (error) throw error;
       }
     },
@@ -174,21 +215,78 @@ function EmpresaFormDialog({ open, onOpenChange, empresa }: { open: boolean; onO
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const updateField = (field: string, value: string) => setForm((prev) => ({ ...prev, [field]: value }));
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (o) resetAndOpen(); onOpenChange(o); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{empresa ? "Editar Empresa" : "Nueva Empresa"}</DialogTitle>
           <DialogDescription>{empresa ? "Modificá los datos de la empresa." : "Ingresá los datos de la nueva empresa."}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Nombre *</Label>
-            <Input value={nombre} onChange={(e) => setNombre(e.target.value)} />
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Datos principales</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nombre *</Label>
+              <Input value={form.nombre} onChange={(e) => updateField("nombre", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Razón Social</Label>
+              <Input value={form.razon_social} onChange={(e) => updateField("razon_social", e.target.value)} />
+            </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">CUIT</Label>
+              <Input value={form.cuit} onChange={(e) => updateField("cuit", e.target.value)} placeholder="XX-XXXXXXXX-X" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Actividad Principal</Label>
+              <Input value={form.actividad_principal} onChange={(e) => updateField("actividad_principal", e.target.value)} />
+            </div>
+          </div>
+
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider pt-2">Domicilio fiscal</p>
           <div className="space-y-1.5">
-            <Label className="text-xs">CUIT</Label>
-            <Input value={cuit} onChange={(e) => setCuit(e.target.value)} placeholder="XX-XXXXXXXX-X" />
+            <Label className="text-xs">Dirección</Label>
+            <Input value={form.domicilio_fiscal} onChange={(e) => updateField("domicilio_fiscal", e.target.value)} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Localidad</Label>
+              <Input value={form.localidad} onChange={(e) => updateField("localidad", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Provincia</Label>
+              <Input value={form.provincia} onChange={(e) => updateField("provincia", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">C.P.</Label>
+              <Input value={form.cp} onChange={(e) => updateField("cp", e.target.value)} />
+            </div>
+          </div>
+
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider pt-2">Contacto y convenio</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Teléfono</Label>
+              <Input value={form.telefono} onChange={(e) => updateField("telefono", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Email</Label>
+              <Input type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Inicio Actividades</Label>
+              <Input type="date" value={form.fecha_inicio_actividades} onChange={(e) => updateField("fecha_inicio_actividades", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Convenio Colectivo</Label>
+              <Input value={form.convenio_colectivo} onChange={(e) => updateField("convenio_colectivo", e.target.value)} />
+            </div>
           </div>
         </div>
         <DialogFooter>
