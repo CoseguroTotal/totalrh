@@ -4,7 +4,7 @@ import { useEmpleados, useEmpresas } from "@/hooks/useEmpleados";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Send, FileText, Download, Mail } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Send, FileText, Download, Mail, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { cn } from "@/lib/utils";
 import { generarMemorandumPDF } from "@/components/MemorandumPDF";
 import EnviarEmailDialog from "@/components/EnviarEmailDialog";
+import EnvioMasivoMemoDialog from "@/components/EnvioMasivoMemoDialog";
 
 const estadoBadge: Record<string, string> = {
   borrador: "bg-muted text-muted-foreground",
@@ -45,6 +46,7 @@ export default function Memorandums() {
   });
   const [search, setSearch] = useState("");
   const [emailDialog, setEmailDialog] = useState<{ open: boolean; memo?: any }>({ open: false });
+  const [masivoOpen, setMasivoOpen] = useState(false);
 
   const getEmailHtml = (m: any) => {
     const empresa = empresas.find((e: any) => e.id === m.empresa_id);
@@ -124,7 +126,10 @@ export default function Memorandums() {
           <h1 className="text-2xl font-semibold">Memorándums</h1>
           <p className="text-sm text-muted-foreground mt-1">Archivo de memorándums numerados</p>
         </div>
-        <Button onClick={openNew} size="sm"><Plus className="h-4 w-4 mr-1.5" />Nuevo</Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setMasivoOpen(true)} size="sm" variant="outline"><Users className="h-4 w-4 mr-1.5" />Envío Masivo</Button>
+          <Button onClick={openNew} size="sm"><Plus className="h-4 w-4 mr-1.5" />Nuevo</Button>
+        </div>
       </div>
 
       <Input placeholder="Buscar por título o número..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
@@ -216,6 +221,15 @@ export default function Memorandums() {
           previewText={emailDialog.memo.contenido?.substring(0, 200)}
         />
       )}
+
+      <EnvioMasivoMemoDialog
+        open={masivoOpen}
+        onOpenChange={setMasivoOpen}
+        memos={memos}
+        empleados={empleados}
+        empresas={empresas}
+        config={config}
+      />
     </div>
   );
 }
