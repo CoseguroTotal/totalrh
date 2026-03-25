@@ -4,7 +4,11 @@ import { useEmpleado, useEventosLegajo, useDocumentosLegajo, useGrupoFamiliar, u
 import { useEstudiosEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
 import { useFichadasEmpleado } from "@/hooks/useAsistencia";
 import { useSolicitudesVacacionesEmpleado, useUpdateSolicitudVacaciones, useVacacionesConfig, calcDiasCorrespondientes } from "@/hooks/useVacaciones";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, DollarSign, Palmtree } from "lucide-react";
+import { useSanciones } from "@/hooks/useSanciones";
+import { useCanEdit, useCanSancion } from "@/hooks/useCanEdit";
+import { useConfigGrupo } from "@/hooks/useConfigGrupo";
+import { sendNotificationEmailIfEnabled } from "@/lib/sendNotificationEmail";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, DollarSign, Palmtree, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +23,7 @@ import EventoFormDialog from "@/components/EventoFormDialog";
 import FamiliarFormDialog from "@/components/FamiliarFormDialog";
 import DatosMedicosForm from "@/components/DatosMedicosForm";
 import EstudioFormDialog from "@/components/EstudioFormDialog";
+import SancionFormDialog from "@/components/SancionFormDialog";
 import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -63,6 +68,12 @@ const categoriasDocumento = [
   { value: "otro", label: "Otro" },
 ];
 
+const tipoSancionLabel: Record<string, string> = {
+  apercibimiento: "Apercibimiento",
+  amonestacion: "Amonestación",
+  suspension: "Suspensión",
+};
+
 export default function LegajoDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -70,6 +81,7 @@ export default function LegajoDetail() {
   const [eventoOpen, setEventoOpen] = useState(false);
   const [familiarOpen, setFamiliarOpen] = useState<{ open: boolean; familiar?: any }>({ open: false });
   const [estudioOpen, setEstudioOpen] = useState<{ open: boolean; estudio?: any }>({ open: false });
+  const [sancionOpen, setSancionOpen] = useState(false);
   const { data: emp, isLoading } = useEmpleado(id);
   const { data: events = [] } = useEventosLegajo(id);
   const { data: documentos = [] } = useDocumentosLegajo(id);
@@ -77,6 +89,10 @@ export default function LegajoDetail() {
   const { data: datosMedicos, isLoading: loadingMedicos } = useDatosMedicos(id);
   const { data: estudios = [] } = useEstudiosEmpleado(id);
   const { data: solicitudes = [] } = useSolicitudesPermiso(id);
+  const { data: sanciones = [] } = useSanciones(id);
+  const { canEdit } = useCanEdit("legajos");
+  const { canSancion } = useCanSancion();
+  const { data: configGrupo } = useConfigGrupo();
   const [mesFichadas, setMesFichadas] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -98,6 +114,7 @@ export default function LegajoDetail() {
       await supabase.from("datos_medicos").delete().eq("empleado_id", id!);
       await supabase.from("estudios_empleado").delete().eq("empleado_id", id!);
       await supabase.from("solicitudes_permiso").delete().eq("empleado_id", id!);
+      await supabase.from("sanciones" as any).delete().eq("empleado_id", id!);
       const liqs = await supabase.from("liquidaciones").select("id").eq("empleado_id", id!);
       if (liqs.data?.length) {
         await supabase.from("liquidacion_lineas").delete().in("liquidacion_id", liqs.data.map((l) => l.id));
@@ -147,14 +164,14 @@ export default function LegajoDetail() {
       }).eq("id", solId);
       if (error) throw error;
 
-      // Send in-app notification to the employee
+      // Send email notification if enabled
       if (emp?.email) {
-        const { data: targetUsers } = await supabase.rpc("get_user_id_by_email" as any, { _email: emp.email }).maybeSingle();
-        // Find user by looking up empleados email match — try finding auth user via user_roles or direct approach
-        // Simplified: insert notification for any user whose email matches
-        const { data: allUsers } = await supabase.from("empleados").select("email").eq("id", emp.id).single();
-        // We'll insert a notification — the user_id must be the auth user. Since we can't easily resolve email->auth.user,
-        // we'll skip this for now and the notification will work when the admin approves via the system.
+        const estadoLabel = estado === "aprobada" ? "aprobada ✅" : "rechazada ❌";
+        await sendNotificationEmailIfEnabled(configGrupo, {
+          to: emp.email,
+          subject: `Solicitud de permiso ${estado}`,
+          html: `<h2>Solicitud de Permiso ${estadoLabel}</h2><p>Hola ${emp.nombre},</p><p>Tu solicitud de permiso ha sido <strong>${estado}</strong>.</p><p>Saludos,<br/>RRHH</p>`,
+        });
       }
     },
     onSuccess: (_, vars) => {
@@ -227,32 +244,34 @@ export default function LegajoDetail() {
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl font-semibold">{emp.apellido}, {emp.nombre}</h1>
               <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", estadoBadge[emp.estado])}>{emp.estado}</span>
-              <div className="ml-auto flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />Dar de Baja
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>¿Eliminar empleado?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Se eliminará a {emp.apellido}, {emp.nombre} y todos sus registros asociados. Esta acción no se puede deshacer.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => deleteEmpleadoMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Eliminar
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+              {canEdit && (
+                <div className="ml-auto flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />Dar de Baja
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar empleado?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Se eliminará a {emp.apellido}, {emp.nombre} y todos sus registros asociados. Esta acción no se puede deshacer.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => deleteEmpleadoMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Eliminar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
             </div>
             <EmpleadoFormDialog open={editOpen} onOpenChange={setEditOpen} empleado={emp} />
             <p className="text-sm text-muted-foreground mt-1">{emp.puesto}{emp.categoria ? ` · ${emp.categoria}` : ""}</p>
@@ -296,6 +315,7 @@ export default function LegajoDetail() {
           <TabsTrigger value="asistencia"><Clock className="h-3.5 w-3.5 mr-1" />Asistencia</TabsTrigger>
           <TabsTrigger value="permisos">Permisos</TabsTrigger>
           <TabsTrigger value="vacaciones"><Palmtree className="h-3.5 w-3.5 mr-1" />Vacaciones</TabsTrigger>
+          <TabsTrigger value="sanciones"><ShieldAlert className="h-3.5 w-3.5 mr-1" />Sanciones</TabsTrigger>
         </TabsList>
 
         {/* Historial */}
@@ -303,9 +323,11 @@ export default function LegajoDetail() {
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium">Historial de Eventos</h3>
-              <Button variant="ghost" size="sm" onClick={() => setEventoOpen(true)}>
-                <Plus className="h-3.5 w-3.5 mr-1" />Agregar
-              </Button>
+              {canEdit && (
+                <Button variant="ghost" size="sm" onClick={() => setEventoOpen(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />Agregar
+                </Button>
+              )}
             </div>
             <EventoFormDialog open={eventoOpen} onOpenChange={setEventoOpen} empleadoId={id!} />
             {events.length === 0 ? (
@@ -336,21 +358,23 @@ export default function LegajoDetail() {
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium">Documentación</h3>
-              <div className="flex items-center gap-2">
-                <Select value={uploadCategoria} onValueChange={setUploadCategoria}>
-                  <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {categoriasDocumento.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input type="date" className="h-8 text-xs w-36" value={uploadVencimiento} onChange={(e) => setUploadVencimiento(e.target.value)} />
-                <label className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1 whitespace-nowrap">
-                  <Upload className="h-3 w-3" />Subir
-                  <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
-                </label>
-              </div>
+              {canEdit && (
+                <div className="flex items-center gap-2">
+                  <Select value={uploadCategoria} onValueChange={setUploadCategoria}>
+                    <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {categoriasDocumento.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input type="date" className="h-8 text-xs w-36" value={uploadVencimiento} onChange={(e) => setUploadVencimiento(e.target.value)} />
+                  <label className="text-xs text-primary hover:underline cursor-pointer inline-flex items-center gap-1 whitespace-nowrap">
+                    <Upload className="h-3 w-3" />Subir
+                    <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
+                  </label>
+                </div>
+              )}
             </div>
             {documentos.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin documentos cargados.</p>
@@ -384,9 +408,11 @@ export default function LegajoDetail() {
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium flex items-center gap-2"><Users className="h-4 w-4" />Grupo Familiar</h3>
-              <Button variant="ghost" size="sm" onClick={() => setFamiliarOpen({ open: true })}>
-                <Plus className="h-3.5 w-3.5 mr-1" />Agregar
-              </Button>
+              {canEdit && (
+                <Button variant="ghost" size="sm" onClick={() => setFamiliarOpen({ open: true })}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />Agregar
+                </Button>
+              )}
             </div>
             <FamiliarFormDialog open={familiarOpen.open} onOpenChange={(o) => setFamiliarOpen({ open: o })} empleadoId={id!} familiar={familiarOpen.familiar} />
             {familiares.length === 0 ? (
@@ -401,7 +427,7 @@ export default function LegajoDetail() {
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs hidden sm:table-cell">DNI</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs hidden sm:table-cell">Nacimiento</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">A cargo</th>
-                      <th className="px-3 py-2 w-16"></th>
+                      {canEdit && <th className="px-3 py-2 w-16"></th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -412,16 +438,18 @@ export default function LegajoDetail() {
                         <td className="px-3 py-2 hidden sm:table-cell">{f.dni || "—"}</td>
                         <td className="px-3 py-2 hidden sm:table-cell">{f.fecha_nacimiento ? new Date(f.fecha_nacimiento).toLocaleDateString("es-AR") : "—"}</td>
                         <td className="px-3 py-2">{f.a_cargo ? "Sí" : "No"}{f.discapacidad ? " · Disc." : ""}</td>
-                        <td className="px-3 py-2">
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setFamiliarOpen({ open: true, familiar: f })}>
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteFamiliarMutation.mutate(f.id)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </td>
+                        {canEdit && (
+                          <td className="px-3 py-2">
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setFamiliarOpen({ open: true, familiar: f })}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteFamiliarMutation.mutate(f.id)}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -443,9 +471,11 @@ export default function LegajoDetail() {
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium flex items-center gap-2"><GraduationCap className="h-4 w-4" />Formación Académica</h3>
-              <Button variant="ghost" size="sm" onClick={() => setEstudioOpen({ open: true })}>
-                <Plus className="h-3.5 w-3.5 mr-1" />Agregar
-              </Button>
+              {canEdit && (
+                <Button variant="ghost" size="sm" onClick={() => setEstudioOpen({ open: true })}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />Agregar
+                </Button>
+              )}
             </div>
             <EstudioFormDialog
               open={estudioOpen.open}
@@ -464,7 +494,7 @@ export default function LegajoDetail() {
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Institución</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Nivel</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Estado</th>
-                      <th className="px-3 py-2 w-16"></th>
+                      {canEdit && <th className="px-3 py-2 w-16"></th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -478,16 +508,18 @@ export default function LegajoDetail() {
                             est.estado === "completo" ? "bg-success/15 text-success" : est.estado === "en_curso" ? "bg-info/15 text-info" : "bg-muted text-muted-foreground"
                           )}>{estadoEstudioLabel[est.estado]}</span>
                         </td>
-                        <td className="px-3 py-2">
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEstudioOpen({ open: true, estudio: est })}>
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteEstudioMutation.mutate(est.id)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </td>
+                        {canEdit && (
+                          <td className="px-3 py-2">
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEstudioOpen({ open: true, estudio: est })}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteEstudioMutation.mutate(est.id)}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -519,7 +551,7 @@ export default function LegajoDetail() {
                     <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoSolicitudBadge[sol.estado])}>
                       {sol.estado}
                     </span>
-                    {sol.estado === "pendiente" && (
+                    {sol.estado === "pendiente" && canEdit && (
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => updateSolicitudMutation.mutate({ solId: sol.id, estado: "aprobada" })} title="Aprobar">
                           <Check className="h-3.5 w-3.5" />
@@ -643,16 +675,84 @@ export default function LegajoDetail() {
                     <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoSolicitudBadge[sol.estado] || "bg-muted text-muted-foreground")}>
                       {sol.estado}
                     </span>
-                    {sol.estado === "pendiente" && (
+                    {sol.estado === "pendiente" && canEdit && (
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={async () => {
                           const { data: { user } } = await supabase.auth.getUser();
-                          updateVac.mutate({ id: sol.id, estado: "aprobada", aprobado_por: user?.id });
+                          updateVac.mutate({ id: sol.id, estado: "aprobada", aprobado_por: user?.id }, {
+                            onSuccess: async () => {
+                              if (emp?.email) {
+                                await sendNotificationEmailIfEnabled(configGrupo, {
+                                  to: emp.email,
+                                  subject: "Vacaciones aprobadas",
+                                  html: `<h2>Vacaciones Aprobadas ✅</h2><p>Hola ${emp.nombre},</p><p>Tu solicitud de vacaciones del ${new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al ${new Date(sol.fecha_hasta).toLocaleDateString("es-AR")} ha sido <strong>aprobada</strong>.</p><p>Saludos,<br/>RRHH</p>`,
+                                });
+                              }
+                            }
+                          });
                         }} title="Aprobar"><Check className="h-3.5 w-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={async () => {
                           const { data: { user } } = await supabase.auth.getUser();
-                          updateVac.mutate({ id: sol.id, estado: "rechazada", aprobado_por: user?.id });
+                          updateVac.mutate({ id: sol.id, estado: "rechazada", aprobado_por: user?.id }, {
+                            onSuccess: async () => {
+                              if (emp?.email) {
+                                await sendNotificationEmailIfEnabled(configGrupo, {
+                                  to: emp.email,
+                                  subject: "Vacaciones rechazadas",
+                                  html: `<h2>Vacaciones Rechazadas ❌</h2><p>Hola ${emp.nombre},</p><p>Tu solicitud de vacaciones del ${new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al ${new Date(sol.fecha_hasta).toLocaleDateString("es-AR")} ha sido <strong>rechazada</strong>.</p><p>Saludos,<br/>RRHH</p>`,
+                                });
+                              }
+                            }
+                          });
                         }} title="Rechazar"><X className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Sanciones */}
+        <TabsContent value="sanciones">
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium flex items-center gap-2"><ShieldAlert className="h-4 w-4" />Sanciones</h3>
+              {canSancion && (
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setSancionOpen(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />Emitir Sanción
+                </Button>
+              )}
+            </div>
+            <SancionFormDialog open={sancionOpen} onOpenChange={setSancionOpen} empleadoId={id!} empleadoNombre={`${emp.apellido}, ${emp.nombre}`} />
+            {sanciones.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin sanciones registradas.</p>
+            ) : (
+              <div className="space-y-2">
+                {sanciones.map((s: any) => (
+                  <div key={s.id} className="rounded-lg border px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{tipoSancionLabel[s.tipo] || s.tipo}: {s.motivo}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(s.fecha).toLocaleDateString("es-AR")}
+                          {s.descripcion && ` · ${s.descripcion}`}
+                        </p>
+                      </div>
+                      <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                        s.descargo_cerrado ? "bg-info/15 text-info" : "bg-warning/15 text-warning"
+                      )}>
+                        {s.descargo_cerrado ? "Con descargo" : "Sin descargo"}
+                      </span>
+                    </div>
+                    {s.descargo_cerrado && s.descargo_texto && (
+                      <div className="mt-2 rounded-md bg-muted/50 p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Descargo del empleado ({s.descargo_fecha ? new Date(s.descargo_fecha).toLocaleDateString("es-AR") : ""}):</p>
+                        <p className="text-sm">{s.descargo_texto}</p>
+                        {s.descargo_documento_url && (
+                          <a href={s.descargo_documento_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">Ver documento adjunto</a>
+                        )}
                       </div>
                     )}
                   </div>

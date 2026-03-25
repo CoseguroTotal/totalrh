@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Plus, Pencil, Trash2, Loader2, Clock, LogIn, LogOut, Upload, FileSpreadsheet } from "lucide-react";
 import { useTurnos, useSaveTurno, useDeleteTurno, useFichadas, useRegistrarFichada, useNovedades, useSaveNovedad } from "@/hooks/useAsistencia";
 import { useEmpleados } from "@/hooks/useEmpleados";
+import { useCanEdit } from "@/hooks/useCanEdit";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viern
 
 export default function Asistencia() {
   const [turnoDialog, setTurnoDialog] = useState<{ open: boolean; turno?: any }>({ open: false });
+  const { canEdit } = useCanEdit("asistencia");
 
   return (
     <div className="space-y-6">
@@ -35,17 +37,17 @@ export default function Asistencia() {
           <TabsTrigger value="planillas">Planillas</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="fichada"><FichadaTab /></TabsContent>
-        <TabsContent value="turnos"><TurnosTab dialogState={turnoDialog} setDialog={setTurnoDialog} /></TabsContent>
-        <TabsContent value="novedades"><NovedadesTab /></TabsContent>
-        <TabsContent value="planillas"><PlanillasTab /></TabsContent>
+        <TabsContent value="fichada"><FichadaTab canEdit={canEdit} /></TabsContent>
+        <TabsContent value="turnos"><TurnosTab dialogState={turnoDialog} setDialog={setTurnoDialog} canEdit={canEdit} /></TabsContent>
+        <TabsContent value="novedades"><NovedadesTab canEdit={canEdit} /></TabsContent>
+        <TabsContent value="planillas"><PlanillasTab canEdit={canEdit} /></TabsContent>
       </Tabs>
     </div>
   );
 }
 
 /* ── Fichada ── */
-function FichadaTab() {
+function FichadaTab({ canEdit }: { canEdit: boolean }) {
   const hoy = new Date().toISOString().slice(0, 10);
   const [fecha, setFecha] = useState(hoy);
   const { data: fichadas, isLoading } = useFichadas(fecha);
@@ -66,7 +68,6 @@ function FichadaTab() {
     });
   };
 
-  // Load shift assignments for comparison
   const { data: asignaciones = [] } = useQuery({
     queryKey: ["asignaciones_turno_all"],
     queryFn: async () => {
@@ -82,7 +83,6 @@ function FichadaTab() {
     const asig = asignaciones.find((a: any) => a.empleado_id === fichada.empleado_id && a.dia_semana === diaSemana);
     if (!asig) return null;
     const entradaReal = new Date(fichada.hora_entrada);
-    const [h, m] = (asig as any).hora_entrada.split(":").map(Number);
     const entradaProgramada = new Date(fichada.fecha + "T" + (asig as any).hora_entrada);
     const diffMin = Math.floor((entradaReal.getTime() - entradaProgramada.getTime()) / 60000);
     return diffMin > 0 ? diffMin : 0;
@@ -101,39 +101,41 @@ function FichadaTab() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border bg-card p-5 shadow-sm">
-        <h3 className="text-sm font-medium mb-4">Registrar Fichada</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
-          <div>
-            <Label className="text-xs">Empleado</Label>
-            <Select value={empId} onValueChange={setEmpId}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-              <SelectContent>
-                {activos.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>{e.apellido}, {e.nombre}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {canEdit && (
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <h3 className="text-sm font-medium mb-4">Registrar Fichada</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+            <div>
+              <Label className="text-xs">Empleado</Label>
+              <Select value={empId} onValueChange={setEmpId}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                <SelectContent>
+                  {activos.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.apellido}, {e.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Turno (opcional)</Label>
+              <Select value={turnoId} onValueChange={setTurnoId}>
+                <SelectTrigger><SelectValue placeholder="Sin turno" /></SelectTrigger>
+                <SelectContent>
+                  {(turnos ?? []).map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={() => handleFichar("entrada")} disabled={registrar.isPending} className="gap-1.5">
+              <LogIn className="h-4 w-4" /> Entrada
+            </Button>
+            <Button onClick={() => handleFichar("salida")} disabled={registrar.isPending} variant="outline" className="gap-1.5">
+              <LogOut className="h-4 w-4" /> Salida
+            </Button>
           </div>
-          <div>
-            <Label className="text-xs">Turno (opcional)</Label>
-            <Select value={turnoId} onValueChange={setTurnoId}>
-              <SelectTrigger><SelectValue placeholder="Sin turno" /></SelectTrigger>
-              <SelectContent>
-                {(turnos ?? []).map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.nombre}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button onClick={() => handleFichar("entrada")} disabled={registrar.isPending} className="gap-1.5">
-            <LogIn className="h-4 w-4" /> Entrada
-          </Button>
-          <Button onClick={() => handleFichar("salida")} disabled={registrar.isPending} variant="outline" className="gap-1.5">
-            <LogOut className="h-4 w-4" /> Salida
-          </Button>
         </div>
-      </div>
+      )}
 
       <div className="rounded-xl border bg-card p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
@@ -176,7 +178,7 @@ function FichadaTab() {
                       <td className="px-3 py-2 tabular-nums">
                         {tardanza != null && tardanza > 0 ? (
                           <span className="text-destructive text-xs font-medium">{tardanza} min</span>
-                        ) : tardanza === 0 ? "—" : "—"}
+                        ) : "—"}
                       </td>
                       <td className="px-3 py-2 tabular-nums">
                         {hsExtra != null && hsExtra > 0 ? (
@@ -196,7 +198,7 @@ function FichadaTab() {
 }
 
 /* ── Turnos ── */
-function TurnosTab({ dialogState, setDialog }: { dialogState: { open: boolean; turno?: any }; setDialog: (s: any) => void }) {
+function TurnosTab({ dialogState, setDialog, canEdit }: { dialogState: { open: boolean; turno?: any }; setDialog: (s: any) => void; canEdit: boolean }) {
   const { data: turnos, isLoading } = useTurnos();
   const saveTurno = useSaveTurno();
   const deleteTurno = useDeleteTurno();
@@ -224,7 +226,7 @@ function TurnosTab({ dialogState, setDialog }: { dialogState: { open: boolean; t
     <div className="rounded-xl border bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium">Gestión de Turnos</h3>
-        <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" /> Nuevo Turno</Button>
+        {canEdit && <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" /> Nuevo Turno</Button>}
       </div>
 
       <Dialog open={dialogState.open} onOpenChange={(o) => setDialog({ open: o })}>
@@ -259,7 +261,7 @@ function TurnosTab({ dialogState, setDialog }: { dialogState: { open: boolean; t
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Entrada</th>
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Salida</th>
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Tolerancia</th>
-                <th className="px-3 py-2 w-20"></th>
+                {canEdit && <th className="px-3 py-2 w-20"></th>}
               </tr>
             </thead>
             <tbody>
@@ -269,19 +271,21 @@ function TurnosTab({ dialogState, setDialog }: { dialogState: { open: boolean; t
                   <td className="px-3 py-2 tabular-nums">{t.hora_entrada}</td>
                   <td className="px-3 py-2 tabular-nums">{t.hora_salida}</td>
                   <td className="px-3 py-2">{t.tolerancia_minutos} min</td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(t)}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteTurno.mutate(t.id, {
-                        onSuccess: () => toast.success("Turno eliminado"),
-                        onError: (err: Error) => toast.error(err.message),
-                      })}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </td>
+                  {canEdit && (
+                    <td className="px-3 py-2">
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(t)}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteTurno.mutate(t.id, {
+                          onSuccess: () => toast.success("Turno eliminado"),
+                          onError: (err: Error) => toast.error(err.message),
+                        })}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -293,7 +297,7 @@ function TurnosTab({ dialogState, setDialog }: { dialogState: { open: boolean; t
 }
 
 /* ── Novedades ── */
-function NovedadesTab() {
+function NovedadesTab({ canEdit }: { canEdit: boolean }) {
   const [mes, setMes] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -320,7 +324,7 @@ function NovedadesTab() {
           <h3 className="text-sm font-medium">Novedades de Asistencia</h3>
           <div className="flex items-center gap-2">
             <Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="w-auto" />
-            <Button size="sm" onClick={() => setDialog(true)}><Plus className="h-4 w-4 mr-1" /> Nueva</Button>
+            {canEdit && <Button size="sm" onClick={() => setDialog(true)}><Plus className="h-4 w-4 mr-1" /> Nueva</Button>}
           </div>
         </div>
 
@@ -366,7 +370,7 @@ function NovedadesTab() {
         {isLoading ? (
           <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : (novedades ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin novedades para este período.</p>
+          <p className="text-sm text-muted-foreground">Sin novedades para este mes.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -382,14 +386,8 @@ function NovedadesTab() {
                 {(novedades ?? []).map((n: any) => (
                   <tr key={n.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-3 py-2">{n.empleado?.apellido}, {n.empleado?.nombre}</td>
-                    <td className="px-3 py-2 tabular-nums">{new Date(n.fecha).toLocaleDateString("es-AR")}</td>
-                    <td className="px-3 py-2">
-                      <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                        n.tipo === "ausencia" ? "bg-destructive/15 text-destructive" :
-                        n.tipo === "tardanza" ? "bg-warning/15 text-warning" :
-                        "bg-info/15 text-info"
-                      )}>{n.tipo}</span>
-                    </td>
+                    <td className="px-3 py-2">{new Date(n.fecha).toLocaleDateString("es-AR")}</td>
+                    <td className="px-3 py-2 capitalize">{n.tipo}</td>
                     <td className="px-3 py-2 text-muted-foreground">{n.descripcion || "—"}</td>
                   </tr>
                 ))}
@@ -402,167 +400,165 @@ function NovedadesTab() {
   );
 }
 
-/* ── Planillas Excel ── */
-function PlanillasTab() {
-  const { data: empleados = [] } = useEmpleados();
-  const qc = useQueryClient();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<any[] | null>(null);
-  const [vigente, setVigente] = useState(new Date().toISOString().slice(0, 10));
+/* ── Planillas ── */
+function PlanillasTab({ canEdit }: { canEdit: boolean }) {
+  const { data: empleados } = useEmpleados();
+  const queryClient = useQueryClient();
+  const activos = (empleados ?? []).filter((e) => e.estado === "Activo");
 
-  const { data: asignaciones = [], isLoading } = useQuery({
-    queryKey: ["asignaciones_turno"],
+  const { data: asignaciones = [] } = useQuery({
+    queryKey: ["asignaciones_turno_all"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("asignaciones_turno").select("*, empleado:empleados(id, nombre, apellido, legajo)").order("empleado_id");
+      const { data, error } = await supabase.from("asignaciones_turno").select("*, empleado:empleados(nombre, apellido)");
       if (error) throw error;
       return data;
     },
   });
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const wb = XLSX.read(evt.target?.result, { type: "binary" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows: any[] = XLSX.utils.sheet_to_json(ws);
-      // Expected columns: legajo, lunes_entrada, lunes_salida, martes_entrada, martes_salida...
-      const parsed: any[] = [];
-      const dayMap: Record<string, number> = { lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5, sabado: 6, domingo: 0 };
+  const { data: turnos = [] } = useTurnos();
 
-      rows.forEach((row) => {
-        const legajo = String(row.legajo || row.Legajo || "").trim();
-        const emp = empleados.find((e) => e.legajo === legajo);
-        if (!emp) return;
-        Object.entries(dayMap).forEach(([dia, num]) => {
-          const entrada = row[`${dia}_entrada`] || row[`${dia.charAt(0).toUpperCase() + dia.slice(1)}_Entrada`];
-          const salida = row[`${dia}_salida`] || row[`${dia.charAt(0).toUpperCase() + dia.slice(1)}_Salida`];
-          if (entrada && salida) {
-            parsed.push({ empleado_id: emp.id, legajo, nombre: `${emp.apellido}, ${emp.nombre}`, dia_semana: num, dia_nombre: diasSemana[num], hora_entrada: String(entrada), hora_salida: String(salida) });
-          }
-        });
-      });
-      setPreview(parsed);
-    };
-    reader.readAsBinaryString(file);
+  const [editDialog, setEditDialog] = useState<{ open: boolean; empId?: string }>({ open: false });
+  const [editForm, setEditForm] = useState<Record<number, { hora_entrada: string; hora_salida: string }>>({});
+
+  const openEditForEmployee = (empId: string) => {
+    const empAsig = asignaciones.filter((a: any) => a.empleado_id === empId);
+    const formData: Record<number, { hora_entrada: string; hora_salida: string }> = {};
+    for (let d = 0; d <= 6; d++) {
+      const existing = empAsig.find((a: any) => a.dia_semana === d);
+      formData[d] = existing ? { hora_entrada: existing.hora_entrada, hora_salida: existing.hora_salida } : { hora_entrada: "", hora_salida: "" };
+    }
+    setEditForm(formData);
+    setEditDialog({ open: true, empId });
   };
 
-  const saveMutation = useMutation({
+  const savePlanillaMutation = useMutation({
     mutationFn: async () => {
-      if (!preview?.length) return;
-      // Delete existing for these employees
-      const empIds = [...new Set(preview.map((p) => p.empleado_id))];
-      for (const eid of empIds) {
-        await supabase.from("asignaciones_turno").delete().eq("empleado_id", eid);
+      const empId = editDialog.empId!;
+      await supabase.from("asignaciones_turno").delete().eq("empleado_id", empId);
+      const inserts = Object.entries(editForm)
+        .filter(([, v]) => v.hora_entrada && v.hora_salida)
+        .map(([d, v]) => ({
+          empleado_id: empId,
+          dia_semana: Number(d),
+          hora_entrada: v.hora_entrada,
+          hora_salida: v.hora_salida,
+        }));
+      if (inserts.length > 0) {
+        const { error } = await supabase.from("asignaciones_turno").insert(inserts);
+        if (error) throw error;
       }
-      // Insert new
-      const inserts = preview.map((p) => ({
-        empleado_id: p.empleado_id,
-        dia_semana: p.dia_semana,
-        hora_entrada: p.hora_entrada,
-        hora_salida: p.hora_salida,
-        vigente_desde: vigente,
-      }));
-      const { error } = await supabase.from("asignaciones_turno").insert(inserts);
-      if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Planilla importada correctamente");
-      setPreview(null);
-      qc.invalidateQueries({ queryKey: ["asignaciones_turno"] });
-      if (fileRef.current) fileRef.current.value = "";
+      toast.success("Planilla guardada");
+      queryClient.invalidateQueries({ queryKey: ["asignaciones_turno_all"] });
+      setEditDialog({ open: false });
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
-  // Group asignaciones by employee
-  const grouped = asignaciones.reduce((acc: any, a: any) => {
-    const key = a.empleado_id;
-    if (!acc[key]) acc[key] = { empleado: a.empleado, dias: [] };
-    acc[key].dias.push(a);
-    return acc;
-  }, {} as Record<string, any>);
+  const handleImportXLSX = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ab = await file.arrayBuffer();
+    const wb = XLSX.read(ab);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows: any[] = XLSX.utils.sheet_to_json(ws);
+    let count = 0;
+    for (const row of rows) {
+      const legajo = String(row["Legajo"] || "").trim();
+      const emp = activos.find((e) => e.legajo === legajo);
+      if (!emp) continue;
+      await supabase.from("asignaciones_turno").delete().eq("empleado_id", emp.id);
+      const inserts: any[] = [];
+      for (let d = 0; d <= 6; d++) {
+        const dayKey = diasSemana[d];
+        const val = row[dayKey];
+        if (!val) continue;
+        const parts = String(val).split("-").map((s: string) => s.trim());
+        if (parts.length === 2) {
+          inserts.push({ empleado_id: emp.id, dia_semana: d, hora_entrada: parts[0], hora_salida: parts[1] });
+        }
+      }
+      if (inserts.length > 0) {
+        await supabase.from("asignaciones_turno").insert(inserts);
+        count++;
+      }
+    }
+    toast.success(`Se importaron planillas de ${count} empleados`);
+    queryClient.invalidateQueries({ queryKey: ["asignaciones_turno_all"] });
+  };
+
+  const fileRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border bg-card p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-sm font-medium">Carga de Planilla de Horarios</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Subí un archivo Excel con columnas: legajo, lunes_entrada, lunes_salida, martes_entrada, martes_salida, etc.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Input type="date" value={vigente} onChange={(e) => setVigente(e.target.value)} className="w-auto h-8 text-xs" />
-            <label className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline cursor-pointer">
-              <Upload className="h-4 w-4" />Subir Excel
-              <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
+    <div className="rounded-xl border bg-card p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium">Planillas de Horario</h3>
+        {canEdit && (
+          <div className="flex gap-2">
+            <label className="inline-flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer">
+              <Upload className="h-3 w-3" />Importar XLSX
+              <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportXLSX} />
             </label>
-          </div>
-        </div>
-
-        {preview && (
-          <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground">{preview.length} asignaciones encontradas — Preview:</p>
-            <div className="overflow-x-auto max-h-64">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="px-2 py-1.5 text-left">Legajo</th>
-                    <th className="px-2 py-1.5 text-left">Empleado</th>
-                    <th className="px-2 py-1.5 text-left">Día</th>
-                    <th className="px-2 py-1.5 text-left">Entrada</th>
-                    <th className="px-2 py-1.5 text-left">Salida</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.slice(0, 50).map((p, i) => (
-                    <tr key={i} className="border-b last:border-0">
-                      <td className="px-2 py-1.5 font-mono">{p.legajo}</td>
-                      <td className="px-2 py-1.5">{p.nombre}</td>
-                      <td className="px-2 py-1.5">{p.dia_nombre}</td>
-                      <td className="px-2 py-1.5 tabular-nums">{p.hora_entrada}</td>
-                      <td className="px-2 py-1.5 tabular-nums">{p.hora_salida}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />}
-                Confirmar Importación
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => { setPreview(null); if (fileRef.current) fileRef.current.value = ""; }}>Cancelar</Button>
-            </div>
           </div>
         )}
       </div>
 
-      <div className="rounded-xl border bg-card p-5 shadow-sm">
-        <h3 className="text-sm font-medium mb-4">Asignaciones de Turno Vigentes</h3>
-        {isLoading ? (
-          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-        ) : Object.keys(grouped).length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin asignaciones. Importá una planilla Excel para comenzar.</p>
-        ) : (
-          <div className="space-y-3">
-            {Object.values(grouped).map((g: any) => (
-              <div key={g.empleado?.id} className="rounded-lg border px-4 py-3">
-                <p className="text-sm font-medium">{g.empleado?.apellido}, {g.empleado?.nombre} <span className="text-muted-foreground font-mono text-xs ml-1">#{g.empleado?.legajo}</span></p>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {g.dias.sort((a: any, b: any) => a.dia_semana - b.dia_semana).map((d: any) => (
-                    <span key={d.id} className="text-xs bg-muted px-2 py-1 rounded">
-                      {diasSemana[d.dia_semana]}: {d.hora_entrada}–{d.hora_salida}
-                    </span>
-                  ))}
-                </div>
+      <Dialog open={editDialog.open} onOpenChange={(o) => setEditDialog({ open: o })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Editar Planilla Semanal</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            {diasSemana.map((dia, i) => (
+              <div key={i} className="grid grid-cols-3 gap-2 items-center">
+                <span className="text-xs font-medium">{dia}</span>
+                <Input type="time" className="h-8 text-xs" value={editForm[i]?.hora_entrada || ""} onChange={(e) => setEditForm({ ...editForm, [i]: { ...editForm[i], hora_entrada: e.target.value } })} />
+                <Input type="time" className="h-8 text-xs" value={editForm[i]?.hora_salida || ""} onChange={(e) => setEditForm({ ...editForm, [i]: { ...editForm[i], hora_salida: e.target.value } })} />
               </div>
             ))}
           </div>
-        )}
+          <DialogFooter>
+            <Button onClick={() => savePlanillaMutation.mutate()} disabled={savePlanillaMutation.isPending}>Guardar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/50">
+              <th className="px-2 py-2 text-left font-medium text-muted-foreground text-xs">Empleado</th>
+              {diasSemana.map((d) => (
+                <th key={d} className="px-1 py-2 text-center font-medium text-muted-foreground text-xs">{d.slice(0, 3)}</th>
+              ))}
+              {canEdit && <th className="px-1 py-2 w-10"></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {activos.map((emp) => {
+              const empAsig = asignaciones.filter((a: any) => a.empleado_id === emp.id);
+              return (
+                <tr key={emp.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                  <td className="px-2 py-2 font-medium whitespace-nowrap">{emp.apellido}, {emp.nombre}</td>
+                  {diasSemana.map((_, d) => {
+                    const asig = empAsig.find((a: any) => a.dia_semana === d);
+                    return (
+                      <td key={d} className="px-1 py-2 text-center text-xs tabular-nums">
+                        {asig ? `${asig.hora_entrada.slice(0, 5)}-${asig.hora_salida.slice(0, 5)}` : <span className="text-muted-foreground">—</span>}
+                      </td>
+                    );
+                  })}
+                  {canEdit && (
+                    <td className="px-1 py-2">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEditForEmployee(emp.id)}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );

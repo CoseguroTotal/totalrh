@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMiEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
 import { useDocumentosLegajo } from "@/hooks/useEmpleados";
 import { useMemorandumsEmpleado, useUpdateEstadoMemorandum } from "@/hooks/useMemorandums";
 import { useSolicitudesVacacionesEmpleado, useSaveSolicitudVacaciones, useVacacionesConfig, calcDiasCorrespondientes, calcDiasHabiles } from "@/hooks/useVacaciones";
-import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree } from "lucide-react";
+import { useSanciones, useUpdateDescargo } from "@/hooks/useSanciones";
+import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import SolicitudPermisoFormDialog from "@/components/SolicitudPermisoFormDialog";
 import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
@@ -33,6 +35,12 @@ const memoEstadoBadge: Record<string, string> = {
   firmado: "bg-success/15 text-success",
 };
 
+const tipoSancionLabel: Record<string, string> = {
+  apercibimiento: "Apercibimiento",
+  amonestacion: "Amonestación",
+  suspension: "Suspensión",
+};
+
 export default function Autogestion() {
   const { data: emp, isLoading } = useMiEmpleado();
   const { data: solicitudes = [] } = useSolicitudesPermiso(emp?.id);
@@ -40,10 +48,14 @@ export default function Autogestion() {
   const { data: memos = [] } = useMemorandumsEmpleado(emp?.id);
   const { data: solicitudesVac = [] } = useSolicitudesVacacionesEmpleado(emp?.id);
   const { data: vacConfig = [] } = useVacacionesConfig(emp?.empresa_id);
+  const { data: sanciones = [] } = useSanciones(emp?.id);
   const saveSolVac = useSaveSolicitudVacaciones();
   const updateEstadoMemo = useUpdateEstadoMemorandum();
+  const updateDescargo = useUpdateDescargo();
   const [solicitudOpen, setSolicitudOpen] = useState(false);
   const [vacForm, setVacForm] = useState({ fecha_desde: "", fecha_hasta: "", observaciones: "" });
+  const [descargoForm, setDescargoForm] = useState<{ sancionId: string; texto: string } | null>(null);
+  const descargoFileRef = useRef<HTMLInputElement>(null);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -62,7 +74,6 @@ export default function Autogestion() {
   }
 
   const handleDownloadPDF = async (sol: any) => {
-    // Get empresa data for letterhead
     let empresaData = null;
     if (emp.empresa) {
       const { data: empFull } = await supabase.from("empresas").select("*").eq("id", emp.empresa.id).single();
@@ -94,7 +105,6 @@ export default function Autogestion() {
   };
 
   const handleAcuseRecibo = async (memoId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
     updateEstadoMemo.mutate({ id: memoId, estado: "recibido" }, {
       onSuccess: () => toast.success("Acuse de recibo registrado"),
     });
@@ -104,6 +114,33 @@ export default function Autogestion() {
     const { data: { user } } = await supabase.auth.getUser();
     updateEstadoMemo.mutate({ id: memoId, estado: "firmado", firmado_por: user?.id }, {
       onSuccess: () => toast.success("Firma digital registrada"),
+    });
+  };
+
+  const handleSubmitDescargo = async (sancionId: string) => {
+    if (!descargoForm?.texto) { toast.error("Escribí tu descargo"); return; }
+    
+    let docUrl: string | undefined;
+    const file = descargoFileRef.current?.files?.[0];
+    if (file) {
+      const path = `${emp.id}/descargos/${Date.now()}_${file.name}`;
+      const { error } = await supabase.storage.from("documentos-legajo").upload(path, file);
+      if (error) { toast.error("Error al subir documento"); return; }
+      const { data } = supabase.storage.from("documentos-legajo").getPublicUrl(path);
+      docUrl = data.publicUrl;
+    }
+
+    updateDescargo.mutate({
+      sancionId,
+      empleadoId: emp.id,
+      descargo_texto: descargoForm.texto,
+      descargo_documento_url: docUrl,
+    }, {
+      onSuccess: () => {
+        toast.success("Descargo presentado exitosamente");
+        setDescargoForm(null);
+      },
+      onError: (err: Error) => toast.error(err.message),
     });
   };
 
@@ -124,6 +161,7 @@ export default function Autogestion() {
           <TabsTrigger value="vacaciones"><Palmtree className="h-3.5 w-3.5 mr-1.5" />Vacaciones</TabsTrigger>
           <TabsTrigger value="documentos"><FileText className="h-3.5 w-3.5 mr-1.5" />Documentos</TabsTrigger>
           <TabsTrigger value="memorandums"><FileCheck className="h-3.5 w-3.5 mr-1.5" />Memorándums</TabsTrigger>
+          <TabsTrigger value="sanciones"><ShieldAlert className="h-3.5 w-3.5 mr-1.5" />Sanciones</TabsTrigger>
         </TabsList>
 
         <TabsContent value="datos">
@@ -315,6 +353,82 @@ export default function Autogestion() {
                         <Button size="sm" onClick={() => handleFirmar(m.id)}>Firmar Digitalmente</Button>
                       )}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="sanciones">
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-medium mb-4 flex items-center gap-2"><ShieldAlert className="h-4 w-4" />Mis Sanciones</h3>
+            {sanciones.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No tenés sanciones registradas.</p>
+            ) : (
+              <div className="space-y-3">
+                {sanciones.map((s: any) => (
+                  <div key={s.id} className="rounded-lg border px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{tipoSancionLabel[s.tipo] || s.tipo}: {s.motivo}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(s.fecha).toLocaleDateString("es-AR")}
+                          {s.descripcion && ` · ${s.descripcion}`}
+                        </p>
+                      </div>
+                      <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                        s.descargo_cerrado ? "bg-info/15 text-info" : "bg-warning/15 text-warning"
+                      )}>
+                        {s.descargo_cerrado ? "Descargo presentado" : "Pendiente de descargo"}
+                      </span>
+                    </div>
+
+                    {/* Show existing descargo */}
+                    {s.descargo_cerrado && s.descargo_texto && (
+                      <div className="mt-2 rounded-md bg-muted/50 p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Tu descargo ({s.descargo_fecha ? new Date(s.descargo_fecha).toLocaleDateString("es-AR") : ""}):</p>
+                        <p className="text-sm">{s.descargo_texto}</p>
+                        {s.descargo_documento_url && (
+                          <a href={s.descargo_documento_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">Ver documento adjunto</a>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Descargo form - only if not closed and no previous descargo */}
+                    {!s.descargo_cerrado && !s.descargo_texto && (
+                      <div className="mt-3">
+                        {descargoForm?.sancionId === s.id ? (
+                          <div className="space-y-3 rounded-md border p-3 bg-muted/30">
+                            <div>
+                              <Label className="text-xs">Descargo</Label>
+                              <Textarea
+                                value={descargoForm.texto}
+                                onChange={(e) => setDescargoForm({ ...descargoForm, texto: e.target.value })}
+                                placeholder="Escribí tu descargo..."
+                                rows={4}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Documento adjunto (opcional)</Label>
+                              <Input ref={descargoFileRef} type="file" className="text-xs" />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => handleSubmitDescargo(s.id)} disabled={updateDescargo.isPending}>
+                                {updateDescargo.isPending ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+                                Presentar Descargo
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setDescargoForm(null)}>Cancelar</Button>
+                            </div>
+                            <p className="text-xs text-destructive">⚠️ Una vez presentado, el descargo no podrá ser editado.</p>
+                          </div>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => setDescargoForm({ sancionId: s.id, texto: "" })}>
+                            Presentar Descargo
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

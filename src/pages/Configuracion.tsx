@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save, Users, Settings2, Plus, UserPlus } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, Save, Users, Settings2, Plus, UserPlus, Bell } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import AdminRoute from "@/components/AdminRoute";
 
@@ -60,9 +61,11 @@ function ConfiguracionContent() {
       <Tabs defaultValue="general" className="animate-slide-up">
         <TabsList>
           <TabsTrigger value="general"><Settings2 className="h-3.5 w-3.5 mr-1.5" />General</TabsTrigger>
+          <TabsTrigger value="notificaciones"><Bell className="h-3.5 w-3.5 mr-1.5" />Notificaciones</TabsTrigger>
           <TabsTrigger value="usuarios"><Users className="h-3.5 w-3.5 mr-1.5" />Usuarios</TabsTrigger>
         </TabsList>
         <TabsContent value="general"><GeneralTab /></TabsContent>
+        <TabsContent value="notificaciones"><NotificacionesTab /></TabsContent>
         <TabsContent value="usuarios"><UsuariosTab /></TabsContent>
       </Tabs>
     </div>
@@ -149,6 +152,44 @@ function GeneralTab() {
         {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
         Guardar
       </Button>
+    </div>
+  );
+}
+
+function NotificacionesTab() {
+  const { data: config, isLoading } = useConfigGrupo();
+  const qc = useQueryClient();
+
+  const toggleMutation = useMutation({
+    mutationFn: async (value: boolean) => {
+      const { error } = await supabase.from("configuracion_grupo").update({
+        notificaciones_email_activas: value,
+      } as any).eq("id", config!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Configuración actualizada");
+      qc.invalidateQueries({ queryKey: ["configuracion_grupo"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="rounded-xl border bg-card p-6 shadow-sm space-y-5">
+      <h3 className="text-sm font-medium">Notificaciones por Email</h3>
+      <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+        <div>
+          <p className="text-sm font-medium">Enviar email al aprobar/rechazar permisos y vacaciones</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Se enviará un email automático al empleado cuando se apruebe o rechace una solicitud.</p>
+        </div>
+        <Switch
+          checked={(config as any)?.notificaciones_email_activas ?? false}
+          onCheckedChange={(checked) => toggleMutation.mutate(checked)}
+          disabled={toggleMutation.isPending}
+        />
+      </div>
     </div>
   );
 }
