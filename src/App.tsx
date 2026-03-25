@@ -29,7 +29,7 @@ const App = () => (
               <Route path="/legajos" element={<Legajos />} />
               <Route path="/legajos/:id" element={<LegajoDetail />} />
               <Route path="/empresas" element={<Empresas />} />
-              <Route path="/liquidacion" element={<PlaceholderModule />} />
+              <Route path="/liquidacion" element={<Liquidacion />} />
               <Route path="/autogestion" element={<PlaceholderModule />} />
               <Route path="/asistencia" element={<PlaceholderModule />} />
               <Route path="/reclutamiento" element={<PlaceholderModule />} />
