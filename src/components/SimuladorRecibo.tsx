@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
+import { Download } from "lucide-react";
+import { generarReciboPDF } from "@/components/ReciboPDF";
 
 export default function SimuladorRecibo() {
   const { data: empleados } = useEmpleados();
@@ -171,7 +173,23 @@ export default function SimuladorRecibo() {
             <span className="tabular-nums">${neto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</span>
           </div>
 
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => {
+              if (!emp) return;
+              generarReciboPDF({
+                empleadoNombre: `${emp.apellido}, ${emp.nombre}`,
+                empleadoLegajo: emp.legajo,
+                periodo,
+                sueldoBasico: basico,
+                lineas,
+                totalRemunerativo: totalRem,
+                totalNoRemunerativo: totalNoRem,
+                totalDeducciones: totalDed,
+                neto,
+              });
+            }} disabled={!empleadoId}>
+              <Download className="h-4 w-4 mr-1" /> Descargar PDF
+            </Button>
             <Button onClick={() => saveMutation.mutate()} disabled={!empleadoId || saveMutation.isPending}>
               {saveMutation.isPending ? "Guardando..." : "Guardar Liquidación"}
             </Button>
