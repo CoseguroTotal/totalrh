@@ -50,22 +50,15 @@ export default function RegistroAsistencia() {
         <div>
           <img src={logoTotalRH} alt="TotalRH" className="h-16 w-16 mx-auto rounded-xl object-contain" />
           <h1 className="text-xl font-semibold mt-4">Registro de Asistencia</h1>
-          <p className="text-sm text-muted-foreground mt-1">Escaneá el QR con la app o ingresá tu código</p>
+          <p className="text-sm text-muted-foreground mt-1">Escaneá el QR con la app del empleado</p>
         </div>
 
-        <Tabs defaultValue="qr">
-          <TabsList className="w-full">
-            <TabsTrigger value="qr" className="flex-1 gap-1.5"><QrCode className="h-4 w-4" />QR</TabsTrigger>
-            <TabsTrigger value="codigo" className="flex-1 gap-1.5"><KeyRound className="h-4 w-4" />Código</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="qr" className="mt-6"><QrTerminal /></TabsContent>
-          <TabsContent value="codigo" className="mt-6"><CodigoTerminal /></TabsContent>
-        </Tabs>
+        <QrTerminal />
       </div>
     </div>
   );
 }
+
 
 /* ── Modo QR dinámico ── */
 function QrTerminal() {
