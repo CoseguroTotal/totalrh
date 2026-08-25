@@ -231,6 +231,69 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ── Action: qr-issue — la terminal solicita un código QR de un solo uso ──
+    if (action === "qr-issue") {
+      const jwt = req.headers.get("Authorization")?.replace("Bearer ", "");
+      if (!jwt) {
+        return new Response(JSON.stringify({ error: "No autenticado" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: userData } = await supabaseAdmin.auth.getUser(jwt);
+      if (!userData?.user) {
+        return new Response(JSON.stringify({ error: "Sesión inválida" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: config } = await supabaseAdmin
+        .from("configuracion_grupo")
+        .select("qr_duracion_segundos, fichado_qr_activo")
+        .limit(1)
+        .maybeSingle();
+
+      if (config && config.fichado_qr_activo === false) {
+        return new Response(JSON.stringify({ error: "El fichado por QR está desactivado" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const duracion = config?.qr_duracion_segundos ?? 10;
+      const codigo = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().slice(0, 8);
+      const expiraAt = new Date(Date.now() + duracion * 1000).toISOString();
+
+      const { error: insErr } = await supabaseAdmin.from("qr_sesiones").insert({
+        codigo,
+        terminal_user_id: userData.user.id,
+        expira_at: expiraAt,
+      });
+      if (insErr) throw insErr;
+
+      // Limpieza de códigos viejos (mayores a 1 hora)
+      await supabaseAdmin
+        .from("qr_sesiones")
+        .delete()
+        .lt("emitido_at", new Date(Date.now() - 3600_000).toISOString());
+
+      return new Response(
+        JSON.stringify({ codigo, expira_at: expiraAt, duracion_segundos: duracion }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Action: qr-fichar — el empleado escanea el QR desde su celular ──
+    if (action === "qr-fichar") {
+      const { codigo } = await Promise.resolve({ codigo: (arguments as never, undefined) });
+      return new Response(JSON.stringify({ error: "no-op" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
     return new Response(JSON.stringify({ error: "Acción no válida" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
