@@ -418,17 +418,6 @@ function AsistenciaConfigTab() {
         />
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-        <div>
-          <p className="text-sm font-medium">Fichado por código de 6 dígitos</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Método alternativo: el empleado genera un código y lo ingresa en la terminal.</p>
-        </div>
-        <Switch
-          checked={(config as any)?.fichado_token_activo ?? true}
-          onCheckedChange={(checked) => updateMutation.mutate({ fichado_token_activo: checked })}
-          disabled={updateMutation.isPending}
-        />
-      </div>
 
       <div className="space-y-1.5 max-w-xs">
         <Label className="text-xs">Duración del QR (segundos)</Label>
