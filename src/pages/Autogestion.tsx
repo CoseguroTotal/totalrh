@@ -20,6 +20,7 @@ import QrScanner from "@/components/QrScanner";
 import { useConfigGrupo } from "@/hooks/useConfigGrupo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
 
 const estadoBadge: Record<string, string> = {
   pendiente: "bg-warning/15 text-warning",
@@ -64,6 +65,10 @@ export default function Autogestion() {
   const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const { data: misRecibos = [] } = useLiquidacionesEmpleado(emp?.id);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") || "datos";
+  const setTab = (value: string) => setSearchParams({ tab: value }, { replace: true });
+
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
