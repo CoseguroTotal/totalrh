@@ -32,6 +32,7 @@ export type EmpleadoConEmpresa = {
   estado_civil: string | null;
   sueldo_basico: number | null;
   codigo_asistencia: string | null;
+  user_id: string | null;
 };
 
 export function useEmpleados() {

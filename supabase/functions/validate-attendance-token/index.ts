@@ -297,7 +297,7 @@ Deno.serve(async (req) => {
       const { data: userData } = jwt
         ? await supabaseAdmin.auth.getUser(jwt)
         : { data: null as never };
-      if (!userData?.user?.email) {
+      if (!userData?.user?.id) {
         return new Response(JSON.stringify({ error: "Debés iniciar sesión para fichar" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -307,7 +307,7 @@ Deno.serve(async (req) => {
       const { data: emp } = await supabaseAdmin
         .from("empleados")
         .select("id, nombre, apellido, legajo, estado")
-        .eq("email", userData.user.email)
+        .eq("user_id", userData.user.id)
         .maybeSingle();
 
       if (!emp) {
