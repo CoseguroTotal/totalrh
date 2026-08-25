@@ -163,6 +163,8 @@ export default function Autogestion() {
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">Consultá tus datos, solicitá permisos y accedé a tus documentos.</p>
       </div>
 
+      <HeroFichar empleadoId={emp.id} />
+
       <Tabs defaultValue="datos">
         <TabsList className="w-full overflow-x-auto flex-nowrap justify-start scrollbar-none h-auto p-1">
           <TabsTrigger value="datos" className="text-xs sm:text-sm shrink-0"><User className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Datos</TabsTrigger>
@@ -654,6 +656,131 @@ function TokenAsistenciaTab({ empleadoId }: { empleadoId: string }) {
           <p className="text-sm text-muted-foreground">No se pudo generar el token.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ── Hero de Fichar: visible al inicio del portal ── */
+function HeroFichar({ empleadoId }: { empleadoId: string }) {
+  const { data: config } = useConfigGrupo();
+  const [scanning, setScanning] = useState(false);
+  const [mostrarToken, setMostrarToken] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [resultado, setResultado] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const qrActivo = config?.fichado_qr_activo !== false;
+  const tokenActivo = config?.fichado_token_activo !== false;
+
+  const handleScan = useCallback(async (codigo: string) => {
+    if (enviando) return;
+    setEnviando(true);
+    setResultado(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("validate-attendance-token", {
+        body: { action: "qr-fichar", codigo },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const hora = data.hora ? new Date(data.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "";
+      setResultado({ ok: true, msg: `${data.tipo === "entrada" ? "Entrada" : "Salida"} registrada ${hora}` });
+      setScanning(false);
+    } catch (err: any) {
+      setResultado({ ok: false, msg: err.message || "No se pudo registrar la fichada" });
+    } finally {
+      setEnviando(false);
+    }
+  }, [enviando]);
+
+  if (!qrActivo && !tokenActivo) {
+    return (
+      <div className="rounded-2xl border bg-muted/30 p-4 sm:p-5 text-center text-sm text-muted-foreground">
+        El fichado desde la app está desactivado. Consultá con Recursos Humanos.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border bg-gradient-to-br from-primary/10 to-accent/10 p-4 sm:p-6 shadow-sm space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+            <Clock className="h-5 w-5 text-primary" />
+            Fichar ahora
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Registrá tu entrada o salida de forma rápida.
+          </p>
+        </div>
+      </div>
+
+      {scanning ? (
+        <div className="space-y-3">
+          <QrScanner onScan={handleScan} paused={enviando} />
+          <Button variant="outline" className="w-full" onClick={() => setScanning(false)}>
+            Cancelar
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {qrActivo && (
+            <Button
+              className="w-full h-14 text-base gap-2"
+              onClick={() => {
+                setResultado(null);
+                setMostrarToken(false);
+                setScanning(true);
+              }}
+            >
+              <Camera className="h-5 w-5" />
+              Escanear QR
+            </Button>
+          )}
+          {tokenActivo && (
+            <Button
+              variant="outline"
+              className="w-full h-14 text-base gap-2"
+              onClick={() => {
+                setResultado(null);
+                setMostrarToken((v) => !v);
+              }}
+            >
+              <KeyRound className="h-5 w-5" />
+              {mostrarToken ? "Ocultar código" : "Código de 6 dígitos"}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {enviando && (
+        <p className="text-sm text-muted-foreground flex items-center gap-2 justify-center">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Registrando...
+        </p>
+      )}
+
+      {resultado && (
+        <div
+          className={cn(
+            "rounded-xl border p-4 text-center",
+            resultado.ok ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30"
+          )}
+        >
+          {resultado.ok ? (
+            <CheckCircle2 className="h-8 w-8 mx-auto text-success mb-2" />
+          ) : (
+            <XCircle className="h-8 w-8 mx-auto text-destructive mb-2" />
+          )}
+          <p className={cn("text-sm font-medium", resultado.ok ? "text-success" : "text-destructive")}>
+            {resultado.msg}
+          </p>
+        </div>
+      )}
+
+      {mostrarToken && !scanning && (
+        <div className="animate-fade-in">
+          <TokenAsistenciaTab empleadoId={empleadoId} />
+        </div>
+      )}
     </div>
   );
 }
