@@ -335,6 +335,7 @@ export type Database = {
           sueldo_basico: number | null
           telefono: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           apellido: string
@@ -367,6 +368,7 @@ export type Database = {
           sueldo_basico?: number | null
           telefono?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           apellido?: string
@@ -399,6 +401,7 @@ export type Database = {
           sueldo_basico?: number | null
           telefono?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
