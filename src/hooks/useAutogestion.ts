@@ -6,11 +6,11 @@ export function useMiEmpleado() {
     queryKey: ["mi-empleado"],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) return null;
+      if (!user?.id) return null;
       const { data, error } = await supabase
         .from("empleados")
         .select("*, empresa:empresas(id, nombre), sucursal:sucursales(id, nombre)")
-        .eq("email", user.email)
+        .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
       return data;
