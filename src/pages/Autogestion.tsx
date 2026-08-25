@@ -607,6 +607,7 @@ function FichadasTab({ empleadoId }: { empleadoId: string }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );
