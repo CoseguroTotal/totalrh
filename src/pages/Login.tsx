@@ -85,8 +85,6 @@ export default function Login() {
           }
         }
       }
-    }
-
       navigate(await getTargetPathForUser(userId), { replace: true });
       return;
     }
