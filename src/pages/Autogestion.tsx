@@ -171,7 +171,7 @@ export default function Autogestion() {
           <TabsTrigger value="sanciones" className="text-xs sm:text-sm shrink-0"><ShieldAlert className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Sanciones</TabsTrigger>
           <TabsTrigger value="fichadas" className="text-xs sm:text-sm shrink-0"><Clock className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Fichadas</TabsTrigger>
           <TabsTrigger value="recibos" className="text-xs sm:text-sm shrink-0"><DollarSign className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Recibos</TabsTrigger>
-          <TabsTrigger value="token" className="text-xs sm:text-sm shrink-0"><KeyRound className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Token</TabsTrigger>
+          <TabsTrigger value="token" className="text-xs sm:text-sm shrink-0"><QrCode className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Fichar</TabsTrigger>
           <TabsTrigger value="password" className="text-xs sm:text-sm shrink-0"><Lock className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Clave</TabsTrigger>
         </TabsList>
 
