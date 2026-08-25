@@ -20,6 +20,7 @@ import QrScanner from "@/components/QrScanner";
 import { useConfigGrupo } from "@/hooks/useConfigGrupo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
 
 const estadoBadge: Record<string, string> = {
   pendiente: "bg-warning/15 text-warning",
@@ -64,6 +65,10 @@ export default function Autogestion() {
   const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const { data: misRecibos = [] } = useLiquidacionesEmpleado(emp?.id);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") || "datos";
+  const setTab = (value: string) => setSearchParams({ tab: value }, { replace: true });
+
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -156,17 +161,19 @@ export default function Autogestion() {
   const domicilioFull = [domicilio, emp.domicilio_localidad, emp.domicilio_provincia].filter(Boolean).join(", ");
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-4xl animate-fade-in px-1 sm:px-0">
+    <div className="space-y-4 sm:space-y-6 max-w-4xl animate-fade-in">
       <InstallPWAPrompt />
       <div>
-        <h1 className="text-xl sm:text-2xl font-semibold">Portal de Autogestión</h1>
+        <h1 className="text-lg sm:text-2xl font-semibold">Portal de Autogestión</h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">Consultá tus datos, solicitá permisos y accedé a tus documentos.</p>
       </div>
 
-      <HeroFichar />
+      <div className={cn(tab === "token" && "hidden sm:block")}>
+        <HeroFichar />
+      </div>
 
-      <Tabs defaultValue="datos">
-        <TabsList className="w-full overflow-x-auto flex-nowrap justify-start scrollbar-none h-auto p-1">
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="hidden sm:flex w-full overflow-x-auto flex-nowrap justify-start scrollbar-none h-auto p-1">
           <TabsTrigger value="datos" className="text-xs sm:text-sm shrink-0"><User className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Datos</TabsTrigger>
           <TabsTrigger value="permisos" className="text-xs sm:text-sm shrink-0"><ClipboardList className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Permisos</TabsTrigger>
           <TabsTrigger value="vacaciones" className="text-xs sm:text-sm shrink-0"><Palmtree className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Vacaciones</TabsTrigger>
@@ -177,6 +184,15 @@ export default function Autogestion() {
           <TabsTrigger value="recibos" className="text-xs sm:text-sm shrink-0"><DollarSign className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Recibos</TabsTrigger>
           <TabsTrigger value="token" className="text-xs sm:text-sm shrink-0"><QrCode className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Fichar</TabsTrigger>
           <TabsTrigger value="password" className="text-xs sm:text-sm shrink-0"><Lock className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Clave</TabsTrigger>
+        </TabsList>
+
+        {/* Mobile: accesos secundarios (los principales están en la barra inferior) */}
+        <TabsList className="sm:hidden w-full overflow-x-auto flex-nowrap justify-start scrollbar-none h-auto p-1 gap-1">
+          <TabsTrigger value="memorandums" className="text-xs shrink-0 min-h-[38px]">Memos</TabsTrigger>
+          <TabsTrigger value="sanciones" className="text-xs shrink-0 min-h-[38px]">Sanciones</TabsTrigger>
+          <TabsTrigger value="recibos" className="text-xs shrink-0 min-h-[38px]">Recibos</TabsTrigger>
+          <TabsTrigger value="fichadas" className="text-xs shrink-0 min-h-[38px]">Fichadas</TabsTrigger>
+          <TabsTrigger value="password" className="text-xs shrink-0 min-h-[38px]">Clave</TabsTrigger>
         </TabsList>
 
         <TabsContent value="datos">
@@ -546,7 +562,26 @@ function FichadasTab({ empleadoId }: { empleadoId: string }) {
       ) : fichadas.length === 0 ? (
         <p className="text-sm text-muted-foreground">Sin fichadas en este período.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        {/* Mobile: tarjetas */}
+        <div className="sm:hidden space-y-2">
+          {fichadas.map((f: any) => (
+            <div key={f.id} className="rounded-lg border px-3 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">{new Date(f.fecha + "T12:00:00").toLocaleDateString("es-AR")}</p>
+                <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", fichadaEstadoBadge[f.estado] || "bg-muted text-muted-foreground")}>
+                  {f.estado}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Entrada: {f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                {" · "}
+                Salida: {f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-xs sm:text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">
@@ -572,6 +607,7 @@ function FichadasTab({ empleadoId }: { empleadoId: string }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );
