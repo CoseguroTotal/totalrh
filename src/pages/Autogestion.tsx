@@ -579,15 +579,13 @@ function FichadasTab({ empleadoId }: { empleadoId: string }) {
 
 
 /* ── Hero de Fichar: visible al inicio del portal ── */
-function HeroFichar({ empleadoId }: { empleadoId: string }) {
+function HeroFichar() {
   const { data: config } = useConfigGrupo();
   const [scanning, setScanning] = useState(false);
-  const [mostrarToken, setMostrarToken] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const qrActivo = config?.fichado_qr_activo !== false;
-  const tokenActivo = config?.fichado_token_activo !== false;
 
   const handleScan = useCallback(async (codigo: string) => {
     if (enviando) return;
@@ -609,7 +607,7 @@ function HeroFichar({ empleadoId }: { empleadoId: string }) {
     }
   }, [enviando]);
 
-  if (!qrActivo && !tokenActivo) {
+  if (!qrActivo) {
     return (
       <div className="rounded-2xl border bg-muted/30 p-4 sm:p-5 text-center text-sm text-muted-foreground">
         El fichado desde la app está desactivado. Consultá con Recursos Humanos.
@@ -626,7 +624,7 @@ function HeroFichar({ empleadoId }: { empleadoId: string }) {
             Fichar ahora
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Registrá tu entrada o salida de forma rápida.
+            Escaneá el QR de tu sucursal para registrar entrada o salida.
           </p>
         </div>
       </div>
@@ -639,34 +637,16 @@ function HeroFichar({ empleadoId }: { empleadoId: string }) {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {qrActivo && (
-            <Button
-              className="w-full h-14 text-base gap-2"
-              onClick={() => {
-                setResultado(null);
-                setMostrarToken(false);
-                setScanning(true);
-              }}
-            >
-              <Camera className="h-5 w-5" />
-              Escanear QR
-            </Button>
-          )}
-          {tokenActivo && (
-            <Button
-              variant="outline"
-              className="w-full h-14 text-base gap-2"
-              onClick={() => {
-                setResultado(null);
-                setMostrarToken((v) => !v);
-              }}
-            >
-              <KeyRound className="h-5 w-5" />
-              {mostrarToken ? "Ocultar código" : "Código de 6 dígitos"}
-            </Button>
-          )}
-        </div>
+        <Button
+          className="w-full h-14 text-base gap-2"
+          onClick={() => {
+            setResultado(null);
+            setScanning(true);
+          }}
+        >
+          <Camera className="h-5 w-5" />
+          Escanear QR
+        </Button>
       )}
 
       {enviando && (
@@ -693,26 +673,18 @@ function HeroFichar({ empleadoId }: { empleadoId: string }) {
           </p>
         </div>
       )}
-
-      {mostrarToken && !scanning && (
-        <div className="animate-fade-in">
-          <TokenAsistenciaTab empleadoId={empleadoId} />
-        </div>
-      )}
     </div>
   );
 }
 
-/* ── Fichar: QR (principal) + código como alternativa ── */
-function FicharTab({ empleadoId }: { empleadoId: string }) {
+/* ── Fichar: solo QR ── */
+function FicharTab() {
   const { data: config } = useConfigGrupo();
   const [scanning, setScanning] = useState(false);
-  const [mostrarToken, setMostrarToken] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const qrActivo = config?.fichado_qr_activo !== false;
-  const tokenActivo = config?.fichado_token_activo !== false;
 
   const handleScan = useCallback(async (codigo: string) => {
     if (enviando) return;
@@ -734,66 +706,49 @@ function FicharTab({ empleadoId }: { empleadoId: string }) {
     }
   }, [enviando]);
 
+  if (!qrActivo) {
+    return (
+      <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
+        El fichado desde la app está desactivado. Consultá con Recursos Humanos.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {qrActivo && (
-        <div className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm space-y-4">
-          <h3 className="text-sm font-medium flex items-center gap-2"><QrCode className="h-4 w-4" />Fichar con QR</h3>
-          <p className="text-sm text-muted-foreground">
-            Escaneá el código QR que se muestra en la pantalla de tu sucursal. El código cambia cada pocos segundos.
+      <div className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm space-y-4">
+        <h3 className="text-sm font-medium flex items-center gap-2"><QrCode className="h-4 w-4" />Fichar con QR</h3>
+        <p className="text-sm text-muted-foreground">
+          Escaneá el código QR que se muestra en la pantalla de tu sucursal. El código cambia cada pocos segundos.
+        </p>
+
+        {scanning ? (
+          <>
+            <QrScanner onScan={handleScan} paused={enviando} />
+            <Button variant="outline" className="w-full" onClick={() => setScanning(false)}>Cancelar</Button>
+          </>
+        ) : (
+          <Button className="w-full h-12 text-base gap-2" onClick={() => { setResultado(null); setScanning(true); }}>
+            <Camera className="h-5 w-5" />Escanear QR
+          </Button>
+        )}
+
+        {enviando && (
+          <p className="text-sm text-muted-foreground flex items-center gap-2 justify-center">
+            <Loader2 className="h-4 w-4 animate-spin" />Registrando...
           </p>
+        )}
 
-          {scanning ? (
-            <>
-              <QrScanner onScan={handleScan} paused={enviando} />
-              <Button variant="outline" className="w-full" onClick={() => setScanning(false)}>Cancelar</Button>
-            </>
-          ) : (
-            <Button className="w-full h-12 text-base gap-2" onClick={() => { setResultado(null); setScanning(true); }}>
-              <Camera className="h-5 w-5" />Escanear QR
-            </Button>
-          )}
-
-          {enviando && (
-            <p className="text-sm text-muted-foreground flex items-center gap-2 justify-center">
-              <Loader2 className="h-4 w-4 animate-spin" />Registrando...
-            </p>
-          )}
-
-          {resultado && (
-            <div className={cn("rounded-xl border p-4 text-center", resultado.ok ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30")}>
-              {resultado.ok
-                ? <CheckCircle2 className="h-8 w-8 mx-auto text-success mb-2" />
-                : <XCircle className="h-8 w-8 mx-auto text-destructive mb-2" />}
-              <p className={cn("text-sm font-medium", resultado.ok ? "text-success" : "text-destructive")}>{resultado.msg}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {tokenActivo && (
-        <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm">
-          <button
-            type="button"
-            onClick={() => setMostrarToken((v) => !v)}
-            className="w-full flex items-center justify-between text-sm font-medium"
-          >
-            <span className="flex items-center gap-2"><KeyRound className="h-4 w-4" />Mostrar código de 6 dígitos</span>
-            <span className="text-xs text-muted-foreground">{mostrarToken ? "Ocultar" : "Ver"}</span>
-          </button>
-          {mostrarToken && (
-            <div className="mt-4">
-              <TokenAsistenciaTab empleadoId={empleadoId} />
-            </div>
-          )}
-        </div>
-      )}
-
-      {!qrActivo && !tokenActivo && (
-        <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-          El fichado desde la app está desactivado. Consultá con Recursos Humanos.
-        </div>
-      )}
+        {resultado && (
+          <div className={cn("rounded-xl border p-4 text-center", resultado.ok ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30")}>
+            {resultado.ok
+              ? <CheckCircle2 className="h-8 w-8 mx-auto text-success mb-2" />
+              : <XCircle className="h-8 w-8 mx-auto text-destructive mb-2" />}
+            <p className={cn("text-sm font-medium", resultado.ok ? "text-success" : "text-destructive")}>{resultado.msg}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
