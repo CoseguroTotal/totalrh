@@ -1,21 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, CheckCircle2, XCircle, LogOut, QrCode, KeyRound } from "lucide-react";
+import { Loader2, XCircle, LogOut } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import logoTotalRH from "@/assets/logo_total_rh.png";
 import QRCode from "qrcode";
 import { useUserRole } from "@/hooks/useUserRole";
 
-interface FichadaResult {
-  success: boolean;
-  tipo?: string;
-  empleado?: { nombre: string; apellido: string; legajo: string };
-  hora?: string;
-  error?: string;
-}
 
 export default function RegistroAsistencia() {
   const navigate = useNavigate();
@@ -50,22 +41,15 @@ export default function RegistroAsistencia() {
         <div>
           <img src={logoTotalRH} alt="TotalRH" className="h-16 w-16 mx-auto rounded-xl object-contain" />
           <h1 className="text-xl font-semibold mt-4">Registro de Asistencia</h1>
-          <p className="text-sm text-muted-foreground mt-1">Escaneá el QR con la app o ingresá tu código</p>
+          <p className="text-sm text-muted-foreground mt-1">Escaneá el QR con la app del empleado</p>
         </div>
 
-        <Tabs defaultValue="qr">
-          <TabsList className="w-full">
-            <TabsTrigger value="qr" className="flex-1 gap-1.5"><QrCode className="h-4 w-4" />QR</TabsTrigger>
-            <TabsTrigger value="codigo" className="flex-1 gap-1.5"><KeyRound className="h-4 w-4" />Código</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="qr" className="mt-6"><QrTerminal /></TabsContent>
-          <TabsContent value="codigo" className="mt-6"><CodigoTerminal /></TabsContent>
-        </Tabs>
+        <QrTerminal />
       </div>
     </div>
   );
 }
+
 
 /* ── Modo QR dinámico ── */
 function QrTerminal() {
@@ -186,73 +170,6 @@ function QrTerminal() {
           </ul>
         )}
       </div>
-    </div>
-  );
-}
-
-/* ── Modo código de 6 dígitos (alternativo) ── */
-function CodigoTerminal() {
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<FichadaResult | null>(null);
-
-  const handleFichar = async () => {
-    if (code.length !== 6) return;
-    setLoading(true);
-    setResult(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("validate-attendance-token", {
-        body: { action: "validate", token: code },
-      });
-      if (error) throw error;
-      if (data.error) setResult({ success: false, error: data.error });
-      else setResult({ success: true, ...data });
-    } catch (err: unknown) {
-      setResult({ success: false, error: err instanceof Error ? err.message : "Error de conexión" });
-    } finally {
-      setLoading(false);
-      setCode("");
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <Input
-        value={code}
-        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-        placeholder="000000"
-        className="text-center text-3xl tracking-[0.5em] h-16 font-mono"
-        maxLength={6}
-        autoFocus
-        onKeyDown={(e) => e.key === "Enter" && handleFichar()}
-      />
-      <Button onClick={handleFichar} disabled={code.length !== 6 || loading} className="w-full h-12 text-base">
-        {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
-        Fichar
-      </Button>
-
-      {result && (
-        <div className={`rounded-xl border p-6 ${result.success ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30"}`}>
-          {result.success ? (
-            <>
-              <CheckCircle2 className="h-10 w-10 mx-auto text-success mb-3" />
-              <p className="text-lg font-semibold">{result.empleado?.apellido}, {result.empleado?.nombre}</p>
-              <p className="text-sm text-muted-foreground">Legajo: {result.empleado?.legajo}</p>
-              <div className="mt-3 inline-flex items-center rounded-full bg-success/15 px-3 py-1 text-sm font-medium text-success capitalize">
-                {result.tipo === "entrada" ? "Entrada registrada" : "Salida registrada"}
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {result.hora ? new Date(result.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : ""}
-              </p>
-            </>
-          ) : (
-            <>
-              <XCircle className="h-10 w-10 mx-auto text-destructive mb-3" />
-              <p className="text-sm font-medium text-destructive">{result.error}</p>
-            </>
-          )}
-        </div>
-      )}
     </div>
   );
 }
