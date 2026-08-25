@@ -562,7 +562,26 @@ function FichadasTab({ empleadoId }: { empleadoId: string }) {
       ) : fichadas.length === 0 ? (
         <p className="text-sm text-muted-foreground">Sin fichadas en este período.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        {/* Mobile: tarjetas */}
+        <div className="sm:hidden space-y-2">
+          {fichadas.map((f: any) => (
+            <div key={f.id} className="rounded-lg border px-3 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">{new Date(f.fecha + "T12:00:00").toLocaleDateString("es-AR")}</p>
+                <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", fichadaEstadoBadge[f.estado] || "bg-muted text-muted-foreground")}>
+                  {f.estado}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Entrada: {f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                {" · "}
+                Salida: {f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-xs sm:text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">
