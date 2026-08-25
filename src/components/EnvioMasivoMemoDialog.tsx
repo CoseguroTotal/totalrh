@@ -101,6 +101,7 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
       setProgress((p) => ({ ...p, status: "Generando PDF..." }));
       const empresa = empresas.find((e: any) => e.id === selectedMemo.empresa_id);
       const url = await uploadMemoPdfAndGetUrl({
+        id: selectedMemo.id,
         numero: selectedMemo.numero,
         titulo: selectedMemo.titulo,
         contenido: selectedMemo.contenido,

@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generarMemorandumBlob } from "@/components/MemorandumPDF";
 
 interface MemoForPdf {
+  id?: string;
   numero: number;
   titulo: string;
   contenido: string;
@@ -12,13 +13,14 @@ interface MemoForPdf {
 }
 
 /**
- * Generates a memorandum PDF blob, uploads it to storage,
- * and returns the public URL for embedding in emails.
+ * Generates a memorandum PDF blob, uploads it to private storage,
+ * and returns a temporary signed URL for embedding in emails.
  */
 export async function uploadMemoPdfAndGetUrl(data: MemoForPdf): Promise<string | null> {
   try {
     const blob = await generarMemorandumBlob(data);
-    const fileName = `memo_${data.numero}_${Date.now()}.pdf`;
+    const folder = data.id || `memo_${data.numero}`;
+    const fileName = `${folder}/memo_${data.numero}_${Date.now()}.pdf`;
 
     const { error: uploadError } = await supabase.storage
       .from("memorandums-pdf")
@@ -29,11 +31,16 @@ export async function uploadMemoPdfAndGetUrl(data: MemoForPdf): Promise<string |
       return null;
     }
 
-    const { data: urlData } = supabase.storage
+    const { data: urlData, error: signedUrlError } = await supabase.storage
       .from("memorandums-pdf")
-      .getPublicUrl(fileName);
+      .createSignedUrl(fileName, 60 * 60 * 24 * 14);
 
-    return urlData.publicUrl;
+    if (signedUrlError) {
+      console.error("Signed URL error:", signedUrlError);
+      return null;
+    }
+
+    return urlData.signedUrl;
   } catch (err) {
     console.error("Error generating/uploading PDF:", err);
     return null;
