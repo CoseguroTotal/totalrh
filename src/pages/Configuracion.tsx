@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpleados } from "@/hooks/useEmpleados";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -33,14 +34,28 @@ function useConfigGrupo() {
   });
 }
 
+async function callUserAdmin(body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Sesión no disponible");
+
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const payload = await res.json();
+  if (!res.ok) throw new Error(payload.error || "No se pudo completar la operación");
+  return payload;
+}
+
 function useUsuariosConRoles() {
   return useQuery({
     queryKey: ["usuarios-roles"],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_users_with_roles");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () => callUserAdmin({ action: "list-users" }),
   });
 }
 
@@ -270,33 +285,23 @@ function HorariosAccesoTab() {
 
 function UsuariosTab() {
   const { data: roles = [], isLoading } = useUsuariosConRoles();
+  const { data: empleados = [] } = useEmpleados();
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ email: "", password: "", role: "usuario" });
+  const [newUser, setNewUser] = useState({ email: "", password: "", role: "usuario", empleado_id: "" });
   const [creating, setCreating] = useState(false);
 
   const handleCreate = async () => {
     if (!newUser.email || !newUser.password) { toast.error("Completá email y contraseña"); return; }
+    if (newUser.role === "empleado" && !newUser.empleado_id) { toast.error("Seleccioná el legajo del empleado"); return; }
     setCreating(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify(newUser),
-        }
-      );
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || "Error al crear usuario");
+      await callUserAdmin({ action: "create-user", ...newUser });
       toast.success(`Usuario ${newUser.email} creado con rol ${newUser.role}`);
       qc.invalidateQueries({ queryKey: ["usuarios-roles"] });
+      qc.invalidateQueries({ queryKey: ["empleados"] });
       setCreateOpen(false);
-      setNewUser({ email: "", password: "", role: "usuario" });
+      setNewUser({ email: "", password: "", role: "usuario", empleado_id: "" });
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -306,8 +311,7 @@ function UsuariosTab() {
 
   const updateRole = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: string }) => {
-      const { error } = await supabase.from("user_roles").update({ role: role as any }).eq("id", id);
-      if (error) throw error;
+      await callUserAdmin({ action: "update-role", user_role_id: id, role });
     },
     onSuccess: () => { toast.success("Rol actualizado"); qc.invalidateQueries({ queryKey: ["usuarios-roles"] }); },
     onError: (err: Error) => toast.error(err.message),
@@ -356,7 +360,7 @@ function UsuariosTab() {
             <div><Label className="text-xs">Contraseña</Label><Input type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} minLength={6} /></div>
             <div>
               <Label className="text-xs">Rol</Label>
-              <Select value={newUser.role} onValueChange={(v) => setNewUser({ ...newUser, role: v })}>
+              <Select value={newUser.role} onValueChange={(v) => setNewUser({ ...newUser, role: v, empleado_id: v === "empleado" ? newUser.empleado_id : "" })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {ROLES.map((rl) => (
@@ -365,6 +369,21 @@ function UsuariosTab() {
                 </SelectContent>
               </Select>
             </div>
+            {newUser.role === "empleado" && (
+              <div>
+                <Label className="text-xs">Legajo vinculado</Label>
+                <Select value={newUser.empleado_id} onValueChange={(v) => setNewUser({ ...newUser, empleado_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
+                  <SelectContent>
+                    {empleados.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.apellido}, {emp.nombre} · Legajo {emp.legajo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
