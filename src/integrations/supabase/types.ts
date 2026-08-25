@@ -164,10 +164,13 @@ export type Database = {
           domicilio: string | null
           email: string | null
           email_remitente: string | null
+          fichado_qr_activo: boolean
+          fichado_token_activo: boolean
           id: string
           logo_url: string | null
           nombre_grupo: string
           notificaciones_email_activas: boolean | null
+          qr_duracion_segundos: number
           telefono: string | null
           updated_at: string
         }
@@ -176,10 +179,13 @@ export type Database = {
           domicilio?: string | null
           email?: string | null
           email_remitente?: string | null
+          fichado_qr_activo?: boolean
+          fichado_token_activo?: boolean
           id?: string
           logo_url?: string | null
           nombre_grupo?: string
           notificaciones_email_activas?: boolean | null
+          qr_duracion_segundos?: number
           telefono?: string | null
           updated_at?: string
         }
@@ -188,10 +194,13 @@ export type Database = {
           domicilio?: string | null
           email?: string | null
           email_remitente?: string | null
+          fichado_qr_activo?: boolean
+          fichado_token_activo?: boolean
           id?: string
           logo_url?: string | null
           nombre_grupo?: string
           notificaciones_email_activas?: boolean | null
+          qr_duracion_segundos?: number
           telefono?: string | null
           updated_at?: string
         }
@@ -553,7 +562,9 @@ export type Database = {
           hora_entrada: string | null
           hora_salida: string | null
           id: string
+          metodo: string | null
           observaciones: string | null
+          terminal_user_id: string | null
           turno_id: string | null
         }
         Insert: {
@@ -564,7 +575,9 @@ export type Database = {
           hora_entrada?: string | null
           hora_salida?: string | null
           id?: string
+          metodo?: string | null
           observaciones?: string | null
+          terminal_user_id?: string | null
           turno_id?: string | null
         }
         Update: {
@@ -575,7 +588,9 @@ export type Database = {
           hora_entrada?: string | null
           hora_salida?: string | null
           id?: string
+          metodo?: string | null
           observaciones?: string | null
+          terminal_user_id?: string | null
           turno_id?: string | null
         }
         Relationships: [
@@ -862,6 +877,50 @@ export type Database = {
           {
             foreignKeyName: "novedades_asistencia_empleado_id_fkey"
             columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qr_sesiones: {
+        Row: {
+          codigo: string
+          consumido: boolean
+          consumido_at: string | null
+          consumido_por: string | null
+          created_at: string
+          emitido_at: string
+          expira_at: string
+          id: string
+          terminal_user_id: string | null
+        }
+        Insert: {
+          codigo: string
+          consumido?: boolean
+          consumido_at?: string | null
+          consumido_por?: string | null
+          created_at?: string
+          emitido_at?: string
+          expira_at: string
+          id?: string
+          terminal_user_id?: string | null
+        }
+        Update: {
+          codigo?: string
+          consumido?: boolean
+          consumido_at?: string | null
+          consumido_por?: string | null
+          created_at?: string
+          emitido_at?: string
+          expira_at?: string
+          id?: string
+          terminal_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_sesiones_consumido_por_fkey"
+            columns: ["consumido_por"]
             isOneToOne: false
             referencedRelation: "empleados"
             referencedColumns: ["id"]

@@ -6,7 +6,7 @@ import { useSolicitudesVacacionesEmpleado, useSaveSolicitudVacaciones, useVacaci
 import { useSanciones, useUpdateDescargo } from "@/hooks/useSanciones";
 import { useFichadasEmpleado } from "@/hooks/useAsistencia";
 import { useLiquidacionesEmpleado } from "@/hooks/useLiquidacion";
-import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, KeyRound, Clock, DollarSign, Lock } from "lucide-react";
+import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, KeyRound, Clock, DollarSign, Lock, QrCode, CheckCircle2, XCircle, Camera } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 import SolicitudPermisoFormDialog from "@/components/SolicitudPermisoFormDialog";
 import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
+import QrScanner from "@/components/QrScanner";
+import { useConfigGrupo } from "@/hooks/useConfigGrupo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -171,7 +173,7 @@ export default function Autogestion() {
           <TabsTrigger value="sanciones" className="text-xs sm:text-sm shrink-0"><ShieldAlert className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Sanciones</TabsTrigger>
           <TabsTrigger value="fichadas" className="text-xs sm:text-sm shrink-0"><Clock className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Fichadas</TabsTrigger>
           <TabsTrigger value="recibos" className="text-xs sm:text-sm shrink-0"><DollarSign className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Recibos</TabsTrigger>
-          <TabsTrigger value="token" className="text-xs sm:text-sm shrink-0"><KeyRound className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Token</TabsTrigger>
+          <TabsTrigger value="token" className="text-xs sm:text-sm shrink-0"><QrCode className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Fichar</TabsTrigger>
           <TabsTrigger value="password" className="text-xs sm:text-sm shrink-0"><Lock className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Clave</TabsTrigger>
         </TabsList>
 
@@ -475,8 +477,9 @@ export default function Autogestion() {
         </TabsContent>
 
         <TabsContent value="token">
-          <TokenAsistenciaTab empleadoId={emp.id} />
+          <FicharTab empleadoId={emp.id} />
         </TabsContent>
+
 
         <TabsContent value="password">
           <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm space-y-4 max-w-md">
@@ -651,6 +654,101 @@ function TokenAsistenciaTab({ empleadoId }: { empleadoId: string }) {
           <p className="text-sm text-muted-foreground">No se pudo generar el token.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ── Fichar: QR (principal) + código como alternativa ── */
+function FicharTab({ empleadoId }: { empleadoId: string }) {
+  const { data: config } = useConfigGrupo();
+  const [scanning, setScanning] = useState(false);
+  const [mostrarToken, setMostrarToken] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [resultado, setResultado] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const qrActivo = config?.fichado_qr_activo !== false;
+  const tokenActivo = config?.fichado_token_activo !== false;
+
+  const handleScan = useCallback(async (codigo: string) => {
+    if (enviando) return;
+    setEnviando(true);
+    setResultado(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("validate-attendance-token", {
+        body: { action: "qr-fichar", codigo },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const hora = data.hora ? new Date(data.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "";
+      setResultado({ ok: true, msg: `${data.tipo === "entrada" ? "Entrada" : "Salida"} registrada ${hora}` });
+      setScanning(false);
+    } catch (err: any) {
+      setResultado({ ok: false, msg: err.message || "No se pudo registrar la fichada" });
+    } finally {
+      setEnviando(false);
+    }
+  }, [enviando]);
+
+  return (
+    <div className="space-y-4">
+      {qrActivo && (
+        <div className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm space-y-4">
+          <h3 className="text-sm font-medium flex items-center gap-2"><QrCode className="h-4 w-4" />Fichar con QR</h3>
+          <p className="text-sm text-muted-foreground">
+            Escaneá el código QR que se muestra en la pantalla de tu sucursal. El código cambia cada pocos segundos.
+          </p>
+
+          {scanning ? (
+            <>
+              <QrScanner onScan={handleScan} paused={enviando} />
+              <Button variant="outline" className="w-full" onClick={() => setScanning(false)}>Cancelar</Button>
+            </>
+          ) : (
+            <Button className="w-full h-12 text-base gap-2" onClick={() => { setResultado(null); setScanning(true); }}>
+              <Camera className="h-5 w-5" />Escanear QR
+            </Button>
+          )}
+
+          {enviando && (
+            <p className="text-sm text-muted-foreground flex items-center gap-2 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" />Registrando...
+            </p>
+          )}
+
+          {resultado && (
+            <div className={cn("rounded-xl border p-4 text-center", resultado.ok ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30")}>
+              {resultado.ok
+                ? <CheckCircle2 className="h-8 w-8 mx-auto text-success mb-2" />
+                : <XCircle className="h-8 w-8 mx-auto text-destructive mb-2" />}
+              <p className={cn("text-sm font-medium", resultado.ok ? "text-success" : "text-destructive")}>{resultado.msg}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tokenActivo && (
+        <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setMostrarToken((v) => !v)}
+            className="w-full flex items-center justify-between text-sm font-medium"
+          >
+            <span className="flex items-center gap-2"><KeyRound className="h-4 w-4" />Mostrar código de 6 dígitos</span>
+            <span className="text-xs text-muted-foreground">{mostrarToken ? "Ocultar" : "Ver"}</span>
+          </button>
+          {mostrarToken && (
+            <div className="mt-4">
+              <TokenAsistenciaTab empleadoId={empleadoId} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {!qrActivo && !tokenActivo && (
+        <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
+          El fichado desde la app está desactivado. Consultá con Recursos Humanos.
+        </div>
+      )}
     </div>
   );
 }
