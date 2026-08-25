@@ -1,8 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logoTotalRH from "@/assets/logo_total_rh.png";
+import { Button } from "@/components/ui/button";
+
+async function getTargetPathForUser(userId: string) {
+  const { data } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (data?.role === "registro_asistencia") return "/registro-asistencia";
+  if (data?.role === "empleado") return "/autogestion";
+  return "/";
+}
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -10,6 +23,21 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let active = true;
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const userId = session?.user.id;
+      if (!userId) return;
+      const targetPath = await getTargetPathForUser(userId);
+      if (active) navigate(targetPath, { replace: true });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +87,11 @@ export default function Login() {
       }
     }
 
-    navigate("/");
+      navigate(await getTargetPathForUser(userId), { replace: true });
+      return;
+    }
+
+    navigate("/", { replace: true });
   };
 
   return (
@@ -104,14 +136,14 @@ export default function Login() {
             <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
           )}
 
-          <button
+          <Button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 active:scale-[0.98]"
+            className="w-full gap-2 h-11"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             Iniciar Sesión
-          </button>
+          </Button>
         </form>
 
         <p className="text-center text-xs text-muted-foreground">
