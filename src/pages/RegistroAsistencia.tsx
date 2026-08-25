@@ -1,21 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, CheckCircle2, XCircle, LogOut, QrCode, KeyRound } from "lucide-react";
+import { Loader2, XCircle, LogOut } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import logoTotalRH from "@/assets/logo_total_rh.png";
 import QRCode from "qrcode";
 import { useUserRole } from "@/hooks/useUserRole";
 
-interface FichadaResult {
-  success: boolean;
-  tipo?: string;
-  empleado?: { nombre: string; apellido: string; legajo: string };
-  hora?: string;
-  error?: string;
-}
 
 export default function RegistroAsistencia() {
   const navigate = useNavigate();
