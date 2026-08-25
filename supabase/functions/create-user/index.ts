@@ -16,6 +16,12 @@ const allowedRoles = new Set([
   "registro_asistencia",
 ]);
 
+function requiredEnv(name: string) {
+  const value = Deno.env.get(name);
+  if (!value) throw new Error(`Falta configuración del backend: ${name}`);
+  return value;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -28,8 +34,8 @@ Deno.serve(async (req) => {
     }
 
     const anonClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      requiredEnv("SUPABASE_URL"),
+      requiredEnv("SUPABASE_ANON_KEY"),
       { global: { headers: { Authorization: authHeader } } }
     );
 
@@ -52,8 +58,8 @@ Deno.serve(async (req) => {
     }
 
     const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      requiredEnv("SUPABASE_URL"),
+      requiredEnv("SUPABASE_SERVICE_ROLE_KEY")
     );
 
     const body = await req.json();
@@ -103,8 +109,24 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Faltan campos requeridos o el rol es inválido" }), { status: 400, headers: corsHeaders });
     }
 
-    if (role === "empleado" && !empleado_id) {
-      return new Response(JSON.stringify({ error: "Seleccioná el legajo para vincular al empleado" }), { status: 400, headers: corsHeaders });
+    if (role === "empleado") {
+      if (!empleado_id) {
+        return new Response(JSON.stringify({ error: "Seleccioná el legajo para vincular al empleado" }), { status: 400, headers: corsHeaders });
+      }
+
+      const { data: empleado, error: empleadoLookupErr } = await adminClient
+        .from("empleados")
+        .select("id, user_id")
+        .eq("id", empleado_id)
+        .maybeSingle();
+
+      if (empleadoLookupErr) throw empleadoLookupErr;
+      if (!empleado) {
+        return new Response(JSON.stringify({ error: "Legajo no encontrado" }), { status: 404, headers: corsHeaders });
+      }
+      if (empleado.user_id) {
+        return new Response(JSON.stringify({ error: "Ese legajo ya tiene un usuario vinculado" }), { status: 409, headers: corsHeaders });
+      }
     }
 
     const { data: newUser, error: createErr } = await adminClient.auth.admin.createUser({
@@ -131,14 +153,18 @@ Deno.serve(async (req) => {
     }
 
     if (role === "empleado") {
-      const { error: empleadoErr } = await adminClient
+      const { data: updatedEmpleado, error: empleadoErr } = await adminClient
         .from("empleados")
         .update({ user_id: userId, email })
         .eq("id", empleado_id)
-        .is("user_id", null);
+        .is("user_id", null)
+        .select("id");
 
       if (empleadoErr) {
         return new Response(JSON.stringify({ error: empleadoErr.message }), { status: 400, headers: corsHeaders });
+      }
+      if (!updatedEmpleado?.length) {
+        return new Response(JSON.stringify({ error: "No se pudo vincular el legajo" }), { status: 409, headers: corsHeaders });
       }
     }
 
