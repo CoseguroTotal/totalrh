@@ -4,9 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, CheckCircle2, XCircle, LogOut, QrCode, KeyRound } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import logoTotalRH from "@/assets/logo_total_rh.png";
 import QRCode from "qrcode";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface FichadaResult {
   success: boolean;
@@ -18,11 +19,24 @@ interface FichadaResult {
 
 export default function RegistroAsistencia() {
   const navigate = useNavigate();
+  const { data: role, isLoading } = useUserRole();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/login");
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (role !== "registro_asistencia" && role !== "admin") {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
