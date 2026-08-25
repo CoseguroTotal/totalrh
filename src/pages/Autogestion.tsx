@@ -163,7 +163,7 @@ export default function Autogestion() {
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">Consultá tus datos, solicitá permisos y accedé a tus documentos.</p>
       </div>
 
-      <HeroFichar empleadoId={emp.id} />
+      <HeroFichar />
 
       <Tabs defaultValue="datos">
         <TabsList className="w-full overflow-x-auto flex-nowrap justify-start scrollbar-none h-auto p-1">
@@ -479,7 +479,7 @@ export default function Autogestion() {
         </TabsContent>
 
         <TabsContent value="token">
-          <FicharTab empleadoId={emp.id} />
+          <FicharTab />
         </TabsContent>
 
 
