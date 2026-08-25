@@ -6,7 +6,7 @@ import { useSolicitudesVacacionesEmpleado, useSaveSolicitudVacaciones, useVacaci
 import { useSanciones, useUpdateDescargo } from "@/hooks/useSanciones";
 import { useFichadasEmpleado } from "@/hooks/useAsistencia";
 import { useLiquidacionesEmpleado } from "@/hooks/useLiquidacion";
-import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, KeyRound, Clock, DollarSign, Lock, QrCode, CheckCircle2, XCircle, Camera } from "lucide-react";
+import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, Clock, DollarSign, Lock, QrCode, CheckCircle2, XCircle, Camera } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
