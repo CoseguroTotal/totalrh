@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { action, token, empleado_id } = await req.json();
+    const { action, token, empleado_id, codigo } = await req.json();
 
     // Action: generate-secret — create or return TOTP secret for an employee
     if (action === "generate-secret") {
