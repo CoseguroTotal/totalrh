@@ -62,6 +62,7 @@ export default function Memorandums() {
   const getMemoDataForPdf = (m: any) => {
     const empresa = empresas.find((e: any) => e.id === m.empresa_id);
     return {
+      id: m.id,
       numero: m.numero,
       titulo: m.titulo,
       contenido: m.contenido,
