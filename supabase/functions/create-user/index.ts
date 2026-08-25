@@ -60,9 +60,22 @@ Deno.serve(async (req) => {
     const action = body.action ?? "create-user";
 
     if (action === "list-users") {
-      const { data, error } = await adminClient.rpc("get_users_with_roles");
+      const { data: roles, error } = await adminClient
+        .from("user_roles")
+        .select("id, user_id, role")
+        .order("role");
       if (error) throw error;
-      return new Response(JSON.stringify(data ?? []), { headers: corsHeaders });
+
+      const { data: usersPage, error: usersErr } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      if (usersErr) throw usersErr;
+
+      const emailById = new Map(usersPage.users.map((user) => [user.id, user.email]));
+      const response = (roles ?? []).map((item) => ({
+        ...item,
+        email: emailById.get(item.user_id) ?? null,
+      }));
+
+      return new Response(JSON.stringify(response), { headers: corsHeaders });
     }
 
     if (action === "update-role") {
