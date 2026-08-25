@@ -286,12 +286,126 @@ Deno.serve(async (req) => {
 
     // ── Action: qr-fichar — el empleado escanea el QR desde su celular ──
     if (action === "qr-fichar") {
-      const { codigo } = await Promise.resolve({ codigo: (arguments as never, undefined) });
-      return new Response(JSON.stringify({ error: "no-op" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (!codigo || typeof codigo !== "string") {
+        return new Response(JSON.stringify({ error: "Código QR inválido" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const jwt = req.headers.get("Authorization")?.replace("Bearer ", "");
+      const { data: userData } = jwt
+        ? await supabaseAdmin.auth.getUser(jwt)
+        : { data: null as never };
+      if (!userData?.user?.email) {
+        return new Response(JSON.stringify({ error: "Debés iniciar sesión para fichar" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: emp } = await supabaseAdmin
+        .from("empleados")
+        .select("id, nombre, apellido, legajo, estado")
+        .eq("email", userData.user.email)
+        .maybeSingle();
+
+      if (!emp) {
+        return new Response(JSON.stringify({ error: "No se encontró tu legajo" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (emp.estado === "Baja") {
+        return new Response(JSON.stringify({ error: "Legajo inactivo" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: qr } = await supabaseAdmin
+        .from("qr_sesiones")
+        .select("id, expira_at, consumido, terminal_user_id")
+        .eq("codigo", codigo)
+        .maybeSingle();
+
+      if (!qr) {
+        return new Response(JSON.stringify({ error: "Código QR no reconocido" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (qr.consumido) {
+        return new Response(JSON.stringify({ error: "Este QR ya fue utilizado" }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // 5 segundos de gracia por demoras de red
+      if (new Date(qr.expira_at).getTime() + 5000 < Date.now()) {
+        return new Response(JSON.stringify({ error: "QR vencido, escaneá el nuevo código" }), {
+          status: 410,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Consumo atómico: sólo el primero que lo marque puede fichar
+      const { data: claimed } = await supabaseAdmin
+        .from("qr_sesiones")
+        .update({ consumido: true, consumido_por: emp.id, consumido_at: new Date().toISOString() })
+        .eq("id", qr.id)
+        .eq("consumido", false)
+        .select("id");
+
+      if (!claimed?.length) {
+        return new Response(JSON.stringify({ error: "Este QR ya fue utilizado" }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const hoy = new Date().toISOString().slice(0, 10);
+      const { data: openFichada } = await supabaseAdmin
+        .from("fichadas")
+        .select("id")
+        .eq("empleado_id", emp.id)
+        .eq("fecha", hoy)
+        .is("hora_salida", null)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const ahora = new Date().toISOString();
+      let tipo: string;
+
+      if (openFichada && openFichada.length > 0) {
+        await supabaseAdmin
+          .from("fichadas")
+          .update({ hora_salida: ahora })
+          .eq("id", openFichada[0].id);
+        tipo = "salida";
+      } else {
+        await supabaseAdmin.from("fichadas").insert({
+          empleado_id: emp.id,
+          fecha: hoy,
+          hora_entrada: ahora,
+          estado: "presente",
+          metodo: "qr",
+          terminal_user_id: qr.terminal_user_id,
+        });
+        tipo = "entrada";
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          tipo,
+          empleado: { id: emp.id, nombre: emp.nombre, apellido: emp.apellido, legajo: emp.legajo },
+          hora: ahora,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
 
 
     return new Response(JSON.stringify({ error: "Acción no válida" }), {
