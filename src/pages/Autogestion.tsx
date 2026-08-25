@@ -475,8 +475,9 @@ export default function Autogestion() {
         </TabsContent>
 
         <TabsContent value="token">
-          <TokenAsistenciaTab empleadoId={emp.id} />
+          <FicharTab empleadoId={emp.id} />
         </TabsContent>
+
 
         <TabsContent value="password">
           <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm space-y-4 max-w-md">
