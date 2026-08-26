@@ -1355,6 +1355,16 @@ export type Database = {
       is_manager: { Args: never; Returns: boolean }
       is_manager_or_contador: { Args: never; Returns: boolean }
       my_empleado_id: { Args: never; Returns: string }
+      terminal_ultimas_fichadas: {
+        Args: never
+        Returns: {
+          apellido: string
+          hora: string
+          legajo: string
+          nombre: string
+          tipo: string
+        }[]
+      }
     }
     Enums: {
       app_role:

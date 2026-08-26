@@ -95,27 +95,18 @@ function QrTerminal() {
 
   // Panel de últimas fichadas de esta terminal
   const fetchUltimas = useCallback(async () => {
-    const { data: userData } = await supabase.auth.getUser();
-    const uid = userData?.user?.id;
-    if (!uid) return;
-    const hoy = new Date().toISOString().slice(0, 10);
-    const { data } = await supabase
-      .from("fichadas")
-      .select("hora_entrada, hora_salida, empleado:empleados(nombre, apellido, legajo)")
-      .eq("terminal_user_id", uid)
-      .eq("fecha", hoy)
-      .order("created_at", { ascending: false })
-      .limit(5);
+    const { data } = await supabase.rpc("terminal_ultimas_fichadas");
     setUltimas(
-      (data ?? []).map((f: any) => ({
-        nombre: f.empleado?.nombre ?? "",
-        apellido: f.empleado?.apellido ?? "",
-        legajo: f.empleado?.legajo ?? "",
-        tipo: f.hora_salida ? "salida" : "entrada",
-        hora: f.hora_salida ?? f.hora_entrada,
+      (data ?? []).map((f) => ({
+        nombre: f.nombre ?? "",
+        apellido: f.apellido ?? "",
+        legajo: f.legajo ?? "",
+        tipo: f.tipo ?? "entrada",
+        hora: f.hora ?? "",
       }))
     );
   }, []);
+
 
   useEffect(() => {
     fetchUltimas();
