@@ -22,6 +22,8 @@ import RegistroAsistencia from "@/pages/RegistroAsistencia";
 import NotFound from "./pages/NotFound";
 import EmployeeGuard from "@/components/EmployeeGuard";
 import AdminRoute from "@/components/AdminRoute";
+import RoleRoute from "@/components/RoleRoute";
+import AutogestionGuard from "@/components/AutogestionGuard";
 
 const queryClient = new QueryClient();
 
