@@ -1,0 +1,22 @@
+import { useUserRole } from "@/hooks/useUserRole";
+import { Navigate, Outlet } from "react-router-dom";
+import { Loader2 } from "lucide-react";
+
+/** Bloquea el acceso a Autogestión para la terminal de registro de asistencia */
+export default function AutogestionGuard() {
+  const { data: role, isLoading } = useUserRole();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (role === "registro_asistencia") {
+    return <Navigate to="/registro-asistencia" replace />;
+  }
+
+  return <Outlet />;
+}
