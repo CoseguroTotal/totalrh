@@ -1,1 +1,0 @@
-ALTER TABLE public.configuracion_grupo ADD COLUMN email_remitente text DEFAULT 'onboarding@resend.dev';
