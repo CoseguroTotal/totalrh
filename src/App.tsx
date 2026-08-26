@@ -36,21 +36,26 @@ const App = () => (
           <Route element={<ProtectedRoute />}>
             <Route path="/registro-asistencia" element={<RegistroAsistencia />} />
             <Route element={<AppLayout />}>
-              <Route path="/autogestion" element={<Autogestion />} />
+              <Route element={<AutogestionGuard />}>
+                <Route path="/autogestion" element={<Autogestion />} />
+              </Route>
               <Route element={<EmployeeGuard />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/legajos" element={<Legajos />} />
                 <Route path="/legajos/:id" element={<LegajoDetail />} />
-                <Route path="/empresas" element={<Empresas />} />
                 <Route path="/liquidacion" element={<Liquidacion />} />
-                <Route path="/memorandums" element={<Memorandums />} />
                 <Route path="/asistencia" element={<Asistencia />} />
                 <Route path="/vacaciones" element={<Vacaciones />} />
-                <Route path="/configuracion" element={<AdminRoute><Configuracion /></AdminRoute>} />
-                <Route path="/reclutamiento" element={<Reclutamiento />} />
                 <Route path="/reportes" element={<Reportes />} />
+                <Route path="/configuracion" element={<AdminRoute><Configuracion /></AdminRoute>} />
+                <Route element={<RoleRoute deny={["contador"]} />}>
+                  <Route path="/empresas" element={<Empresas />} />
+                  <Route path="/memorandums" element={<Memorandums />} />
+                  <Route path="/reclutamiento" element={<Reclutamiento />} />
+                </Route>
               </Route>
             </Route>
+
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
