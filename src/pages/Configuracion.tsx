@@ -77,12 +77,16 @@ function ConfiguracionContent() {
           <TabsTrigger value="horarios"><Clock className="h-3.5 w-3.5 mr-1.5" />Horarios Acceso</TabsTrigger>
           <TabsTrigger value="asistencia"><QrCode className="h-3.5 w-3.5 mr-1.5" />Asistencia</TabsTrigger>
           <TabsTrigger value="usuarios"><Users className="h-3.5 w-3.5 mr-1.5" />Usuarios</TabsTrigger>
+          {isSuperadmin && (
+            <TabsTrigger value="demo"><Mail className="h-3.5 w-3.5 mr-1.5" />Solicitudes de demo</TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="general"><GeneralTab /></TabsContent>
         <TabsContent value="notificaciones"><NotificacionesTab /></TabsContent>
         <TabsContent value="horarios"><HorariosAccesoTab /></TabsContent>
         <TabsContent value="asistencia"><AsistenciaConfigTab /></TabsContent>
         <TabsContent value="usuarios"><UsuariosTab /></TabsContent>
+        {isSuperadmin && <TabsContent value="demo"><DemoLeadsTab /></TabsContent>}
 
       </Tabs>
     </div>
