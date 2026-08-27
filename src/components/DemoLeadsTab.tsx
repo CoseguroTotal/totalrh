@@ -37,9 +37,9 @@ export default function DemoLeadsTab() {
   });
 
   const exportCsv = () => {
-    const headers = ["Nombre", "Email", "Empresa", "Teléfono", "Verificado", "Accesos", "Último acceso", "Fecha solicitud"];
+    const headers = ["Nombre", "Email", "Empresa", "Teléfono", "Estado email", "Verificado", "Accesos", "Último acceso", "Fecha solicitud"];
     const lines = rows.map((r) =>
-      [r.nombre, r.email, r.empresa ?? "", r.telefono ?? "", r.verificado ? "Sí" : "No", r.accesos,
+      [r.nombre, r.email, r.empresa ?? "", r.telefono ?? "", r.ultimo_email_estado ?? "", r.verificado ? "Sí" : "No", r.accesos,
        r.ultimo_acceso ? new Date(r.ultimo_acceso).toLocaleString("es-AR") : "",
        new Date(r.created_at).toLocaleString("es-AR")]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
@@ -80,6 +80,7 @@ export default function DemoLeadsTab() {
               <th className="px-3 py-2 font-medium">Email</th>
               <th className="px-3 py-2 font-medium">Empresa</th>
               <th className="px-3 py-2 font-medium">Teléfono</th>
+              <th className="px-3 py-2 font-medium">Email</th>
               <th className="px-3 py-2 font-medium">Verificó</th>
               <th className="px-3 py-2 font-medium">Accesos</th>
               <th className="px-3 py-2 font-medium">Último acceso</th>
@@ -93,6 +94,11 @@ export default function DemoLeadsTab() {
                 <td className="px-3 py-2">{r.email}</td>
                 <td className="px-3 py-2">{r.empresa ?? "—"}</td>
                 <td className="px-3 py-2">{r.telefono ?? "—"}</td>
+                <td className="px-3 py-2">
+                  {r.ultimo_email_estado
+                    ? `${r.ultimo_email_estado}${r.ultimo_email_at ? ` · ${new Date(r.ultimo_email_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}` : ""}`
+                    : "—"}
+                </td>
                 <td className="px-3 py-2">{r.verificado ? "Sí" : "No"}</td>
                 <td className="px-3 py-2">{r.accesos}</td>
                 <td className="px-3 py-2">{r.ultimo_acceso ? new Date(r.ultimo_acceso).toLocaleString("es-AR") : "—"}</td>
@@ -100,7 +106,7 @@ export default function DemoLeadsTab() {
               </tr>
             ))}
             {!rows.length && (
-              <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">Todavía no hay solicitudes.</td></tr>
+              <tr><td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">Todavía no hay solicitudes.</td></tr>
             )}
           </tbody>
         </table>
