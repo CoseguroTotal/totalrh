@@ -64,6 +64,7 @@ export default function Configuracion() {
 }
 
 function ConfiguracionContent() {
+  const { data: isSuperadmin } = useIsSuperadmin();
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="animate-fade-in">
@@ -71,7 +72,8 @@ function ConfiguracionContent() {
         <p className="text-sm text-muted-foreground mt-1">Gestión de usuarios y configuración del grupo empresario</p>
       </div>
       <Tabs defaultValue="general" className="animate-slide-up">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
+
           <TabsTrigger value="general"><Settings2 className="h-3.5 w-3.5 mr-1.5" />General</TabsTrigger>
           <TabsTrigger value="notificaciones"><Bell className="h-3.5 w-3.5 mr-1.5" />Notificaciones</TabsTrigger>
           <TabsTrigger value="horarios"><Clock className="h-3.5 w-3.5 mr-1.5" />Horarios Acceso</TabsTrigger>
