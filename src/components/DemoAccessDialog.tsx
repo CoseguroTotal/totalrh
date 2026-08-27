@@ -124,6 +124,10 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
           </form>
         ) : (
           <form onSubmit={handleVerify} className="space-y-3">
+            <div className="rounded-md bg-primary/10 px-3 py-2 text-[12px] text-foreground/80 leading-snug">
+              El email puede demorar hasta 1 minuto. Si no lo ves, revisá la carpeta de <strong>spam o correo no deseado</strong>.
+              Incluye también los usuarios de prueba de cada rol.
+            </div>
             <div>
               <Label htmlFor="demo-codigo">Código de acceso</Label>
               <Input
@@ -141,10 +145,20 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Ingresar a la demo
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleResend}
+              disabled={loading || resendIn > 0}
+            >
+              {resendIn > 0 ? `Reenviar código en ${resendIn}s` : "Reenviar código"}
+            </Button>
             <Button type="button" variant="ghost" className="w-full" onClick={reset} disabled={loading}>
-              Cambiar mis datos / reenviar código
+              Cambiar mis datos
             </Button>
           </form>
+
         )}
       </DialogContent>
     </Dialog>
