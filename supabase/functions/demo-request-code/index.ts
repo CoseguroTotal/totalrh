@@ -94,7 +94,7 @@ serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    const remitente = config?.email_remitente || "onboarding@resend.dev";
+    const remitente = config?.email_remitente || "no-reply@totalrh.com.ar";
     const from = `TotalRH <${remitente}>`;
 
     const html = `

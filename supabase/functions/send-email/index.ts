@@ -60,9 +60,9 @@ serve(async (req) => {
         .select("email_remitente, nombre_grupo")
         .limit(1)
         .single();
-      senderEmail = config?.email_remitente || "onboarding@resend.dev";
-      if (config?.nombre_grupo && !senderEmail.includes("<")) {
-        senderEmail = `${config.nombre_grupo} <${senderEmail}>`;
+      senderEmail = config?.email_remitente || "no-reply@totalrh.com.ar";
+      if (!senderEmail.includes("<")) {
+        senderEmail = `TotalRH <${senderEmail}>`;
       }
     }
 
