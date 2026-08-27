@@ -68,7 +68,7 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
     setError(null);
     setLoading(true);
     try {
-      await requestDemoCode(parsed.data);
+      await requestDemoCode({ ...parsed.data, nombre: parsed.data.nombre, email: parsed.data.email });
       setResendIn(45);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No pudimos reenviar el código");
