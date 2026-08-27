@@ -14,7 +14,7 @@ async function getTargetPathForUser(userId: string) {
 
   if (data?.role === "registro_asistencia") return "/registro-asistencia";
   if (data?.role === "empleado") return "/autogestion";
-  return "/";
+  return "/app";
 }
 
 export default function Login() {
@@ -89,7 +89,7 @@ export default function Login() {
       return;
     }
 
-    navigate("/", { replace: true });
+    navigate("/app", { replace: true });
   };
 
   return (

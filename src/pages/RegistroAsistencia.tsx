@@ -26,7 +26,7 @@ export default function RegistroAsistencia() {
   }
 
   if (role !== "registro_asistencia" && role !== "admin") {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/app" replace />;
   }
 
   return (

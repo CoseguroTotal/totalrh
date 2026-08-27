@@ -17,7 +17,7 @@ import logoTotalRH from "@/assets/logo_total_rh.png";
 import { Building2 } from "lucide-react";
 
 const modules = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/app", icon: LayoutDashboard },
   { title: "Legajos", url: "/legajos", icon: FileText },
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Liquidación", url: "/liquidacion", icon: DollarSign },
@@ -38,7 +38,7 @@ const registroModules = [
 ];
 
 const contadorModules = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/app", icon: LayoutDashboard },
   { title: "Legajos", url: "/legajos", icon: FileText },
   { title: "Liquidación", url: "/liquidacion", icon: DollarSign },
   { title: "Asistencia", url: "/asistencia", icon: Clock },
@@ -103,7 +103,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      end={item.url === "/"}
+                      end={item.url === "/app"}
                       className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
                     >
