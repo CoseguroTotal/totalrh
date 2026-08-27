@@ -310,6 +310,9 @@ export type Database = {
           nombre: string
           telefono: string | null
           ultimo_acceso: string | null
+          ultimo_email_at: string | null
+          ultimo_email_estado: string | null
+          ultimo_email_id: string | null
           ultimo_ip: string | null
           updated_at: string
           verificado: boolean
@@ -323,6 +326,9 @@ export type Database = {
           nombre: string
           telefono?: string | null
           ultimo_acceso?: string | null
+          ultimo_email_at?: string | null
+          ultimo_email_estado?: string | null
+          ultimo_email_id?: string | null
           ultimo_ip?: string | null
           updated_at?: string
           verificado?: boolean
@@ -336,6 +342,9 @@ export type Database = {
           nombre?: string
           telefono?: string | null
           ultimo_acceso?: string | null
+          ultimo_email_at?: string | null
+          ultimo_email_estado?: string | null
+          ultimo_email_id?: string | null
           ultimo_ip?: string | null
           updated_at?: string
           verificado?: boolean

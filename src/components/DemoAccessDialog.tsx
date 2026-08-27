@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -27,11 +27,19 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
   const [codigo, setCodigo] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendIn, setResendIn] = useState(0);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
 
   const reset = () => {
     setStep("datos");
     setCodigo("");
     setError(null);
+    setResendIn(0);
   };
 
   const handleRequest = async (e: React.FormEvent) => {
@@ -46,12 +54,29 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
     try {
       await requestDemoCode({ ...parsed.data, nombre: parsed.data.nombre, email: parsed.data.email });
       setStep("codigo");
+      setResendIn(45);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No pudimos enviar el código");
     } finally {
       setLoading(false);
     }
   };
+
+  const handleResend = async () => {
+    const parsed = leadSchema.safeParse(form);
+    if (!parsed.success) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await requestDemoCode({ ...parsed.data, nombre: parsed.data.nombre, email: parsed.data.email });
+      setResendIn(45);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No pudimos reenviar el código");
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,6 +149,10 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
           </form>
         ) : (
           <form onSubmit={handleVerify} className="space-y-3">
+            <div className="rounded-md bg-primary/10 px-3 py-2 text-[12px] text-foreground/80 leading-snug">
+              El email puede demorar hasta 1 minuto. Si no lo ves, revisá la carpeta de <strong>spam o correo no deseado</strong>.
+              Incluye también los usuarios de prueba de cada rol.
+            </div>
             <div>
               <Label htmlFor="demo-codigo">Código de acceso</Label>
               <Input
@@ -141,10 +170,20 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Ingresar a la demo
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleResend}
+              disabled={loading || resendIn > 0}
+            >
+              {resendIn > 0 ? `Reenviar código en ${resendIn}s` : "Reenviar código"}
+            </Button>
             <Button type="button" variant="ghost" className="w-full" onClick={reset} disabled={loading}>
-              Cambiar mis datos / reenviar código
+              Cambiar mis datos
             </Button>
           </form>
+
         )}
       </DialogContent>
     </Dialog>
