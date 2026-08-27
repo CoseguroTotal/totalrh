@@ -27,11 +27,19 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
   const [codigo, setCodigo] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendIn, setResendIn] = useState(0);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
 
   const reset = () => {
     setStep("datos");
     setCodigo("");
     setError(null);
+    setResendIn(0);
   };
 
   const handleRequest = async (e: React.FormEvent) => {
@@ -46,12 +54,29 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
     try {
       await requestDemoCode({ ...parsed.data, nombre: parsed.data.nombre, email: parsed.data.email });
       setStep("codigo");
+      setResendIn(45);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No pudimos enviar el código");
     } finally {
       setLoading(false);
     }
   };
+
+  const handleResend = async () => {
+    const parsed = leadSchema.safeParse(form);
+    if (!parsed.success) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await requestDemoCode(parsed.data);
+      setResendIn(45);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No pudimos reenviar el código");
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
