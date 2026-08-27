@@ -75,8 +75,10 @@ serve(async (req) => {
       body: JSON.stringify({
         from: senderEmail,
         to: Array.isArray(to) ? to : [to],
+        reply_to: "info@cosegurototal.com",
         subject,
         html,
+        text: String(html).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
       }),
     });
 
@@ -89,6 +91,8 @@ serve(async (req) => {
         { status: resendRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`Resend aceptado para ${Array.isArray(to) ? to.join(", ") : to} — id: ${resendBody.id}`);
 
     return new Response(JSON.stringify({ success: true, id: resendBody.id }), {
       status: 200,
