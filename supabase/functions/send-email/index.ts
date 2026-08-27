@@ -75,7 +75,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: senderEmail,
         to: Array.isArray(to) ? to : [to],
-        reply_to: "info@cosegurototal.com",
+        reply_to: "info@skystudio.ar",
         subject,
         html,
         text: String(html).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
