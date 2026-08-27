@@ -25,7 +25,25 @@ Con Resend aceptando y el mail sin llegar, las causas posibles son: el dominio `
 - Mostrar en la pantalla de solicitud un aviso claro de "revisá spam / puede demorar 1 minuto" y un botón de reenviar con cuenta regresiva.
 - Registrar en la tabla de solicitudes de demo si el email fue aceptado por el proveedor, para que desde Configuración → Solicitudes de demo se vea qué pasó con cada pedido.
 
+## Paso 4 — Incluir en el email los usuarios demo por rol
+
+El email del código pasa a traer, además del código de 6 dígitos, la tabla de accesos de prueba para que el interesado pueda recorrer el sistema con cada perfil:
+
+| Rol | Usuario | Contraseña |
+| --- | --- | --- |
+| Administrador | admin@demo... | TotalRH2026! |
+| RRHH | rrhh@demo... | TotalRH2026! |
+| Gerente | gerente@demo... | TotalRH2026! |
+| Contador | contador@demo... | TotalRH2026! |
+| Empleado | empleado@demo... | TotalRH2026! |
+| Terminal de fichado | asistencia@demo... | TotalRH2026! |
+
+- Cada fila lleva una línea corta explicando qué puede ver ese rol.
+- Se toma la lista real de usuarios demo ya creados en el sistema (no se inventan direcciones) y se deja como constante en la función, fácil de actualizar.
+- Se aclara que son credenciales compartidas de demostración y que los datos son ficticios.
+
 ## Detalles técnicos
+
 
 - `supabase/functions/demo-request-code/index.ts`: capturar `resendRes.json()` y loguear `id`; añadir `reply_to` y versión `text`; guardar el id en `demo_codigos` o en `demo_leads`.
 - Mismo tratamiento en `supabase/functions/send-email/index.ts`.
