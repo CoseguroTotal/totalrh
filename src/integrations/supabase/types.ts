@@ -259,6 +259,89 @@ export type Database = {
           },
         ]
       }
+      demo_codigos: {
+        Row: {
+          codigo_hash: string
+          consumido: boolean
+          consumido_at: string | null
+          created_at: string
+          expira_at: string
+          id: string
+          intentos: number
+          lead_id: string
+        }
+        Insert: {
+          codigo_hash: string
+          consumido?: boolean
+          consumido_at?: string | null
+          created_at?: string
+          expira_at: string
+          id?: string
+          intentos?: number
+          lead_id: string
+        }
+        Update: {
+          codigo_hash?: string
+          consumido?: boolean
+          consumido_at?: string | null
+          created_at?: string
+          expira_at?: string
+          id?: string
+          intentos?: number
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_codigos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "demo_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demo_leads: {
+        Row: {
+          accesos: number
+          created_at: string
+          email: string
+          empresa: string | null
+          id: string
+          nombre: string
+          telefono: string | null
+          ultimo_acceso: string | null
+          ultimo_ip: string | null
+          updated_at: string
+          verificado: boolean
+        }
+        Insert: {
+          accesos?: number
+          created_at?: string
+          email: string
+          empresa?: string | null
+          id?: string
+          nombre: string
+          telefono?: string | null
+          ultimo_acceso?: string | null
+          ultimo_ip?: string | null
+          updated_at?: string
+          verificado?: boolean
+        }
+        Update: {
+          accesos?: number
+          created_at?: string
+          email?: string
+          empresa?: string | null
+          id?: string
+          nombre?: string
+          telefono?: string | null
+          ultimo_acceso?: string | null
+          ultimo_ip?: string | null
+          updated_at?: string
+          verificado?: boolean
+        }
+        Relationships: []
+      }
       documentos_legajo: {
         Row: {
           categoria: string | null
@@ -1354,6 +1437,7 @@ export type Database = {
       }
       is_manager: { Args: never; Returns: boolean }
       is_manager_or_contador: { Args: never; Returns: boolean }
+      is_superadmin: { Args: never; Returns: boolean }
       my_empleado_id: { Args: never; Returns: string }
       terminal_ultimas_fichadas: {
         Args: never
