@@ -19,15 +19,24 @@ Página pública con el contenido completo de la presentación comercial, en el 
 
 Diseño con la identidad de marca (teal #26A69A / cyan #4FC3F7), mobile-first, capturas reales del sistema con marco tipo navegador. SEO: título, meta descripción, H1 único, alt en todas las capturas.
 
-## 2. Acceso a la demo por código
+## 2. Acceso a la demo con email + código enviado por mail
 
-- Botón "Acceder a la demo" abre un diálogo que pide un código.
-- El código es **uno solo, compartido**, guardado en el backend (no en el código fuente del sitio) y verificado por una función de backend.
-- Si es correcto, se guarda un permiso de acceso en el navegador (válido 24 h) y el visitante pasa a la pantalla de login normal. No se muestran credenciales en pantalla: se comparten aparte.
-- Si es incorrecto: mensaje de error y límite de intentos por minuto.
-- Sin ese permiso, `/login` redirige a la landing. Las rutas internas siguen protegidas por sesión como hoy.
+Flujo en 2 pasos desde el botón "Acceder a la demo":
 
-## 3. Navegación
+1. El visitante deja **nombre, email corporativo, empresa y teléfono (opcional)**.
+2. El sistema le envía por email un **código de 6 dígitos** (válido 15 minutos, un solo uso) con diseño de marca TotalRH.
+3. Ingresa el código y pasa a la pantalla de login. El acceso queda habilitado 24 h en ese navegador. Las credenciales demo se comparten aparte, no se muestran en pantalla.
+
+Protecciones: máximo de reenvíos por email/IP, código de un solo uso, expiración, y validación tanto del email como del código en el backend.
+
+## 3. Base de contactos (leads) y vista superadmin
+
+- Cada solicitud queda registrada: nombre, email, empresa, teléfono, fecha, si verificó el código, cuántas veces entró y último acceso.
+- Nueva sección **"Solicitudes de demo"** dentro de Configuración, visible **solo para el superadmin** (mcponce.torres@gmail.com). Invisible para el resto de los roles, incluidos otros administradores.
+- Permite ver la lista, buscar, y **exportar a Excel/CSV** para usarla en futuras campañas comerciales.
+- Notificación opcional: aviso por email al superadmin cada vez que alguien pide acceso a la demo.
+
+## 4. Navegación
 
 - `/` = landing, siempre, incluso con sesión iniciada. Si hay sesión, el hero muestra además "Volver al sistema".
 - El sistema pasa a `/app` (dashboard), `/app/legajos`, etc. Se mantienen redirecciones desde las rutas viejas para no romper enlaces ni la PWA.
@@ -37,9 +46,11 @@ Diseño con la identidad de marca (teal #26A69A / cyan #4FC3F7), mobile-first, c
 
 - Nueva página `src/pages/Landing.tsx` + secciones en `src/components/landing/`.
 - Capturas existentes de `/mnt/documents/_shots` copiadas a `src/assets/landing/` e importadas como assets (optimizadas a ancho web).
-- Código de demo: secreto `DEMO_ACCESS_CODE` + edge function `verify-demo-code` (pública, con rate limit simple por IP) que devuelve solo válido/inválido. El cliente guarda un flag con expiración en `localStorage`; es una barrera comercial, no de seguridad — la seguridad real sigue siendo el login y las políticas de la base.
-- Guard `DemoGate` en la ruta `/login`.
+- Tabla `demo_leads` (datos de contacto + estado) y `demo_codigos` (código hasheado, expiración, consumido). RLS: sin acceso público de lectura; escritura solo desde funciones de backend con service role. Lectura habilitada únicamente para el superadmin vía función `is_superadmin()`.
+- Dos edge functions públicas: `demo-request-code` (valida datos con Zod, guarda/actualiza el lead, genera el código, lo envía con Resend desde `notificaciones@notificaciones.cosegurototal.com.ar`, rate limit por email/IP) y `demo-verify-code` (valida el código y devuelve un permiso corto que el cliente guarda en `localStorage`).
+- Guard `DemoGate` en la ruta `/login`; sin permiso, redirige a la landing.
+- El superadmin se identifica por email en una función `SECURITY DEFINER`, no por rol editable desde la UI.
 - `index.html`: título y meta descripción orientados a la landing comercial.
+- Aviso legal breve en el formulario: los datos se usan para contacto comercial (requisito de datos personales AR).
 - No se toca la lógica de negocio existente (liquidación, asistencia, memorándums).
 
-Antes de empezar necesito el código de acceso que querés usar (o genero uno y te lo paso).
