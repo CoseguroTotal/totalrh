@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, Users, Settings2, Plus, UserPlus, Bell, Clock, QrCode } from "lucide-react";
+import { Loader2, Save, Users, Settings2, Plus, UserPlus, Bell, Clock, QrCode, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import DemoLeadsTab, { useIsSuperadmin } from "@/components/DemoLeadsTab";
 
 
 const ROLES = [
