@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const SUPERADMIN_EMAIL = "mcponce.torres@gmail.com";
-const REPLY_TO = "info@cosegurototal.com";
+const REPLY_TO = "info@skystudio.ar";
 const APP_URL = "https://totalrh.com.ar";
 
 const DEMO_USERS: { rol: string; email: string; detalle: string }[] = [
