@@ -9,7 +9,7 @@ interface RoleRouteProps {
   redirectTo?: string;
 }
 
-export default function RoleRoute({ deny, redirectTo = "/" }: RoleRouteProps) {
+export default function RoleRoute({ deny, redirectTo = "/app" }: RoleRouteProps) {
   const { data: role, isLoading } = useUserRole();
 
   if (isLoading) {
