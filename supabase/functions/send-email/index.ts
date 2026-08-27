@@ -61,8 +61,8 @@ serve(async (req) => {
         .limit(1)
         .single();
       senderEmail = config?.email_remitente || "no-reply@totalrh.com.ar";
-      if (config?.nombre_grupo && !senderEmail.includes("<")) {
-        senderEmail = `${config.nombre_grupo} <${senderEmail}>`;
+      if (!senderEmail.includes("<")) {
+        senderEmail = `TotalRH <${senderEmail}>`;
       }
     }
 
