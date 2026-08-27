@@ -44,7 +44,7 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
     }
     setLoading(true);
     try {
-      await requestDemoCode(parsed.data);
+      await requestDemoCode({ ...parsed.data, nombre: parsed.data.nombre, email: parsed.data.email });
       setStep("codigo");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No pudimos enviar el código");
