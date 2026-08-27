@@ -34,7 +34,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Landing />} />
+          <Route element={<DemoGate />}>
+            <Route path="/login" element={<Login />} />
+          </Route>
           <Route element={<ProtectedRoute />}>
             <Route path="/registro-asistencia" element={<RegistroAsistencia />} />
             <Route element={<AppLayout />}>
@@ -42,7 +45,7 @@ const App = () => (
                 <Route path="/autogestion" element={<Autogestion />} />
               </Route>
               <Route element={<EmployeeGuard />}>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/app" element={<Dashboard />} />
                 <Route path="/legajos" element={<Legajos />} />
                 <Route path="/legajos/:id" element={<LegajoDetail />} />
                 <Route path="/liquidacion" element={<Liquidacion />} />
@@ -59,6 +62,8 @@ const App = () => (
             </Route>
 
           </Route>
+          <Route path="/dashboard" element={<Navigate to="/app" replace />} />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
