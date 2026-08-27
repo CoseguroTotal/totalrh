@@ -19,11 +19,13 @@ import Reclutamiento from "@/pages/Reclutamiento";
 import Reportes from "@/pages/Reportes";
 import Vacaciones from "@/pages/Vacaciones";
 import RegistroAsistencia from "@/pages/RegistroAsistencia";
+import Landing from "@/pages/Landing";
 import NotFound from "./pages/NotFound";
 import EmployeeGuard from "@/components/EmployeeGuard";
 import AdminRoute from "@/components/AdminRoute";
 import RoleRoute from "@/components/RoleRoute";
 import AutogestionGuard from "@/components/AutogestionGuard";
+import DemoGate from "@/components/DemoGate";
 
 const queryClient = new QueryClient();
 
