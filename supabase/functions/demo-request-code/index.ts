@@ -8,6 +8,18 @@ const corsHeaders = {
 };
 
 const SUPERADMIN_EMAIL = "mcponce.torres@gmail.com";
+const REPLY_TO = "info@cosegurototal.com";
+const APP_URL = "https://totalrh.com.ar";
+
+const DEMO_USERS: { rol: string; email: string; detalle: string }[] = [
+  { rol: "Administrador", email: "admin@demototalrh.com", detalle: "Acceso total: configuración, usuarios y todos los módulos." },
+  { rol: "RRHH", email: "rrhh@demototalrh.com", detalle: "Legajos, memorándums, asistencia, vacaciones y liquidación." },
+  { rol: "Gerente", email: "gerente@demototalrh.com", detalle: "Tableros, reportes y aprobaciones de su equipo." },
+  { rol: "Contador", email: "contador@demototalrh.com", detalle: "Liquidación de sueldos, reportes y legajos (sin memorándums)." },
+  { rol: "Empleado", email: "empleado@demototalrh.com", detalle: "Autogestión móvil: fichado por QR, recibos y solicitudes." },
+  { rol: "Terminal de fichado", email: "terminal@demototalrh.com", detalle: "Pantalla de sucursal que muestra el QR dinámico." },
+];
+const DEMO_PASSWORD = "TotalRH2026!";
 
 async function sha256(value: string) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -97,9 +109,20 @@ serve(async (req) => {
     const remitente = config?.email_remitente || "no-reply@totalrh.com.ar";
     const from = `TotalRH <${remitente}>`;
 
+    const filas = DEMO_USERS.map(
+      (u) => `
+        <tr>
+          <td style="padding:10px 12px;border-bottom:1px solid #eef2f3;font-size:13px;color:#28353a">
+            <strong>${u.rol}</strong><br />
+            <span style="color:#7d8f96;font-size:11px">${u.detalle}</span>
+          </td>
+          <td style="padding:10px 12px;border-bottom:1px solid #eef2f3;font-size:13px;color:#28353a;white-space:nowrap">${u.email}</td>
+        </tr>`
+    ).join("");
+
     const html = `
       <div style="font-family:Arial,Helvetica,sans-serif;background:#f5f7f8;padding:32px">
-        <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e8ea">
+        <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e8ea">
           <div style="background:linear-gradient(135deg,#26A69A,#4FC3F7);padding:24px 28px;color:#ffffff">
             <h1 style="margin:0;font-size:20px">TotalRH — Acceso a la demo</h1>
           </div>
@@ -109,8 +132,23 @@ serve(async (req) => {
             <div style="text-align:center;margin:24px 0">
               <span style="display:inline-block;font-size:34px;letter-spacing:10px;font-weight:bold;color:#26A69A;background:#e8f6f5;padding:16px 24px;border-radius:12px">${codigo}</span>
             </div>
-            <p style="font-size:13px;color:#61737a;margin:0 0 8px">El código vence en 15 minutos y puede usarse una sola vez.</p>
-            <p style="font-size:13px;color:#61737a;margin:0">Si no solicitaste este acceso, podés ignorar este mensaje.</p>
+            <p style="font-size:13px;color:#61737a;margin:0 0 24px">El código vence en 15 minutos y puede usarse una sola vez.</p>
+
+            <h2 style="font-size:15px;color:#28353a;margin:0 0 6px">Usuarios de prueba por rol</h2>
+            <p style="font-size:13px;color:#61737a;margin:0 0 12px">
+              Después de ingresar el código vas a la pantalla de inicio de sesión. Podés entrar con cualquiera de estos perfiles:
+            </p>
+            <table style="width:100%;border-collapse:collapse;border:1px solid #eef2f3;border-radius:10px">
+              ${filas}
+            </table>
+            <p style="font-size:13px;color:#28353a;margin:14px 0 0">
+              Contraseña para todos los usuarios: <strong style="color:#26A69A">${DEMO_PASSWORD}</strong>
+            </p>
+            <p style="font-size:12px;color:#8b9ba1;margin:14px 0 0">
+              Son credenciales compartidas de demostración y todos los datos que vas a ver son ficticios.
+              Sistema: <a href="${APP_URL}" style="color:#26A69A">${APP_URL.replace("https://", "")}</a>
+            </p>
+            <p style="font-size:13px;color:#61737a;margin:20px 0 0">Si no solicitaste este acceso, podés ignorar este mensaje.</p>
           </div>
           <div style="background:#f5f7f8;padding:16px 28px;font-size:11px;color:#8b9ba1;text-align:center">
             TotalRH - Gestión de Personal. Sky Studio 2026 todos los derechos reservados.
@@ -118,17 +156,63 @@ serve(async (req) => {
         </div>
       </div>`;
 
+    const text = [
+      `Hola ${nombre},`,
+      "",
+      `Tu código de acceso a la demo de TotalRH es: ${codigo}`,
+      "Vence en 15 minutos y puede usarse una sola vez.",
+      "",
+      "Usuarios de prueba por rol:",
+      ...DEMO_USERS.map((u) => `- ${u.rol}: ${u.email} (${u.detalle})`),
+      `Contraseña para todos: ${DEMO_PASSWORD}`,
+      "",
+      `Sistema: ${APP_URL}`,
+      "",
+      "Si no solicitaste este acceso, podés ignorar este mensaje.",
+      "TotalRH - Gestión de Personal. Sky Studio 2026 todos los derechos reservados.",
+    ].join("\n");
+
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [email], subject: "Tu código de acceso a la demo de TotalRH", html }),
+      body: JSON.stringify({
+        from,
+        to: [email],
+        reply_to: REPLY_TO,
+        subject: "Tu código de acceso a la demo de TotalRH",
+        html,
+        text,
+      }),
     });
 
+    const resendBody = await resendRes.text();
+
     if (!resendRes.ok) {
-      const errBody = await resendRes.text();
-      console.error(`Resend error [${resendRes.status}]: ${errBody}`);
+      console.error(`Resend error [${resendRes.status}]: ${resendBody}`);
+      await admin
+        .from("demo_leads")
+        .update({
+          ultimo_email_estado: `error ${resendRes.status}`,
+          ultimo_email_at: new Date().toISOString(),
+        })
+        .eq("id", leadId);
       return json({ error: "No pudimos enviar el email. Verificá la dirección." }, 502);
     }
+
+    let resendId: string | null = null;
+    try {
+      resendId = JSON.parse(resendBody)?.id ?? null;
+    } catch (_) { /* ignore */ }
+    console.log(`Resend aceptado para ${email} — id: ${resendId}`);
+
+    await admin
+      .from("demo_leads")
+      .update({
+        ultimo_email_id: resendId,
+        ultimo_email_estado: "aceptado",
+        ultimo_email_at: new Date().toISOString(),
+      })
+      .eq("id", leadId);
 
     // Aviso al superadmin (no bloqueante)
     try {
@@ -138,14 +222,16 @@ serve(async (req) => {
         body: JSON.stringify({
           from,
           to: [SUPERADMIN_EMAIL],
+          reply_to: REPLY_TO,
           subject: `Nueva solicitud de demo: ${nombre}`,
           html: `<p><strong>${nombre}</strong> solicitó acceso a la demo.</p>
                  <ul><li>Email: ${email}</li><li>Empresa: ${empresa ?? "-"}</li><li>Teléfono: ${telefono ?? "-"}</li></ul>`,
+          text: `${nombre} solicitó acceso a la demo.\nEmail: ${email}\nEmpresa: ${empresa ?? "-"}\nTeléfono: ${telefono ?? "-"}`,
         }),
       });
     } catch (_) { /* no crítico */ }
 
-    return json({ success: true });
+    return json({ success: true, emailId: resendId });
   } catch (error) {
     console.error("demo-request-code error:", error);
     return json({ error: error instanceof Error ? error.message : "Error desconocido" }, 500);
