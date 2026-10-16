@@ -13,8 +13,8 @@ async function getTargetPathForUser(userId: string) {
     .maybeSingle();
 
   if (data?.role === "registro_asistencia") return "/registro-asistencia";
-  if (data?.role === "empleado") return "/muro";
-  return "/app";
+  // El muro es el inicio para todos (la terminal va directo a fichar)
+  return "/muro";
 }
 
 export default function Login() {
@@ -89,7 +89,7 @@ export default function Login() {
       return;
     }
 
-    navigate("/app", { replace: true });
+    navigate("/muro", { replace: true });
   };
 
   return (

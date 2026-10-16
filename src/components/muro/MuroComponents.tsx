@@ -3,16 +3,16 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   Cake, Award, ImagePlus, Loader2, MessageCircle, MoreHorizontal, Pin, PinOff,
-  Megaphone, Send, Trash2, EyeOff, Eye, Pencil, X, PartyPopper, Sparkles,
+  Megaphone, Send, Trash2, EyeOff, Eye, Pencil, X, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
+import { useNavigate } from "react-router-dom";
+import { useIniciarDirecta } from "@/hooks/useChat";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -61,6 +61,7 @@ export function Composer({
   const [imagen, setImagen] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [comunicado, setComunicado] = useState(false);
+  const [enfocado, setEnfocado] = useState(false);
   const [extra, setExtra] = useState<{ tipo: TipoPublicacion; mencion_user_id: string | null } | null>(null);
   const [ultimaClave, setUltimaClave] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -106,17 +107,26 @@ export function Composer({
     );
   };
 
+  const hayContenido = !!texto.trim() || !!imagen;
+  const expandido = enfocado || hayContenido || !!extra;
+
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm">
+    <div className="rounded-2xl border bg-card px-4 pt-4 pb-2 shadow-sm">
       <div className="flex gap-3">
         <UserAvatar perfil={perfil} />
         <Textarea
           id="muro-composer"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
+          onFocus={() => setEnfocado(true)}
+          onBlur={() => setEnfocado(false)}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) publicar(); }}
-          placeholder={`¿Qué querés compartir${perfil?.nombre ? `, ${perfil.nombre}` : ""}?`}
-          className="min-h-[72px] resize-none border-0 bg-muted/60 focus-visible:ring-1 text-[15px]"
+          placeholder={`¿Qué estás pensando${perfil?.nombre ? `, ${perfil.nombre}` : ""}?`}
+          rows={expandido ? 3 : 1}
+          className={cn(
+            "resize-none border-0 bg-muted text-[15px] transition-all focus-visible:ring-1",
+            expandido ? "min-h-[88px] rounded-2xl" : "min-h-[44px] rounded-full px-4 py-3 hover:bg-muted/80 cursor-pointer"
+          )}
           maxLength={5000}
         />
       </div>
@@ -131,7 +141,7 @@ export function Composer({
 
       {preview && (
         <div className="relative mt-3 ml-[52px]">
-          <img src={preview} alt="Vista previa" className="max-h-64 rounded-lg border object-cover" />
+          <img src={preview} alt="Vista previa" className="max-h-64 rounded-xl border object-cover" />
           <button
             type="button"
             onClick={() => { setImagen(null); if (preview) URL.revokeObjectURL(preview); setPreview(null); }}
@@ -143,21 +153,24 @@ export function Composer({
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-        <div className="flex items-center gap-1">
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { elegirImagen(e.target.files?.[0]); e.target.value = ""; }} />
-          <Button type="button" variant="ghost" size="sm" onClick={() => fileRef.current?.click()} className="text-muted-foreground">
-            <ImagePlus className="h-4 w-4 mr-1.5 text-success" />Foto
+      <div className="mt-3 flex items-center gap-1 border-t pt-2">
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { elegirImagen(e.target.files?.[0]); e.target.value = ""; }} />
+        <Button type="button" variant="ghost" onClick={() => fileRef.current?.click()} className="h-10 flex-1 sm:flex-none rounded-lg text-muted-foreground font-medium">
+          <ImagePlus className="h-5 w-5 mr-2 text-success" />Foto
+        </Button>
+        {esModerador && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setComunicado((v) => !v)}
+            aria-pressed={comunicado}
+            className={cn("h-10 flex-1 sm:flex-none rounded-lg font-medium", comunicado ? "bg-warning/15 text-warning hover:bg-warning/20 hover:text-warning" : "text-muted-foreground")}
+          >
+            <Megaphone className="h-5 w-5 mr-2 text-warning" />{comunicado ? "Comunicado ✓" : "Comunicado"}
           </Button>
-          {esModerador && (
-            <label className="flex items-center gap-2 text-sm text-muted-foreground px-2 cursor-pointer">
-              <Switch checked={comunicado} onCheckedChange={setComunicado} />
-              <Megaphone className="h-4 w-4 text-warning" />Comunicado oficial
-            </label>
-          )}
-        </div>
-        <Button onClick={publicar} disabled={crear.isPending || (!texto.trim() && !imagen)} className="min-w-[110px]">
-          {crear.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4 mr-1.5" />Publicar</>}
+        )}
+        <Button onClick={publicar} disabled={crear.isPending || !hayContenido} className="ml-auto h-10 min-w-[110px] rounded-lg font-semibold">
+          {crear.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publicar"}
         </Button>
       </div>
     </div>
@@ -193,16 +206,21 @@ export function PostCard({
   const actualizar = useActualizarPublicacion();
   const eliminar = useEliminarPublicacion();
   const reaccionar = useReaccionar(userId);
+  const navigate = useNavigate();
+  const iniciarChat = useIniciarDirecta();
+  const abrirChat = (otro: string) => iniciarChat.mutate(otro, {
+    onSuccess: (id) => navigate(`/mensajes/${id}`),
+    onError: () => toast.error("No se pudo abrir el chat"),
+  });
 
   const miReaccion = pub.reacciones.find((r) => r.user_id === userId)?.tipo;
   const conteo = REACCIONES.map((r) => ({ ...r, n: pub.reacciones.filter((x) => x.tipo === r.tipo).length })).filter((r) => r.n > 0);
   const etiqueta = ETIQUETA_TIPO[pub.tipo];
-  const reaccionActual = REACCIONES.find((r) => r.tipo === miReaccion);
 
   const reaccion = (tipo: TipoReaccion) => reaccionar.mutate({ publicacion_id: pub.id, tipo, actual: miReaccion });
 
   return (
-    <article className={cn("rounded-xl border bg-card shadow-sm", pub.fijada && "border-primary/40", pub.oculta && "opacity-60")}>
+    <article className={cn("rounded-2xl border bg-card shadow-sm", pub.fijada && "border-primary/40", pub.oculta && "opacity-60")}>
       <header className="flex items-start gap-3 p-4 pb-2">
         <UserAvatar perfil={autor} />
         <div className="min-w-0 flex-1">
@@ -297,50 +315,20 @@ export function PostCard({
         </div>
       )}
 
-      <div className="mx-4 grid grid-cols-2 border-t py-1">
-        <Popover>
-          <div className="flex">
-            <Button
-              variant="ghost"
-              className={cn("flex-1 h-10 rounded-r-none", miReaccion ? "text-primary font-semibold" : "text-muted-foreground")}
-              onClick={() => reaccion(miReaccion ?? "me_gusta")}
-            >
-              <span className="mr-1.5 text-base leading-none">{reaccionActual?.emoji ?? "👍"}</span>
-              {reaccionActual?.label ?? "Me gusta"}
-            </Button>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" className="h-10 px-2 rounded-l-none text-muted-foreground" aria-label="Elegir reacción">
-                <PartyPopper className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-          </div>
-          <PopoverContent side="top" align="start" className="w-auto p-1.5 rounded-full">
-            <div className="flex gap-1">
-              {REACCIONES.map((r) => (
-                <button
-                  key={r.tipo}
-                  type="button"
-                  title={r.label}
-                  aria-label={r.label}
-                  onClick={() => reaccion(r.tipo)}
-                  className={cn(
-                    "h-10 w-10 rounded-full text-2xl transition-transform hover:scale-125",
-                    miReaccion === r.tipo && "bg-primary/10"
-                  )}
-                >
-                  {r.emoji}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+      <div className={cn("mx-4 grid border-t py-1", esMia ? "grid-cols-2" : "grid-cols-3")}>
+        <BotonReaccion miReaccion={miReaccion} onReaccionar={reaccion} />
         <Button
           variant="ghost"
-          className="h-10 text-muted-foreground"
+          className="h-10 rounded-lg font-medium text-muted-foreground"
           onClick={() => { setVerComentarios(true); setTimeout(() => comentarRef.current?.focus(), 50); }}
         >
-          <MessageCircle className="h-4 w-4 mr-1.5" />Comentar
+          <MessageCircle className="h-5 w-5 mr-2" />Comentar
         </Button>
+        {!esMia && (
+          <Button variant="ghost" className="h-10 rounded-lg font-medium text-muted-foreground" onClick={() => abrirChat(pub.autor_id)} disabled={iniciarChat.isPending}>
+            <Send className="h-5 w-5 mr-2" />Mensaje
+          </Button>
+        )}
       </div>
 
       {verComentarios && (
@@ -491,7 +479,7 @@ export function CelebracionesCard({
   const proximas = celebraciones.filter((c) => c.dias_faltan > 0).slice(0, 6);
 
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm">
+    <div className="rounded-2xl border bg-card p-4 shadow-sm">
       <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
         <Cake className="h-4 w-4 text-pink-500" />Celebraciones
       </h3>
@@ -539,6 +527,73 @@ export function CelebracionesCard({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ───────────────────────── Botón "Me gusta" con selector de reacciones ───────────────────────── */
+
+/**
+ * Clic = "Me gusta" (o quitar la reacción). Pasar el mouse (escritorio) o mantener
+ * apretado (celular) despliega las demás reacciones, como en las redes sociales.
+ */
+function BotonReaccion({
+  miReaccion, onReaccionar,
+}: {
+  miReaccion?: TipoReaccion;
+  onReaccionar: (tipo: TipoReaccion) => void;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const porToque = useRef(false);
+  const actual = REACCIONES.find((r) => r.tipo === miReaccion);
+
+  const abrirEn = (ms: number) => { clearTimeout(timer.current); timer.current = setTimeout(() => setAbierto(true), ms); };
+  const cerrarEn = (ms: number) => { clearTimeout(timer.current); timer.current = setTimeout(() => setAbierto(false), ms); };
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => abrirEn(450)}
+      onMouseLeave={() => cerrarEn(300)}
+    >
+      {abierto && (
+        <div
+          className="absolute bottom-full left-0 z-20 mb-1 flex gap-1 rounded-full border bg-card p-1.5 shadow-lg animate-in fade-in zoom-in-95"
+          role="menu"
+          aria-label="Elegir reacción"
+        >
+          {REACCIONES.map((r) => (
+            <button
+              key={r.tipo}
+              type="button"
+              role="menuitem"
+              title={r.label}
+              aria-label={r.label}
+              onClick={() => { onReaccionar(r.tipo); setAbierto(false); }}
+              className={cn("h-10 w-10 rounded-full text-2xl transition-transform hover:scale-125 hover:-translate-y-1", miReaccion === r.tipo && "bg-primary/10")}
+            >
+              {r.emoji}
+            </button>
+          ))}
+        </div>
+      )}
+      <Button
+        variant="ghost"
+        className={cn("h-10 w-full rounded-lg font-medium select-none", miReaccion ? "text-primary font-semibold" : "text-muted-foreground")}
+        onTouchStart={() => { porToque.current = false; timer.current = setTimeout(() => { porToque.current = true; setAbierto(true); }, 450); }}
+        onTouchEnd={() => clearTimeout(timer.current)}
+        onContextMenu={(e) => e.preventDefault()}
+        onClick={() => {
+          if (porToque.current) { porToque.current = false; return; } // fue un toque largo: sólo abre el selector
+          setAbierto(false);
+          onReaccionar(miReaccion ?? "me_gusta");
+        }}
+        aria-haspopup="menu"
+      >
+        <span className="mr-1.5 text-lg leading-none">{actual?.emoji ?? "👍"}</span>
+        {actual?.label ?? "Me gusta"}
+      </Button>
     </div>
   );
 }

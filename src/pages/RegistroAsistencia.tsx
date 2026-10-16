@@ -40,7 +40,7 @@ export default function RegistroAsistencia() {
   }
 
   if (role !== "registro_asistencia" && role !== "admin") {
-    return <Navigate to="/app" replace />;
+    return <Navigate to="/muro" replace />;
   }
 
   return (

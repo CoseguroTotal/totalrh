@@ -1,13 +1,14 @@
-import { QrCode, ClipboardList, Palmtree, Newspaper, User } from "lucide-react";
+import { QrCode, Palmtree, Home, MessageCircle, User } from "lucide-react";
+import { useNoLeidosTotal } from "@/hooks/useChat";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { tab: null, label: "Muro", icon: Newspaper },
-  { tab: "token", label: "Fichar", icon: QrCode },
-  { tab: "permisos", label: "Permisos", icon: ClipboardList },
-  { tab: "vacaciones", label: "Vacaciones", icon: Palmtree },
-  { tab: "datos", label: "Perfil", icon: User },
+  { tab: null, ruta: "/muro", label: "Inicio", icon: Home },
+  { tab: null, ruta: "/mensajes", label: "Mensajes", icon: MessageCircle },
+  { tab: "token", ruta: null, label: "Fichar", icon: QrCode },
+  { tab: "vacaciones", ruta: null, label: "Vacaciones", icon: Palmtree },
+  { tab: "datos", ruta: null, label: "Perfil", icon: User },
 ];
 
 export default function EmployeeBottomNav() {
@@ -15,6 +16,7 @@ export default function EmployeeBottomNav() {
   const location = useLocation();
   const [params] = useSearchParams();
   const current = params.get("tab") || "datos";
+  const noLeidos = useNoLeidosTotal();
 
   return (
     <nav
@@ -24,22 +26,29 @@ export default function EmployeeBottomNav() {
     >
       <ul className="grid grid-cols-5">
         {items.map((it) => {
-          const active = it.tab === null
-            ? location.pathname.startsWith("/muro")
+          const active = it.ruta
+            ? location.pathname.startsWith(it.ruta)
             : location.pathname.startsWith("/autogestion") && current === it.tab;
           const Icon = it.icon;
           return (
             <li key={it.label}>
               <button
                 type="button"
-                onClick={() => navigate(it.tab === null ? "/muro" : `/autogestion?tab=${it.tab}`)}
+                onClick={() => navigate(it.ruta ?? `/autogestion?tab=${it.tab}`)}
                 className={cn(
                   "w-full min-h-[56px] flex flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium transition-colors",
                   active ? "text-primary" : "text-muted-foreground"
                 )}
                 aria-current={active ? "page" : undefined}
               >
-                <Icon className={cn("h-5 w-5", active && "text-primary")} />
+                <span className="relative">
+                  <Icon className={cn("h-5 w-5", active && "text-primary")} />
+                  {it.ruta === "/mensajes" && noLeidos > 0 && (
+                    <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
+                      {noLeidos > 9 ? "9+" : noLeidos}
+                    </span>
+                  )}
+                </span>
                 <span className="leading-none">{it.label}</span>
               </button>
             </li>

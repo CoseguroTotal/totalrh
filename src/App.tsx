@@ -19,6 +19,7 @@ const Landing = lazy(() => import("@/pages/Landing"));
 const Login = lazy(() => import("@/pages/Login"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Muro = lazy(() => import("@/pages/Muro"));
+const Mensajes = lazy(() => import("@/pages/Mensajes"));
 const Legajos = lazy(() => import("@/pages/Legajos"));
 const LegajoDetail = lazy(() => import("@/pages/LegajoDetail"));
 const Empresas = lazy(() => import("@/pages/Empresas"));
@@ -74,6 +75,8 @@ const App = () => (
               <Route element={<AppLayout />}>
                 <Route element={<AutogestionGuard />}>
                   <Route path="/muro" element={<Muro />} />
+                  <Route path="/mensajes" element={<Mensajes />} />
+                  <Route path="/mensajes/:id" element={<Mensajes />} />
                   <Route path="/autogestion" element={<Autogestion />} />
                 </Route>
                 <Route element={<EmployeeGuard />}>
@@ -94,6 +97,7 @@ const App = () => (
               </Route>
             </Route>
             <Route path="/dashboard" element={<Navigate to="/app" replace />} />
+            <Route path="/inicio" element={<Navigate to="/muro" replace />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

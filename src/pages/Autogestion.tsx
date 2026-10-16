@@ -189,6 +189,7 @@ export default function Autogestion() {
 
         {/* Mobile: accesos secundarios (los principales están en la barra inferior) */}
         <TabsList className="sm:hidden w-full overflow-x-auto flex-nowrap justify-start scrollbar-none h-auto p-1 gap-1">
+          <TabsTrigger value="permisos" className="text-xs shrink-0 min-h-[38px]">Permisos</TabsTrigger>
           <TabsTrigger value="documentos" className="text-xs shrink-0 min-h-[38px]">Docs</TabsTrigger>
           <TabsTrigger value="memorandums" className="text-xs shrink-0 min-h-[38px]">Memos</TabsTrigger>
           <TabsTrigger value="sanciones" className="text-xs shrink-0 min-h-[38px]">Sanciones</TabsTrigger>

@@ -77,7 +77,7 @@ export default function Landing() {
           <div className="flex items-center gap-2">
             {logged && (
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/app">Volver al sistema</Link>
+                <Link to="/muro">Volver al sistema</Link>
               </Button>
             )}
             <Button size="sm" onClick={() => setDemoOpen(true)}>Acceder a la demo</Button>

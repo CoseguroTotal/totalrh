@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FileText, DollarSign, UserCircle, Clock, Briefcase, BarChart3,
-  Settings, FileCheck, Palmtree, Building2, Newspaper, type LucideIcon,
+  Settings, FileCheck, Palmtree, Building2, Home, MessageCircle, type LucideIcon,
 } from "lucide-react";
 
 export interface ModuloNav {
@@ -25,7 +25,8 @@ export const SECCIONES: SeccionNav[] = [
   {
     label: "Inicio",
     items: [
-      { title: "Muro", url: "/muro", icon: Newspaper, desc: "Novedades, comunicados y cumpleaños", roles: [...GESTION_Y_CONTADOR, "empleado"] },
+      { title: "Inicio", url: "/muro", icon: Home, desc: "Muro: novedades, comunicados y cumpleaños", roles: [...GESTION_Y_CONTADOR, "empleado"] },
+      { title: "Mensajes", url: "/mensajes", icon: MessageCircle, desc: "Chat interno con fotos, audios y documentos", roles: [...GESTION_Y_CONTADOR, "empleado"] },
       { title: "Dashboard", url: "/app", icon: LayoutDashboard, desc: "Indicadores del grupo", roles: GESTION_Y_CONTADOR },
       { title: "Autogestión", url: "/autogestion", icon: UserCircle, desc: "Mis datos, recibos, vacaciones y fichada", roles: [...GESTION, "empleado"] },
     ],
