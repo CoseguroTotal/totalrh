@@ -161,6 +161,12 @@ export type Database = {
       configuracion_grupo: {
         Row: {
           cuit: string | null
+          demo_acceso_dias: number
+          demo_bloqueo_minutos: number
+          demo_codigo_minutos: number
+          demo_max_fallos_ip_hora: number
+          demo_max_intentos_codigo: number
+          demo_max_solicitudes_ip_hora: number
           domicilio: string | null
           email: string | null
           email_remitente: string | null
@@ -176,6 +182,12 @@ export type Database = {
         }
         Insert: {
           cuit?: string | null
+          demo_acceso_dias?: number
+          demo_bloqueo_minutos?: number
+          demo_codigo_minutos?: number
+          demo_max_fallos_ip_hora?: number
+          demo_max_intentos_codigo?: number
+          demo_max_solicitudes_ip_hora?: number
           domicilio?: string | null
           email?: string | null
           email_remitente?: string | null
@@ -191,6 +203,12 @@ export type Database = {
         }
         Update: {
           cuit?: string | null
+          demo_acceso_dias?: number
+          demo_bloqueo_minutos?: number
+          demo_codigo_minutos?: number
+          demo_max_fallos_ip_hora?: number
+          demo_max_intentos_codigo?: number
+          demo_max_solicitudes_ip_hora?: number
           domicilio?: string | null
           email?: string | null
           email_remitente?: string | null
@@ -259,6 +277,57 @@ export type Database = {
           },
         ]
       }
+      demo_bloqueos: {
+        Row: {
+          clave: string
+          created_at: string
+          hasta: string
+          id: string
+          motivo: string | null
+        }
+        Insert: {
+          clave: string
+          created_at?: string
+          hasta: string
+          id?: string
+          motivo?: string | null
+        }
+        Update: {
+          clave?: string
+          created_at?: string
+          hasta?: string
+          id?: string
+          motivo?: string | null
+        }
+        Relationships: []
+      }
+      demo_codigo_maestro: {
+        Row: {
+          activo: boolean
+          codigo_hash: string
+          created_at: string
+          expira_at: string
+          id: string
+          usos: number
+        }
+        Insert: {
+          activo?: boolean
+          codigo_hash: string
+          created_at?: string
+          expira_at: string
+          id?: string
+          usos?: number
+        }
+        Update: {
+          activo?: boolean
+          codigo_hash?: string
+          created_at?: string
+          expira_at?: string
+          id?: string
+          usos?: number
+        }
+        Relationships: []
+      }
       demo_codigos: {
         Row: {
           codigo_hash: string
@@ -299,6 +368,74 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      demo_cuentas: {
+        Row: {
+          created_at: string
+          email: string
+          empleado_id: string | null
+          expira_at: string
+          id: string
+          lead_id: string
+          rol: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          empleado_id?: string | null
+          expira_at: string
+          id?: string
+          lead_id: string
+          rol: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          empleado_id?: string | null
+          expira_at?: string
+          id?: string
+          lead_id?: string
+          rol?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_cuentas_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "demo_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      demo_intentos: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          ip: string | null
+          resultado: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          ip?: string | null
+          resultado: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          ip?: string | null
+          resultado?: string
+          tipo?: string
+        }
+        Relationships: []
       }
       demo_leads: {
         Row: {
