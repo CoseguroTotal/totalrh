@@ -170,7 +170,6 @@ export type Database = {
           domicilio: string | null
           email: string | null
           email_remitente: string | null
-          fichado_facial_activo: boolean
           fichado_qr_activo: boolean
           fichado_token_activo: boolean
           id: string
@@ -192,7 +191,6 @@ export type Database = {
           domicilio?: string | null
           email?: string | null
           email_remitente?: string | null
-          fichado_facial_activo?: boolean
           fichado_qr_activo?: boolean
           fichado_token_activo?: boolean
           id?: string
@@ -214,7 +212,6 @@ export type Database = {
           domicilio?: string | null
           email?: string | null
           email_remitente?: string | null
-          fichado_facial_activo?: boolean
           fichado_qr_activo?: boolean
           fichado_token_activo?: boolean
           id?: string
@@ -1053,109 +1050,6 @@ export type Database = {
           },
         ]
       }
-      muro_comentarios: {
-        Row: {
-          autor_id: string
-          contenido: string
-          created_at: string
-          id: string
-          publicacion_id: string
-        }
-        Insert: {
-          autor_id?: string
-          contenido: string
-          created_at?: string
-          id?: string
-          publicacion_id: string
-        }
-        Update: {
-          autor_id?: string
-          contenido?: string
-          created_at?: string
-          id?: string
-          publicacion_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "muro_comentarios_publicacion_id_fkey"
-            columns: ["publicacion_id"]
-            isOneToOne: false
-            referencedRelation: "muro_publicaciones"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      muro_publicaciones: {
-        Row: {
-          autor_id: string
-          contenido: string
-          created_at: string
-          editada: boolean
-          fijada: boolean
-          id: string
-          imagen_url: string | null
-          mencion_user_id: string | null
-          oculta: boolean
-          tipo: string
-          updated_at: string
-        }
-        Insert: {
-          autor_id?: string
-          contenido?: string
-          created_at?: string
-          editada?: boolean
-          fijada?: boolean
-          id?: string
-          imagen_url?: string | null
-          mencion_user_id?: string | null
-          oculta?: boolean
-          tipo?: string
-          updated_at?: string
-        }
-        Update: {
-          autor_id?: string
-          contenido?: string
-          created_at?: string
-          editada?: boolean
-          fijada?: boolean
-          id?: string
-          imagen_url?: string | null
-          mencion_user_id?: string | null
-          oculta?: boolean
-          tipo?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      muro_reacciones: {
-        Row: {
-          created_at: string
-          publicacion_id: string
-          tipo: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          publicacion_id: string
-          tipo: string
-          user_id?: string
-        }
-        Update: {
-          created_at?: string
-          publicacion_id?: string
-          tipo?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "muro_reacciones_publicacion_id_fkey"
-            columns: ["publicacion_id"]
-            isOneToOne: false
-            referencedRelation: "muro_publicaciones"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       notificaciones: {
         Row: {
           created_at: string
@@ -1291,44 +1185,6 @@ export type Database = {
           role?: string
         }
         Relationships: []
-      }
-      rostros_empleados: {
-        Row: {
-          consentimiento_at: string
-          consentimiento_texto: string
-          created_at: string
-          descriptores: Json
-          empleado_id: string
-          registrado_por: string | null
-          updated_at: string
-        }
-        Insert: {
-          consentimiento_at: string
-          consentimiento_texto: string
-          created_at?: string
-          descriptores: Json
-          empleado_id: string
-          registrado_por?: string | null
-          updated_at?: string
-        }
-        Update: {
-          consentimiento_at?: string
-          consentimiento_texto?: string
-          created_at?: string
-          descriptores?: Json
-          empleado_id?: string
-          registrado_por?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rostros_empleados_empleado_id_fkey"
-            columns: ["empleado_id"]
-            isOneToOne: true
-            referencedRelation: "empleados"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       sanciones: {
         Row: {
@@ -1728,34 +1584,6 @@ export type Database = {
       is_manager: { Args: never; Returns: boolean }
       is_manager_or_contador: { Args: never; Returns: boolean }
       is_superadmin: { Args: never; Returns: boolean }
-      muro_celebraciones: {
-        Args: { _dias?: number }
-        Returns: {
-          anios: number | null
-          apellido: string
-          avatar_url: string | null
-          dia: number
-          dias_faltan: number
-          empleado_id: string
-          mes: number
-          nombre: string
-          puesto: string
-          tipo: string
-          user_id: string | null
-        }[]
-      }
-      muro_es_moderador: { Args: never; Returns: boolean }
-      muro_perfiles: {
-        Args: { _user_ids: string[] }
-        Returns: {
-          apellido: string
-          avatar_url: string | null
-          empresa: string | null
-          nombre: string
-          puesto: string | null
-          user_id: string
-        }[]
-      }
       my_empleado_id: { Args: never; Returns: string }
       terminal_ultimas_fichadas: {
         Args: never
