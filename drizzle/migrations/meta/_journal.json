@@ -15,6 +15,13 @@
       "when": 1792173703364,
       "tag": "0001_muro_social_y_fichada_facial",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792174353314,
+      "tag": "0002_liquidacion_atomica_y_topes",
+      "breakpoints": true
     }
   ]
 }
