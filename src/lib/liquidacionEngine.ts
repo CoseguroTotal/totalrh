@@ -22,6 +22,10 @@ export interface ConceptoCalc {
   cantidad_default?: number | string | null;
   /** Base imponible máxima para descuentos (p. ej. tope de aportes de ARCA). Vacío = sin tope. */
   tope_base?: number | string | null;
+  /** "todos" (o vacío), "categoria" o "convenio". */
+  aplica_a?: string | null;
+  /** Categorías o CCT a los que aplica cuando aplica_a no es "todos". */
+  aplica_valores?: string[] | null;
   unidad?: string | null;
   grupo?: string | null;
   orden?: number | null;
@@ -34,6 +38,12 @@ export interface OpcionesSAC {
   diasTrabajados?: number;
   /** Días del semestre (181–184). */
   diasSemestre?: number;
+}
+
+/** Datos del empleado que deciden qué conceptos le corresponden. */
+export interface EmpleadoCalc {
+  categoria?: string | null;
+  cct?: string | null;
 }
 
 /** Redondeo a centavos (evita arrastrar errores de punto flotante al recibo). */
@@ -61,6 +71,20 @@ function linea(c: ConceptoCalc, base: number, monto: number, es_haber: boolean):
   };
 }
 
+const normalizar = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+
+/**
+ * ¿El concepto le corresponde al empleado? "todos" aplica siempre; por categoría o convenio,
+ * solo si la categoría / CCT del empleado está en aplica_valores (sin distinguir mayúsculas).
+ */
+export function conceptoAplica(c: ConceptoCalc, empleado: EmpleadoCalc = {}) {
+  const modo = c.aplica_a || "todos";
+  if (modo === "todos") return true;
+  const valor = normalizar(modo === "categoria" ? empleado.categoria : modo === "convenio" ? empleado.cct : null);
+  if (!valor) return false;
+  return (c.aplica_valores ?? []).some((v) => normalizar(v) === valor);
+}
+
 /** SAC (medio aguinaldo, Ley 23.041): 50 % de la mejor remuneración mensual del semestre, proporcional a lo trabajado. */
 export function calcularSAC(mejorRemuneracion: number, diasTrabajados = 182, diasSemestre = 182) {
   if (mejorRemuneracion <= 0 || diasSemestre <= 0) return 0;
@@ -72,18 +96,21 @@ export function calcularSAC(mejorRemuneracion: number, diasTrabajados = 182, dia
  * Calcula las líneas del recibo.
  * Orden: haberes sobre básico/fijo/otro concepto → haberes sobre total remunerativo → SAC → descuentos.
  * Así los descuentos (jubilación, obra social, etc.) se aplican también sobre el SAC.
+ * Se omiten los conceptos por categoría o convenio que no le corresponden al empleado.
  */
 export function calcularLiquidacion(
   basico: number,
   conceptosActivos: ConceptoCalc[],
   calcSAC: boolean | OpcionesSAC = false,
+  empleado: EmpleadoCalc = {},
 ): LineaCalc[] {
   if (basico <= 0) return [];
 
   const results: LineaCalc[] = [];
   const montos = new Map<string, number>();
-  const haberes = conceptosActivos.filter((c) => c.tipo !== "deduccion");
-  const deducciones = conceptosActivos.filter((c) => c.tipo === "deduccion");
+  const aplicables = conceptosActivos.filter((c) => conceptoAplica(c, empleado));
+  const haberes = aplicables.filter((c) => c.tipo !== "deduccion");
+  const deducciones = aplicables.filter((c) => c.tipo === "deduccion");
 
   const baseDe = (c: ConceptoCalc, totalRem: number) => {
     const bc = c.base_calculo || "basico";

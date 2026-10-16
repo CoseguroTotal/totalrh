@@ -251,7 +251,7 @@ function LiquidacionMasiva() {
       if (basico <= 0) { errors++; setProgress(((i + 1) / empleadosEmpresa.length) * 100); continue; }
       try {
         // Cabecera y líneas en una sola transacción; re-generar reemplaza el borrador del período
-        await guardarLiquidacion(emp.id, periodo, basico, calcularLiquidacion(basico, activos));
+        await guardarLiquidacion(emp.id, periodo, basico, calcularLiquidacion(basico, activos, false, emp));
         ok++;
       } catch (err) {
         errors++;

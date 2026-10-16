@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useConceptos } from "@/hooks/useLiquidacion";
+import { useEmpleados } from "@/hooks/useEmpleados";
 
 type Props = {
   open: boolean;
@@ -18,6 +20,7 @@ type Props = {
 export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Props) {
   const qc = useQueryClient();
   const { data: allConceptos } = useConceptos();
+  const { data: empleados } = useEmpleados({ enabled: open });
   const isEdit = !!concepto;
 
   const [form, setForm] = useState({
@@ -27,6 +30,7 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
     porcentaje: "",
     monto_fijo: "",
     aplica_a: "todos",
+    aplica_valores: [] as string[],
     grupo: "General",
     base_calculo: "basico",
     concepto_base_id: "",
@@ -45,6 +49,7 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
         porcentaje: concepto.porcentaje?.toString() ?? "",
         monto_fijo: concepto.monto_fijo?.toString() ?? "",
         aplica_a: concepto.aplica_a,
+        aplica_valores: concepto.aplica_valores ?? [],
         grupo: concepto.grupo || "General",
         base_calculo: concepto.base_calculo || "basico",
         concepto_base_id: concepto.concepto_base_id || "",
@@ -54,7 +59,7 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
         orden: concepto.orden?.toString() ?? "0",
       });
     } else {
-      setForm({ codigo: "", nombre: "", tipo: "remunerativo", porcentaje: "", monto_fijo: "", aplica_a: "todos", grupo: "General", base_calculo: "basico", concepto_base_id: "", unidad: "porcentaje", cantidad_default: "1", tope_base: "", orden: "0" });
+      setForm({ codigo: "", nombre: "", tipo: "remunerativo", porcentaje: "", monto_fijo: "", aplica_a: "todos", aplica_valores: [], grupo: "General", base_calculo: "basico", concepto_base_id: "", unidad: "porcentaje", cantidad_default: "1", tope_base: "", orden: "0" });
     }
   }, [concepto, open]);
 
@@ -67,6 +72,7 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
         porcentaje: form.porcentaje ? Number(form.porcentaje) : null,
         monto_fijo: form.monto_fijo ? Number(form.monto_fijo) : null,
         aplica_a: form.aplica_a,
+        aplica_valores: form.aplica_a === "todos" ? [] : form.aplica_valores,
         grupo: form.grupo,
         base_calculo: form.base_calculo,
         concepto_base_id: form.concepto_base_id || null,
@@ -93,6 +99,19 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
   });
 
   const otherConceptos = (allConceptos ?? []).filter((c) => c.id !== concepto?.id);
+
+  // Categorías o CCT cargados en los empleados, más los ya elegidos aunque hoy nadie los tenga
+  const opcionesAplica = useMemo(() => {
+    if (form.aplica_a === "todos") return [];
+    const campo = form.aplica_a === "categoria" ? "categoria" : "cct";
+    const valores = (empleados ?? []).map((e) => e[campo]?.trim()).filter((v): v is string => !!v);
+    return Array.from(new Set([...valores, ...form.aplica_valores])).sort((a, b) => a.localeCompare(b, "es"));
+  }, [empleados, form.aplica_a, form.aplica_valores]);
+
+  const toggleValor = (v: string, checked: boolean) =>
+    setForm({ ...form, aplica_valores: checked ? [...form.aplica_valores, v] : form.aplica_valores.filter((x) => x !== v) });
+
+  const faltanValores = form.aplica_a !== "todos" && form.aplica_valores.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -199,7 +218,7 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
             )}
             <div>
               <Label className="text-xs">Aplica a</Label>
-              <Select value={form.aplica_a} onValueChange={(v) => setForm({ ...form, aplica_a: v })}>
+              <Select value={form.aplica_a} onValueChange={(v) => setForm({ ...form, aplica_a: v, aplica_valores: [] })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
@@ -209,10 +228,30 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
               </Select>
             </div>
           </div>
+          {form.aplica_a !== "todos" && (
+            <div>
+              <Label className="text-xs">{form.aplica_a === "categoria" ? "Categorías" : "Convenios (CCT)"}</Label>
+              {opcionesAplica.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Ningún empleado tiene {form.aplica_a === "categoria" ? "categoría" : "CCT"} cargado. Cargalo en el legajo para poder elegirlo.
+                </p>
+              ) : (
+                <div className="mt-1 max-h-40 overflow-y-auto rounded-md border p-2 grid gap-1.5">
+                  {opcionesAplica.map((v) => (
+                    <label key={v} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox checked={form.aplica_valores.includes(v)} onCheckedChange={(c) => toggleValor(v, c === true)} />
+                      {v}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {faltanValores && <p className="text-[11px] text-destructive mt-1">Elegí al menos uno: sin valores el concepto no se le liquida a nadie.</p>}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!form.codigo || !form.nombre || mutation.isPending}>
+          <Button onClick={() => mutation.mutate()} disabled={!form.codigo || !form.nombre || faltanValores || mutation.isPending}>
             {mutation.isPending ? "Guardando..." : "Guardar"}
           </Button>
         </DialogFooter>

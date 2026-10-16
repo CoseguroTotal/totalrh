@@ -112,6 +112,7 @@ export type Database = {
           orden: number | null
           porcentaje: number | null
           tipo: Database["public"]["Enums"]["tipo_concepto"]
+          aplica_valores: string[]
           tope_base: number | null
           unidad: string | null
         }
@@ -130,6 +131,7 @@ export type Database = {
           orden?: number | null
           porcentaje?: number | null
           tipo: Database["public"]["Enums"]["tipo_concepto"]
+          aplica_valores?: string[]
           tope_base?: number | null
           unidad?: string | null
         }
@@ -148,6 +150,7 @@ export type Database = {
           orden?: number | null
           porcentaje?: number | null
           tipo?: Database["public"]["Enums"]["tipo_concepto"]
+          aplica_valores?: string[]
           tope_base?: number | null
           unidad?: string | null
         }

@@ -45,7 +45,9 @@ export default function SimuladorRecibo() {
   const basico = Number(sueldoBasico) || 0;
   const activos = useMemo(() => (conceptos ?? []).filter((c: any) => c.activo).sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0)), [conceptos]);
 
-  const lineas = useMemo<LineaCalc[]>(() => calcularLiquidacion(basico, activos, calcSAC), [activos, basico, calcSAC]);
+  const emp = empleados?.find((e) => e.id === empleadoId);
+  // Solo los conceptos que le corresponden al empleado elegido por categoría / convenio
+  const lineas = useMemo<LineaCalc[]>(() => calcularLiquidacion(basico, activos, calcSAC, emp), [activos, basico, calcSAC, emp]);
 
   const { totalHaberes, totalDeducciones, totalRem, totalNoRem, neto } = useMemo(() => calcTotales(basico, lineas), [basico, lineas]);
 
@@ -75,8 +77,6 @@ export default function SimuladorRecibo() {
     },
     onError: (err: Error) => toast.error(err.message),
   });
-
-  const emp = empleados?.find((e) => e.id === empleadoId);
 
   // Auto-load sueldo_basico when employee is selected
   const handleEmpleadoChange = (id: string) => {

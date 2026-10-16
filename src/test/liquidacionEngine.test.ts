@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calcTotales, calcularLiquidacion, calcularSAC, redondear, type ConceptoCalc } from "@/lib/liquidacionEngine";
+import { calcTotales, calcularLiquidacion, calcularSAC, conceptoAplica, redondear, type ConceptoCalc } from "@/lib/liquidacionEngine";
 
 const c = (over: Partial<ConceptoCalc> & Pick<ConceptoCalc, "id" | "tipo">): ConceptoCalc => ({ nombre: over.id, ...over });
 
@@ -88,5 +88,47 @@ describe("SAC", () => {
   it("usa la mejor remuneración informada cuando es mayor a la del mes", () => {
     const lineas = calcularLiquidacion(1_000_000, [], { mejorRemuneracion: 1_400_000 });
     expect(lineas.find((l) => l.concepto_id === "__sac__")!.monto).toBe(700_000);
+  });
+});
+
+describe("conceptos por categoría o convenio", () => {
+  const plusVendedor = c({ id: "pv", tipo: "remunerativo", porcentaje: 10, aplica_a: "categoria", aplica_valores: ["Vendedor B"] });
+  const cuotaSindical = c({ id: "cs", tipo: "deduccion", porcentaje: 2, base_calculo: "remunerativo_total", aplica_a: "convenio", aplica_valores: ["130/75"] });
+  const conceptos = [plusVendedor, cuotaSindical, jubilacion];
+  const ids = (ls: ReturnType<typeof calcularLiquidacion>) => ls.map((l) => l.concepto_id).sort();
+
+  it("liquida el concepto por categoría solo a esa categoría", () => {
+    const vendedor = calcularLiquidacion(1_000_000, conceptos, false, { categoria: "Vendedor B", cct: "130/75" });
+    expect(ids(vendedor)).toEqual(["cs", "jub", "pv"]);
+    expect(vendedor.find((l) => l.concepto_id === "jub")!.base).toBe(1_100_000);
+
+    const cajero = calcularLiquidacion(1_000_000, conceptos, false, { categoria: "Cajero A", cct: "130/75" });
+    expect(ids(cajero)).toEqual(["cs", "jub"]);
+    expect(cajero.find((l) => l.concepto_id === "jub")!.base).toBe(1_000_000);
+  });
+
+  it("liquida el concepto por convenio solo a ese CCT", () => {
+    const fueraDeConvenio = calcularLiquidacion(1_000_000, conceptos, false, { categoria: "Vendedor B", cct: "260/75" });
+    expect(ids(fueraDeConvenio)).toEqual(["jub", "pv"]);
+  });
+
+  it("sin categoría ni CCT del empleado solo aplican los conceptos para todos", () => {
+    expect(ids(calcularLiquidacion(1_000_000, conceptos))).toEqual(["jub"]);
+    expect(ids(calcularLiquidacion(1_000_000, conceptos, false, { categoria: null, cct: "" }))).toEqual(["jub"]);
+  });
+
+  it("compara sin distinguir mayúsculas ni espacios", () => {
+    expect(conceptoAplica(plusVendedor, { categoria: "  vendedor b " })).toBe(true);
+  });
+
+  it("por categoría sin valores elegidos no aplica a nadie; aplica_a vacío equivale a todos", () => {
+    expect(conceptoAplica(c({ id: "x", tipo: "remunerativo", aplica_a: "categoria", aplica_valores: [] }), { categoria: "Vendedor B" })).toBe(false);
+    expect(conceptoAplica(c({ id: "y", tipo: "remunerativo", aplica_a: null }), {})).toBe(true);
+  });
+
+  it("un concepto sobre otro que no aplica se calcula sobre 0", () => {
+    const recargo = c({ id: "rec", tipo: "remunerativo", porcentaje: 50, base_calculo: "monto_concepto", concepto_base_id: "pv" });
+    const lineas = calcularLiquidacion(1_000_000, [plusVendedor, recargo], false, { categoria: "Cajero A" });
+    expect(lineas.find((l) => l.concepto_id === "rec")!.monto).toBe(0);
   });
 });
