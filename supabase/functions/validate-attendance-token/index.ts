@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  ESPERA_REFICHAR_SEG, UMBRAL_DUPLICADO, distanciaMinima, esDescriptorValido, fechaArgentina,
+  mejorCoincidencia, muestrasConsistentes, type Descriptor,
+} from "../_shared/face-match.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,7 +51,163 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { action, token, empleado_id, codigo } = await req.json();
+    const body = await req.json();
+    const { action, token, empleado_id, codigo } = body;
+
+    const json = (data: unknown, status = 200) =>
+      new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    const usuarioAutenticado = async () => {
+      const jwt = req.headers.get("Authorization")?.replace("Bearer ", "");
+      if (!jwt) return null;
+      const { data } = await supabaseAdmin.auth.getUser(jwt);
+      return data?.user ?? null;
+    };
+
+    const rolesDe = async (userId: string) => {
+      const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
+      return new Set((data ?? []).map((r: { role: string }) => r.role));
+    };
+
+    // ── Action: face-enroll — registrar la plantilla facial de un empleado ──
+    if (action === "face-enroll") {
+      const user = await usuarioAutenticado();
+      if (!user) return json({ error: "Debés iniciar sesión" }, 401);
+
+      const { descriptores, consentimiento_texto } = body;
+      if (!empleado_id || typeof empleado_id !== "string") return json({ error: "empleado_id requerido" }, 400);
+      if (typeof consentimiento_texto !== "string" || consentimiento_texto.length < 20) {
+        return json({ error: "Falta el consentimiento del empleado" }, 400);
+      }
+      if (!Array.isArray(descriptores) || descriptores.length < 1 || descriptores.length > 5 || !descriptores.every(esDescriptorValido)) {
+        return json({ error: "Muestras faciales inválidas" }, 400);
+      }
+      if (!muestrasConsistentes(descriptores as Descriptor[])) {
+        return json({ error: "Las capturas no coinciden entre sí. Probá de nuevo con buena luz y mirando a la cámara." }, 422);
+      }
+
+      const { data: emp } = await supabaseAdmin
+        .from("empleados")
+        .select("id, user_id, estado")
+        .eq("id", empleado_id)
+        .maybeSingle();
+      if (!emp) return json({ error: "Empleado no encontrado" }, 404);
+
+      const roles = await rolesDe(user.id);
+      const esGestor = roles.has("admin") || roles.has("rrhh");
+      if (emp.user_id !== user.id && !esGestor) {
+        return json({ error: "No tenés permiso para registrar el rostro de otro empleado" }, 403);
+      }
+
+      // Evitar que la misma cara quede asociada a dos legajos distintos
+      const { data: otros } = await supabaseAdmin
+        .from("rostros_empleados")
+        .select("empleado_id, descriptores")
+        .neq("empleado_id", empleado_id);
+      for (const o of otros ?? []) {
+        const muestras = (o.descriptores as Descriptor[]).filter(esDescriptorValido);
+        if ((descriptores as Descriptor[]).some((d) => distanciaMinima(d, muestras) < UMBRAL_DUPLICADO)) {
+          return json({ error: "Este rostro ya está registrado en otro legajo. Consultá con RRHH." }, 409);
+        }
+      }
+
+      const { error } = await supabaseAdmin.from("rostros_empleados").upsert({
+        empleado_id,
+        descriptores,
+        consentimiento_at: new Date().toISOString(),
+        consentimiento_texto,
+        registrado_por: user.id,
+      });
+      if (error) throw error;
+      return json({ success: true });
+    }
+
+    // ── Action: face-fichar — la terminal reconoce al empleado por su rostro ──
+    if (action === "face-fichar") {
+      const user = await usuarioAutenticado();
+      if (!user) return json({ error: "No autenticado" }, 401);
+      const roles = await rolesDe(user.id);
+      if (!roles.has("registro_asistencia") && !roles.has("admin")) {
+        return json({ error: "Sólo las terminales de asistencia pueden fichar por rostro" }, 403);
+      }
+
+      const { data: config } = await supabaseAdmin
+        .from("configuracion_grupo")
+        .select("fichado_facial_activo")
+        .limit(1)
+        .maybeSingle();
+      if (config && config.fichado_facial_activo === false) {
+        return json({ error: "El fichado por reconocimiento facial está desactivado" }, 403);
+      }
+
+      const { descriptor, prueba_vida } = body;
+      if (!esDescriptorValido(descriptor)) return json({ error: "Rostro no válido" }, 400);
+      if (prueba_vida !== true) return json({ error: "Falta completar la prueba de vida" }, 400);
+
+      const { data: registros } = await supabaseAdmin
+        .from("rostros_empleados")
+        .select("empleado_id, descriptores, empleado:empleados!inner(id, nombre, apellido, legajo, estado)")
+        .neq("empleado.estado", "Baja");
+
+      const candidatos = (registros ?? []).map((r: { empleado_id: string; descriptores: unknown }) => ({
+        id: r.empleado_id,
+        muestras: (r.descriptores as Descriptor[]).filter(esDescriptorValido),
+      }));
+      const match = mejorCoincidencia(descriptor, candidatos);
+      if (!match.ok) {
+        const mensajes = {
+          sin_registros: "Todavía no hay rostros registrados",
+          no_reconocido: "No te reconocimos. Acercate a la cámara o fichá con QR.",
+          ambiguo: "No pudimos identificarte con seguridad. Probá de nuevo o fichá con QR.",
+        };
+        return json({ error: mensajes[match.motivo], motivo: match.motivo }, 404);
+      }
+
+      const reg = (registros ?? []).find((r: { empleado_id: string }) => r.empleado_id === match.id) as
+        | { empleado: { id: string; nombre: string; apellido: string; legajo: string } }
+        | undefined;
+      const emp = reg!.empleado;
+
+      const hoy = fechaArgentina();
+      const { data: ultima } = await supabaseAdmin
+        .from("fichadas")
+        .select("id, hora_entrada, hora_salida")
+        .eq("empleado_id", emp.id)
+        .eq("fecha", hoy)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const ultimaMarca = ultima ? new Date(ultima.hora_salida ?? ultima.hora_entrada ?? 0).getTime() : 0;
+      if (ultimaMarca && Date.now() - ultimaMarca < ESPERA_REFICHAR_SEG * 1000) {
+        return json({
+          success: false,
+          repetida: true,
+          tipo: ultima!.hora_salida ? "salida" : "entrada",
+          empleado: emp,
+          hora: ultima!.hora_salida ?? ultima!.hora_entrada,
+        });
+      }
+
+      const ahora = new Date().toISOString();
+      let tipo: "entrada" | "salida";
+      if (ultima && !ultima.hora_salida) {
+        await supabaseAdmin.from("fichadas").update({ hora_salida: ahora }).eq("id", ultima.id);
+        tipo = "salida";
+      } else {
+        await supabaseAdmin.from("fichadas").insert({
+          empleado_id: emp.id,
+          fecha: hoy,
+          hora_entrada: ahora,
+          estado: "presente",
+          metodo: "facial",
+          terminal_user_id: user.id,
+        });
+        tipo = "entrada";
+      }
+
+      return json({ success: true, tipo, empleado: emp, hora: ahora });
+    }
 
     // Action: generate-secret — create or return TOTP secret for an employee
     if (action === "generate-secret") {
@@ -189,7 +349,7 @@ Deno.serve(async (req) => {
         .single();
 
       // Check if there's an open fichada today
-      const hoy = new Date().toISOString().slice(0, 10);
+      const hoy = fechaArgentina();
       const { data: openFichada } = await supabaseAdmin
         .from("fichadas")
         .select("id")
@@ -364,7 +524,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      const hoy = new Date().toISOString().slice(0, 10);
+      const hoy = fechaArgentina();
       const { data: openFichada } = await supabaseAdmin
         .from("fichadas")
         .select("id")

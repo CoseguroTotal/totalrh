@@ -1,12 +1,12 @@
-import { QrCode, ClipboardList, Palmtree, FileText, User } from "lucide-react";
+import { QrCode, ClipboardList, Palmtree, Newspaper, User } from "lucide-react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const items = [
+  { tab: null, label: "Muro", icon: Newspaper },
   { tab: "token", label: "Fichar", icon: QrCode },
   { tab: "permisos", label: "Permisos", icon: ClipboardList },
   { tab: "vacaciones", label: "Vacaciones", icon: Palmtree },
-  { tab: "documentos", label: "Docs", icon: FileText },
   { tab: "datos", label: "Perfil", icon: User },
 ];
 
@@ -24,15 +24,17 @@ export default function EmployeeBottomNav() {
     >
       <ul className="grid grid-cols-5">
         {items.map((it) => {
-          const active = location.pathname.startsWith("/autogestion") && current === it.tab;
+          const active = it.tab === null
+            ? location.pathname.startsWith("/muro")
+            : location.pathname.startsWith("/autogestion") && current === it.tab;
           const Icon = it.icon;
           return (
-            <li key={it.tab}>
+            <li key={it.label}>
               <button
                 type="button"
-                onClick={() => navigate(`/autogestion?tab=${it.tab}`)}
+                onClick={() => navigate(it.tab === null ? "/muro" : `/autogestion?tab=${it.tab}`)}
                 className={cn(
-                  "w-full min-h-[56px] flex flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-medium transition-colors",
+                  "w-full min-h-[56px] flex flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium transition-colors",
                   active ? "text-primary" : "text-muted-foreground"
                 )}
                 aria-current={active ? "page" : undefined}

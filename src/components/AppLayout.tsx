@@ -1,11 +1,14 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Suspense } from "react";
+import { Loader2 } from "lucide-react";
 import NotificacionesBell from "@/components/NotificacionesBell";
 import EmployeeBottomNav from "@/components/EmployeeBottomNav";
 import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
+import GlobalSearch from "@/components/GlobalSearch";
+import UserMenu from "@/components/UserMenu";
 
 export default function AppLayout() {
   const { data: role } = useUserRole();
@@ -23,20 +26,12 @@ export default function AppLayout() {
                 <img src="/logo_total_rh.png" alt="TotalRH" className="h-6 w-6 object-contain" />
                 <span className="text-sm font-semibold truncate">TotalRH</span>
               </div>
-              <div className="hidden sm:flex items-center gap-2 ml-4 rounded-md bg-muted px-3 py-1.5">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Buscar empleado, legajo..."
-                  className="bg-transparent text-sm outline-none placeholder:text-muted-foreground w-64"
-                />
-              </div>
+              <div className="hidden sm:block"><GlobalSearch /></div>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1 sm:gap-3">
+              <div className="sm:hidden"><GlobalSearch /></div>
               <NotificacionesBell />
-              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-xs font-medium text-primary-foreground">
-                AR
-              </div>
+              <UserMenu />
             </div>
           </header>
           <main
@@ -45,7 +40,9 @@ export default function AppLayout() {
               isEmpleado ? "pb-24 sm:pb-16" : "pb-16"
             )}
           >
-            <Outlet />
+            <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+              <Outlet />
+            </Suspense>
           </main>
           <footer
             className={cn(

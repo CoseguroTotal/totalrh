@@ -35,9 +35,10 @@ export type EmpleadoConEmpresa = {
   user_id: string | null;
 };
 
-export function useEmpleados() {
+export function useEmpleados(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["empleados"],
+    enabled: options.enabled ?? true,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("empleados")

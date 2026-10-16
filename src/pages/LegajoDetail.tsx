@@ -6,6 +6,7 @@ import { useFichadasEmpleado } from "@/hooks/useAsistencia";
 import { useSolicitudesVacacionesEmpleado, useUpdateSolicitudVacaciones, useVacacionesConfig, calcDiasCorrespondientes } from "@/hooks/useVacaciones";
 import { useSanciones } from "@/hooks/useSanciones";
 import { useCanEdit, useCanSancion } from "@/hooks/useCanEdit";
+import { RegistroFacialCard } from "@/components/asistencia/FaceCapture";
 import { useConfigGrupo } from "@/hooks/useConfigGrupo";
 import { sendNotificationEmailIfEnabled } from "@/lib/sendNotificationEmail";
 import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, DollarSign, Palmtree, ShieldAlert } from "lucide-react";
@@ -90,7 +91,7 @@ export default function LegajoDetail() {
   const { data: estudios = [] } = useEstudiosEmpleado(id);
   const { data: solicitudes = [] } = useSolicitudesPermiso(id);
   const { data: sanciones = [] } = useSanciones(id);
-  const { canEdit } = useCanEdit("legajos");
+  const { canEdit, role } = useCanEdit("legajos");
   const { canSancion } = useCanSancion();
   const { data: configGrupo } = useConfigGrupo();
   const [mesFichadas, setMesFichadas] = useState(() => {
@@ -593,7 +594,10 @@ export default function LegajoDetail() {
         </TabsContent>
 
         {/* Asistencia */}
-        <TabsContent value="asistencia">
+        <TabsContent value="asistencia" className="space-y-4">
+          {(role === "admin" || role === "rrhh") && id && (
+            <RegistroFacialCard empleadoId={id} nombreEmpleado={emp ? `${emp.nombre} ${emp.apellido}` : undefined} esPropio={false} />
+          )}
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium flex items-center gap-2"><Clock className="h-4 w-4" />Asistencia</h3>

@@ -13,7 +13,7 @@ async function getTargetPathForUser(userId: string) {
     .maybeSingle();
 
   if (data?.role === "registro_asistencia") return "/registro-asistencia";
-  if (data?.role === "empleado") return "/autogestion";
+  if (data?.role === "empleado") return "/muro";
   return "/app";
 }
 

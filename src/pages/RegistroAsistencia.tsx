@@ -1,16 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, XCircle, LogOut } from "lucide-react";
+import { Loader2, XCircle, LogOut, QrCode, ScanFace } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import logoTotalRH from "@/assets/logo_total_rh.png";
 import QRCode from "qrcode";
 import { useUserRole } from "@/hooks/useUserRole";
+import { FaceTerminal } from "@/components/asistencia/FaceCapture";
+import { cn } from "@/lib/utils";
+
+type Modo = "qr" | "facial";
+const MODO_KEY = "totalrh.terminal.modo";
+
+function leerModo(): Modo {
+  try { return localStorage.getItem(MODO_KEY) === "facial" ? "facial" : "qr"; } catch { return "qr"; }
+}
 
 
 export default function RegistroAsistencia() {
   const navigate = useNavigate();
   const { data: role, isLoading } = useUserRole();
+  const [modo, setModoState] = useState<Modo>(leerModo);
+  const setModo = (m: Modo) => {
+    setModoState(m);
+    try { localStorage.setItem(MODO_KEY, m); } catch { /* sin almacenamiento */ }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -41,15 +55,83 @@ export default function RegistroAsistencia() {
         <div>
           <img src={logoTotalRH} alt="TotalRH" className="h-16 w-16 mx-auto rounded-xl object-contain" />
           <h1 className="text-xl font-semibold mt-4">Registro de Asistencia</h1>
-          <p className="text-sm text-muted-foreground mt-1">Escaneá el QR con la app del empleado</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {modo === "qr" ? "Escaneá el QR con la app del empleado" : "Mirá a la cámara para registrar tu entrada o salida"}
+          </p>
         </div>
 
-        <QrTerminal />
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="tablist" aria-label="Modo de fichada">
+          {([
+            { id: "qr", label: "Código QR", icon: QrCode },
+            { id: "facial", label: "Reconocimiento facial", icon: ScanFace },
+          ] as const).map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              role="tab"
+              aria-selected={modo === m.id}
+              onClick={() => setModo(m.id)}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                modo === m.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <m.icon className="h-4 w-4" />{m.label}
+            </button>
+          ))}
+        </div>
+
+        {modo === "qr" ? <QrTerminal /> : <FaceTerminalConHistorial />}
       </div>
     </div>
   );
 }
 
+
+/* ── Modo reconocimiento facial ── */
+function FaceTerminalConHistorial() {
+  const [version, setVersion] = useState(0);
+  return (
+    <div className="space-y-5">
+      <FaceTerminal onFichada={() => setVersion((v) => v + 1)} />
+      <UltimasFichadas refresco={version} />
+    </div>
+  );
+}
+
+function UltimasFichadas({ refresco }: { refresco: number }) {
+  const [ultimas, setUltimas] = useState<{ nombre: string; apellido: string; tipo: string; hora: string }[]>([]);
+  const fetchUltimas = useCallback(async () => {
+    const { data } = await supabase.rpc("terminal_ultimas_fichadas");
+    setUltimas((data ?? []).map((f) => ({ nombre: f.nombre ?? "", apellido: f.apellido ?? "", tipo: f.tipo ?? "entrada", hora: f.hora ?? "" })));
+  }, []);
+  useEffect(() => { fetchUltimas(); }, [fetchUltimas, refresco]);
+  useEffect(() => {
+    const interval = setInterval(fetchUltimas, 5000);
+    return () => clearInterval(interval);
+  }, [fetchUltimas]);
+
+  return (
+    <div className="rounded-xl border bg-card p-4 text-left">
+      <h3 className="text-xs font-medium text-muted-foreground mb-2">Últimas fichadas</h3>
+      {ultimas.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Sin registros todavía.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {ultimas.map((u, i) => (
+            <li key={i} className="flex items-center justify-between text-sm">
+              <span>{u.apellido}, {u.nombre}</span>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {u.tipo === "entrada" ? "Entrada" : "Salida"}{" "}
+                {u.hora ? new Date(u.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 /* ── Modo QR dinámico ── */
 function QrTerminal() {

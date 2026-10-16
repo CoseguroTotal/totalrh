@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useMiEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
+import { RegistroFacialCard } from "@/components/asistencia/FaceCapture";
 import { useDocumentosLegajo } from "@/hooks/useEmpleados";
 import { useMemorandumsEmpleado, useUpdateEstadoMemorandum } from "@/hooks/useMemorandums";
 import { useSolicitudesVacacionesEmpleado, useSaveSolicitudVacaciones, useVacacionesConfig, calcDiasCorrespondientes, calcDiasHabiles } from "@/hooks/useVacaciones";
@@ -188,6 +189,7 @@ export default function Autogestion() {
 
         {/* Mobile: accesos secundarios (los principales están en la barra inferior) */}
         <TabsList className="sm:hidden w-full overflow-x-auto flex-nowrap justify-start scrollbar-none h-auto p-1 gap-1">
+          <TabsTrigger value="documentos" className="text-xs shrink-0 min-h-[38px]">Docs</TabsTrigger>
           <TabsTrigger value="memorandums" className="text-xs shrink-0 min-h-[38px]">Memos</TabsTrigger>
           <TabsTrigger value="sanciones" className="text-xs shrink-0 min-h-[38px]">Sanciones</TabsTrigger>
           <TabsTrigger value="recibos" className="text-xs shrink-0 min-h-[38px]">Recibos</TabsTrigger>
@@ -495,7 +497,10 @@ export default function Autogestion() {
         </TabsContent>
 
         <TabsContent value="token">
-          <FicharTab />
+          <div className="space-y-4">
+            <FicharTab />
+            {emp?.id && <div className="max-w-md mx-auto"><RegistroFacialCard empleadoId={emp.id} esPropio /></div>}
+          </div>
         </TabsContent>
 
 

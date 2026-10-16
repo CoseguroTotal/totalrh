@@ -444,6 +444,20 @@ function AsistenciaConfigTab() {
         />
       </div>
 
+      <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+        <div>
+          <p className="text-sm font-medium">Fichado por reconocimiento facial</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            La terminal reconoce al empleado con la cámara web y le pide un gesto (parpadear o girar la cabeza) para evitar fotos.
+            Cada empleado registra su rostro una vez, con consentimiento, desde Autogestión o su legajo.
+          </p>
+        </div>
+        <Switch
+          checked={(config as any)?.fichado_facial_activo ?? true}
+          onCheckedChange={(checked) => updateMutation.mutate({ fichado_facial_activo: checked })}
+          disabled={updateMutation.isPending}
+        />
+      </div>
 
       <div className="space-y-1.5 max-w-xs">
         <Label className="text-xs">Duración del QR (segundos)</Label>
