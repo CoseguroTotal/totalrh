@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Download, Search } from "lucide-react";
+import DemoSecurityPanel from "@/components/DemoSecurityPanel";
 
 export function useIsSuperadmin() {
   return useQuery({
@@ -60,6 +61,7 @@ export default function DemoLeadsTab() {
 
   return (
     <div className="space-y-4 pt-4">
+      <DemoSecurityPanel />
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

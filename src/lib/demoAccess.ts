@@ -27,7 +27,11 @@ async function callDemoFn(fn: string, body: unknown) {
     body: JSON.stringify(body),
   });
   const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(payload.error || "No se pudo completar la operación");
+  if (!res.ok) {
+    const err = new Error(payload.error || "No se pudo completar la operación") as Error & { retryAt?: string };
+    err.retryAt = payload.retryAt;
+    throw err;
+  }
   return payload;
 }
 
@@ -38,5 +42,11 @@ export function requestDemoCode(data: { nombre: string; email: string; empresa?:
 export async function verifyDemoCode(email: string, codigo: string) {
   const payload = await callDemoFn("demo-verify-code", { email, codigo });
   grantDemoAccess(payload.expiresAt ?? Date.now() + 24 * 60 * 60 * 1000);
+  return payload;
+}
+
+export async function verifyMasterCode(codigo: string) {
+  const payload = await callDemoFn("demo-master-code", { codigo });
+  grantDemoAccess(payload.expiresAt ?? Date.now() + 12 * 60 * 60 * 1000);
   return payload;
 }
