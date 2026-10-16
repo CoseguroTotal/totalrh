@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useEmpleados } from "@/hooks/useEmpleados";
-import { useConceptos } from "@/hooks/useLiquidacion";
+import { useConceptos, guardarLiquidacion } from "@/hooks/useLiquidacion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,38 +68,7 @@ export default function SimuladorRecibo() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: async () => {
-      const { data: liq, error: liqErr } = await supabase
-        .from("liquidaciones")
-        .insert({
-          empleado_id: empleadoId,
-          periodo,
-          sueldo_basico: basico,
-          total_remunerativo: totalRem,
-          total_no_remunerativo: totalNoRem,
-          total_deducciones: totalDeducciones,
-          neto,
-          estado: "borrador" as any,
-        })
-        .select("id")
-        .single();
-      if (liqErr) throw liqErr;
-
-      const rows = lineas.map((l) => ({
-        liquidacion_id: liq.id,
-        concepto_id: l.concepto_id.startsWith("__") ? null : l.concepto_id,
-        descripcion: l.descripcion,
-        cantidad: l.cantidad,
-        monto: l.monto,
-        tipo: l.tipo as any,
-        base: l.base,
-        es_haber: l.es_haber,
-      }));
-      if (rows.length > 0) {
-        const { error } = await supabase.from("liquidacion_lineas").insert(rows);
-        if (error) throw error;
-      }
-    },
+    mutationFn: () => guardarLiquidacion(empleadoId, periodo, basico, lineas),
     onSuccess: () => {
       toast.success("Liquidación guardada");
       qc.invalidateQueries({ queryKey: ["liquidaciones"] });
@@ -145,7 +114,7 @@ export default function SimuladorRecibo() {
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
           <Checkbox id="sac" checked={calcSAC} onCheckedChange={(v) => setCalcSAC(!!v)} />
-          <Label htmlFor="sac" className="text-xs cursor-pointer">Calcular SAC proporcional</Label>
+          <Label htmlFor="sac" className="text-xs cursor-pointer">Incluir SAC (50% de la mejor remuneración)</Label>
         </div>
       </div>
 

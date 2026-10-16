@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -7,10 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Plus, Pencil, Loader2, Zap, Mail } from "lucide-react";
-import { useConceptos, useToggleConcepto, useLiquidaciones } from "@/hooks/useLiquidacion";
+import { useConceptos, useToggleConcepto, useLiquidaciones, guardarLiquidacion } from "@/hooks/useLiquidacion";
 import { useEmpleados, useEmpresas } from "@/hooks/useEmpleados";
 import { supabase } from "@/integrations/supabase/client";
-import { calcularLiquidacion, calcTotales } from "@/lib/liquidacionEngine";
+import { calcularLiquidacion } from "@/lib/liquidacionEngine";
 import ConceptoFormDialog from "@/components/ConceptoFormDialog";
 import SimuladorRecibo from "@/components/SimuladorRecibo";
 import EnviarEmailDialog from "@/components/EnviarEmailDialog";
@@ -213,6 +214,7 @@ function LiquidacionMasiva() {
   const { data: empresas = [] } = useEmpresas();
   const { data: empleados = [] } = useEmpleados();
   const { data: conceptos = [] } = useConceptos();
+  const qc = useQueryClient();
 
   const [empresaId, setEmpresaId] = useState("");
   const [periodo, setPeriodo] = useState(() => {
@@ -241,57 +243,28 @@ function LiquidacionMasiva() {
     setProcessing(true);
     setProgress(0);
     setResult(null);
-    let ok = 0, errors = 0;
+    let ok = 0, errors = 0, confirmadas = 0;
 
     for (let i = 0; i < empleadosEmpresa.length; i++) {
       const emp = empleadosEmpresa[i];
       const basico = (emp.sueldo_basico && emp.sueldo_basico > 0) ? emp.sueldo_basico : globalBasico;
       if (basico <= 0) { errors++; setProgress(((i + 1) / empleadosEmpresa.length) * 100); continue; }
       try {
-        const lineas = calcularLiquidacion(basico, activos);
-        const totales = calcTotales(basico, lineas);
-
-        const { data: liq, error: liqErr } = await supabase
-          .from("liquidaciones")
-          .insert({
-            empleado_id: emp.id,
-            periodo,
-            sueldo_basico: basico,
-            total_remunerativo: totales.totalRem,
-            total_no_remunerativo: totales.totalNoRem,
-            total_deducciones: totales.totalDeducciones,
-            neto: totales.neto,
-            estado: "borrador" as any,
-          })
-          .select("id")
-          .single();
-
-        if (liqErr) throw liqErr;
-
-        const rows = lineas.map((l) => ({
-          liquidacion_id: liq.id,
-          concepto_id: l.concepto_id.startsWith("__") ? null : l.concepto_id,
-          descripcion: l.descripcion,
-          cantidad: l.cantidad,
-          monto: l.monto,
-          tipo: l.tipo as any,
-          base: l.base,
-          es_haber: l.es_haber,
-        }));
-        if (rows.length > 0) {
-          const { error } = await supabase.from("liquidacion_lineas").insert(rows);
-          if (error) throw error;
-        }
+        // Cabecera y líneas en una sola transacción; re-generar reemplaza el borrador del período
+        await guardarLiquidacion(emp.id, periodo, basico, calcularLiquidacion(basico, activos));
         ok++;
-      } catch {
+      } catch (err) {
         errors++;
+        if (err instanceof Error && err.message.includes("confirmada")) confirmadas++;
       }
       setProgress(((i + 1) / empleadosEmpresa.length) * 100);
     }
 
     setResult({ ok, errors });
     setProcessing(false);
-    toast.success(`Liquidación masiva: ${ok} generadas, ${errors} errores`);
+    if (errors === 0) toast.success(`Liquidación masiva: ${ok} generadas`);
+    else toast.warning(`Liquidación masiva: ${ok} generadas, ${errors} con error${confirmadas ? ` (${confirmadas} ya estaban confirmadas y no se tocaron)` : ""}`);
+    qc.invalidateQueries({ queryKey: ["liquidaciones"] });
   };
 
   return (

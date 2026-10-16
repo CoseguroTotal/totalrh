@@ -32,6 +32,7 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
     concepto_base_id: "",
     unidad: "porcentaje",
     cantidad_default: "1",
+    tope_base: "",
     orden: "0",
   });
 
@@ -49,10 +50,11 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
         concepto_base_id: concepto.concepto_base_id || "",
         unidad: concepto.unidad || "porcentaje",
         cantidad_default: concepto.cantidad_default?.toString() ?? "1",
+        tope_base: concepto.tope_base?.toString() ?? "",
         orden: concepto.orden?.toString() ?? "0",
       });
     } else {
-      setForm({ codigo: "", nombre: "", tipo: "remunerativo", porcentaje: "", monto_fijo: "", aplica_a: "todos", grupo: "General", base_calculo: "basico", concepto_base_id: "", unidad: "porcentaje", cantidad_default: "1", orden: "0" });
+      setForm({ codigo: "", nombre: "", tipo: "remunerativo", porcentaje: "", monto_fijo: "", aplica_a: "todos", grupo: "General", base_calculo: "basico", concepto_base_id: "", unidad: "porcentaje", cantidad_default: "1", tope_base: "", orden: "0" });
     }
   }, [concepto, open]);
 
@@ -69,7 +71,9 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
         base_calculo: form.base_calculo,
         concepto_base_id: form.concepto_base_id || null,
         unidad: form.unidad,
-        cantidad_default: Number(form.cantidad_default) || 1,
+        // 0 es válido (concepto que no se paga este mes); vacío = 1
+        cantidad_default: form.cantidad_default === "" ? 1 : Number(form.cantidad_default),
+        tope_base: form.tipo === "deduccion" && Number(form.tope_base) > 0 ? Number(form.tope_base) : null,
         orden: Number(form.orden) || 0,
       };
       if (isEdit) {
@@ -180,6 +184,19 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
                 </SelectContent>
               </Select>
             </div>
+            {form.tipo === "deduccion" && (
+              <div>
+                <Label className="text-xs">Tope de base imponible ($)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.tope_base}
+                  onChange={(e) => setForm({ ...form, tope_base: e.target.value })}
+                  placeholder="Sin tope"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Ej.: base máxima de aportes vigente de ARCA. Se actualiza cada mes.</p>
+              </div>
+            )}
             <div>
               <Label className="text-xs">Aplica a</Label>
               <Select value={form.aplica_a} onValueChange={(v) => setForm({ ...form, aplica_a: v })}>

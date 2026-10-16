@@ -3,42 +3,12 @@ import {
   ESPERA_REFICHAR_SEG, UMBRAL_DUPLICADO, distanciaMinima, esDescriptorValido, fechaArgentina,
   mejorCoincidencia, muestrasConsistentes, type Descriptor,
 } from "../_shared/face-match.ts";
+import { puedeOperarTerminal, puedeRegistrarRostro } from "../_shared/attendance-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Simple TOTP implementation
-function generateTOTP(secret: string, timeStep: number = 60): string[] {
-  const now = Math.floor(Date.now() / 1000);
-  const tokens: string[] = [];
-  // Check current window and ±1 for clock skew
-  for (let offset = -1; offset <= 1; offset++) {
-    const counter = Math.floor((now + offset * timeStep) / timeStep);
-    const hash = simpleHash(secret + ":" + counter);
-    const code = String(Math.abs(hash) % 1000000).padStart(6, "0");
-    tokens.push(code);
-  }
-  return tokens;
-}
-
-function simpleHash(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit int
-  }
-  return hash;
-}
-
-// Generate current token for display (single, current window)
-function currentTOTP(secret: string, timeStep: number = 60): string {
-  const counter = Math.floor(Math.floor(Date.now() / 1000) / timeStep);
-  const hash = simpleHash(secret + ":" + counter);
-  return String(Math.abs(hash) % 1000000).padStart(6, "0");
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -52,7 +22,7 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json();
-    const { action, token, empleado_id, codigo } = body;
+    const { action, empleado_id, codigo } = body;
 
     const json = (data: unknown, status = 200) =>
       new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -93,9 +63,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (!emp) return json({ error: "Empleado no encontrado" }, 404);
 
-      const roles = await rolesDe(user.id);
-      const esGestor = roles.has("admin") || roles.has("rrhh");
-      if (emp.user_id !== user.id && !esGestor) {
+      if (!puedeRegistrarRostro(user.id, emp.user_id, await rolesDe(user.id))) {
         return json({ error: "No tenés permiso para registrar el rostro de otro empleado" }, 403);
       }
 
@@ -126,8 +94,7 @@ Deno.serve(async (req) => {
     if (action === "face-fichar") {
       const user = await usuarioAutenticado();
       if (!user) return json({ error: "No autenticado" }, 401);
-      const roles = await rolesDe(user.id);
-      if (!roles.has("registro_asistencia") && !roles.has("admin")) {
+      if (!puedeOperarTerminal(await rolesDe(user.id))) {
         return json({ error: "Sólo las terminales de asistencia pueden fichar por rostro" }, 403);
       }
 
@@ -209,188 +176,6 @@ Deno.serve(async (req) => {
       return json({ success: true, tipo, empleado: emp, hora: ahora });
     }
 
-    // Action: generate-secret — create or return TOTP secret for an employee
-    if (action === "generate-secret") {
-      if (!empleado_id) {
-        return new Response(JSON.stringify({ error: "empleado_id requerido" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Check if secret exists
-      const { data: existing } = await supabaseAdmin
-        .from("tokens_asistencia")
-        .select("secret")
-        .eq("empleado_id", empleado_id)
-        .maybeSingle();
-
-      let secret: string;
-      if (existing?.secret) {
-        secret = existing.secret;
-      } else {
-        // Generate new secret
-        secret = crypto.randomUUID() + "-" + crypto.randomUUID();
-        const { error } = await supabaseAdmin
-          .from("tokens_asistencia")
-          .insert({ empleado_id, secret });
-        if (error) throw error;
-      }
-
-      // Return current token
-      const code = currentTOTP(secret);
-      const timeStep = 60;
-      const now = Math.floor(Date.now() / 1000);
-      const secondsRemaining = timeStep - (now % timeStep);
-
-      return new Response(
-        JSON.stringify({ code, seconds_remaining: secondsRemaining }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Action: get-token — get current TOTP for the employee
-    if (action === "get-token") {
-      if (!empleado_id) {
-        return new Response(JSON.stringify({ error: "empleado_id requerido" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const { data: tokenData } = await supabaseAdmin
-        .from("tokens_asistencia")
-        .select("secret")
-        .eq("empleado_id", empleado_id)
-        .maybeSingle();
-
-      if (!tokenData?.secret) {
-        return new Response(JSON.stringify({ error: "No hay secreto generado" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const code = currentTOTP(tokenData.secret);
-      const timeStep = 60;
-      const now = Math.floor(Date.now() / 1000);
-      const secondsRemaining = timeStep - (now % timeStep);
-
-      return new Response(
-        JSON.stringify({ code, seconds_remaining: secondsRemaining }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Action: validate — validate token and register fichada
-    if (action === "validate") {
-      if (!token || token.length !== 6) {
-        return new Response(JSON.stringify({ error: "Token de 6 dígitos requerido" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Get all active secrets
-      const { data: allTokens } = await supabaseAdmin
-        .from("tokens_asistencia")
-        .select("empleado_id, secret");
-
-      if (!allTokens?.length) {
-        return new Response(JSON.stringify({ error: "No hay empleados con token configurado" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Find which employee this token belongs to
-      let matchedEmpleadoId: string | null = null;
-      for (const t of allTokens) {
-        const validTokens = generateTOTP(t.secret);
-        if (validTokens.includes(token)) {
-          matchedEmpleadoId = t.empleado_id;
-          break;
-        }
-      }
-
-      if (!matchedEmpleadoId) {
-        return new Response(JSON.stringify({ error: "Token inválido o expirado" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Check if token was already consumed
-      const { data: consumed } = await supabaseAdmin
-        .from("tokens_consumidos")
-        .select("id")
-        .eq("empleado_id", matchedEmpleadoId)
-        .eq("token", token)
-        .maybeSingle();
-
-      if (consumed) {
-        return new Response(JSON.stringify({ error: "Token ya utilizado" }), {
-          status: 409,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Mark token as consumed
-      await supabaseAdmin.from("tokens_consumidos").insert({
-        empleado_id: matchedEmpleadoId,
-        token,
-      });
-
-      // Get employee data
-      const { data: emp } = await supabaseAdmin
-        .from("empleados")
-        .select("id, nombre, apellido, legajo")
-        .eq("id", matchedEmpleadoId)
-        .single();
-
-      // Check if there's an open fichada today
-      const hoy = fechaArgentina();
-      const { data: openFichada } = await supabaseAdmin
-        .from("fichadas")
-        .select("id")
-        .eq("empleado_id", matchedEmpleadoId)
-        .eq("fecha", hoy)
-        .is("hora_salida", null)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      const ahora = new Date().toISOString();
-      let tipo: string;
-
-      if (openFichada && openFichada.length > 0) {
-        // Register salida
-        await supabaseAdmin
-          .from("fichadas")
-          .update({ hora_salida: ahora })
-          .eq("id", openFichada[0].id);
-        tipo = "salida";
-      } else {
-        // Register entrada
-        await supabaseAdmin.from("fichadas").insert({
-          empleado_id: matchedEmpleadoId,
-          fecha: hoy,
-          hora_entrada: ahora,
-          estado: "presente",
-        });
-        tipo = "entrada";
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          tipo,
-          empleado: emp,
-          hora: ahora,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // ── Action: qr-issue — la terminal solicita un código QR de un solo uso ──
     if (action === "qr-issue") {
       const jwt = req.headers.get("Authorization")?.replace("Bearer ", "");
@@ -406,6 +191,10 @@ Deno.serve(async (req) => {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+      // Sólo una terminal puede emitir QR: si un empleado pudiera, se escanearía a sí mismo desde cualquier lugar.
+      if (!puedeOperarTerminal(await rolesDe(userData.user.id))) {
+        return json({ error: "Sólo las terminales de asistencia pueden generar el QR" }, 403);
       }
 
       const { data: config } = await supabaseAdmin
