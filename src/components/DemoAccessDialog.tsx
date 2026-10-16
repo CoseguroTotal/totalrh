@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, MailCheck, ShieldCheck } from "lucide-react";
-import { requestDemoCode, verifyDemoCode } from "@/lib/demoAccess";
+import { requestDemoCode, verifyDemoCode, verifyMasterCode } from "@/lib/demoAccess";
 
 const leadSchema = z.object({
   nombre: z.string().trim().min(2, "Ingresá tu nombre").max(120),
@@ -22,12 +22,21 @@ interface Props {
 
 export default function DemoAccessDialog({ open, onOpenChange }: Props) {
   const navigate = useNavigate();
-  const [step, setStep] = useState<"datos" | "codigo">("datos");
+  const [step, setStep] = useState<"datos" | "codigo" | "maestro">("datos");
   const [form, setForm] = useState({ nombre: "", email: "", empresa: "", telefono: "" });
   const [codigo, setCodigo] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
+  const [bloqueadoHasta, setBloqueadoHasta] = useState<number>(0);
+  const [maestro, setMaestro] = useState("");
+  const bloqueado = bloqueadoHasta > Date.now();
+
+  const onErr = (err: unknown, fallback: string) => {
+    const e = err as Error & { retryAt?: string };
+    if (e?.retryAt) setBloqueadoHasta(new Date(e.retryAt).getTime());
+    setError(e instanceof Error ? e.message : fallback);
+  };
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -38,6 +47,7 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
   const reset = () => {
     setStep("datos");
     setCodigo("");
+    setMaestro("");
     setError(null);
     setResendIn(0);
   };
@@ -56,7 +66,7 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
       setStep("codigo");
       setResendIn(45);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No pudimos enviar el código");
+      onErr(err, "No pudimos enviar el código");
     } finally {
       setLoading(false);
     }
@@ -71,7 +81,7 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
       await requestDemoCode({ ...parsed.data, nombre: parsed.data.nombre, email: parsed.data.email });
       setResendIn(45);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No pudimos reenviar el código");
+      onErr(err, "No pudimos reenviar el código");
     } finally {
       setLoading(false);
     }
@@ -87,11 +97,30 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
     }
     setLoading(true);
     try {
-      await verifyDemoCode(form.email.trim().toLowerCase(), codigo.trim());
+      const r = await verifyDemoCode(form.email.trim().toLowerCase(), codigo.trim());
+      onOpenChange(false);
+      navigate("/login", { state: { demoAviso: r.credencialesEnviadas ? `Te enviamos tus usuarios personales a ${form.email}.` : null } });
+    } catch (err) {
+      onErr(err, "Código inválido");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMaestro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!/^[A-Za-z0-9]{8}$/.test(maestro.trim())) {
+      setError("El código de presentación tiene 8 caracteres");
+      return;
+    }
+    setLoading(true);
+    try {
+      await verifyMasterCode(maestro.trim().toUpperCase());
       onOpenChange(false);
       navigate("/login");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Código inválido");
+      onErr(err, "Código inválido");
     } finally {
       setLoading(false);
     }
@@ -109,12 +138,14 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {step === "datos" ? <ShieldCheck className="h-5 w-5 text-primary" /> : <MailCheck className="h-5 w-5 text-primary" />}
-            {step === "datos" ? "Acceder a la demo" : "Ingresá tu código"}
+            {step === "datos" ? "Acceder a la demo" : step === "maestro" ? "Código de presentación" : "Ingresá tu código"}
           </DialogTitle>
           <DialogDescription>
             {step === "datos"
               ? "Dejanos tus datos y te enviamos por email un código de acceso a la demo."
-              : `Enviamos un código de 6 dígitos a ${form.email}. Vence en 15 minutos.`}
+              : step === "maestro"
+              ? "Ingresá el código de 8 caracteres provisto para presentaciones en vivo."
+              : `Enviamos un código de 6 dígitos a ${form.email}.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -139,19 +170,39 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
               </div>
             </div>
             {error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || bloqueado}>
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Enviarme el código
             </Button>
+            <button type="button" className="w-full text-xs text-primary underline-offset-2 hover:underline" onClick={() => { setError(null); setStep("maestro"); }}>
+              Tengo un código de presentación
+            </button>
             <p className="text-[11px] text-muted-foreground leading-snug">
               Usamos tus datos únicamente para darte acceso a la demo y contactarte con novedades comerciales de TotalRH. Podés pedir la baja cuando quieras.
             </p>
+          </form>
+        ) : step === "maestro" ? (
+          <form onSubmit={handleMaestro} className="space-y-3">
+            <Input
+              aria-label="Código de presentación"
+              maxLength={8}
+              value={maestro}
+              onChange={(e) => setMaestro(e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase())}
+              className="text-center text-2xl tracking-[0.3em] font-semibold"
+              placeholder="XXXXXXXX"
+            />
+            {error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>}
+            <Button type="submit" className="w-full" disabled={loading || bloqueado}>
+              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Ingresar
+            </Button>
+            <Button type="button" variant="ghost" className="w-full" onClick={reset} disabled={loading}>Volver</Button>
           </form>
         ) : (
           <form onSubmit={handleVerify} className="space-y-3">
             <div className="rounded-md bg-primary/10 px-3 py-2 text-[12px] text-foreground/80 leading-snug">
               El email puede demorar hasta 1 minuto. Si no lo ves, revisá la carpeta de <strong>spam o correo no deseado</strong>.
-              Incluye también los usuarios de prueba de cada rol.
+              Al validarlo te enviamos un segundo email con tus usuarios personales para cada perfil.
             </div>
             <div>
               <Label htmlFor="demo-codigo">Código de acceso</Label>
@@ -166,7 +217,7 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
               />
             </div>
             {error && <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || bloqueado}>
               {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Ingresar a la demo
             </Button>
@@ -175,9 +226,9 @@ export default function DemoAccessDialog({ open, onOpenChange }: Props) {
               variant="outline"
               className="w-full"
               onClick={handleResend}
-              disabled={loading || resendIn > 0}
+              disabled={loading || resendIn > 0 || bloqueado}
             >
-              {resendIn > 0 ? `Reenviar código en ${resendIn}s` : "Reenviar código"}
+              {bloqueado ? "Reenvío bloqueado temporalmente" : resendIn > 0 ? `Reenviar código en ${resendIn}s` : "Reenviar código"}
             </Button>
             <Button type="button" variant="ghost" className="w-full" onClick={reset} disabled={loading}>
               Cambiar mis datos
