@@ -1731,9 +1731,9 @@ export type Database = {
       muro_celebraciones: {
         Args: { _dias?: number }
         Returns: {
-          anios: number | null
+          anios: number
           apellido: string
-          avatar_url: string | null
+          avatar_url: string
           dia: number
           dias_faltan: number
           empleado_id: string
@@ -1741,7 +1741,7 @@ export type Database = {
           nombre: string
           puesto: string
           tipo: string
-          user_id: string | null
+          user_id: string
         }[]
       }
       muro_es_moderador: { Args: never; Returns: boolean }
@@ -1749,10 +1749,10 @@ export type Database = {
         Args: { _user_ids: string[] }
         Returns: {
           apellido: string
-          avatar_url: string | null
-          empresa: string | null
+          avatar_url: string
+          empresa: string
           nombre: string
-          puesto: string | null
+          puesto: string
           user_id: string
         }[]
       }
