@@ -112,7 +112,6 @@ export type Database = {
           orden: number | null
           porcentaje: number | null
           tipo: Database["public"]["Enums"]["tipo_concepto"]
-          tope_base: number | null
           unidad: string | null
         }
         Insert: {
@@ -130,7 +129,6 @@ export type Database = {
           orden?: number | null
           porcentaje?: number | null
           tipo: Database["public"]["Enums"]["tipo_concepto"]
-          tope_base?: number | null
           unidad?: string | null
         }
         Update: {
@@ -148,7 +146,6 @@ export type Database = {
           orden?: number | null
           porcentaje?: number | null
           tipo?: Database["public"]["Enums"]["tipo_concepto"]
-          tope_base?: number | null
           unidad?: string | null
         }
         Relationships: [
@@ -1720,19 +1717,6 @@ export type Database = {
           role: string
           user_id: string
         }[]
-      }
-      guardar_liquidacion: {
-        Args: {
-          _empleado_id: string
-          _lineas: Json
-          _neto: number
-          _periodo: string
-          _sueldo_basico: number
-          _total_deducciones: number
-          _total_no_remunerativo: number
-          _total_remunerativo: number
-        }
-        Returns: string
       }
       has_role: {
         Args: {
