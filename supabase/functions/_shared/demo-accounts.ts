@@ -49,7 +49,7 @@ export async function provisionarCuentas(admin: SupabaseClient, leadId: string, 
         await admin.auth.admin.updateUserById(u.id, { password });
         userId = u.id;
       } else userId = data.user.id;
-      await admin.from("user_roles").upsert({ user_id: userId, role: r.key }, { onConflict: "user_id,role" });
+      await admin.from("user_roles").insert({ user_id: userId, role: r.key });
     }
 
     let empleadoId = prev?.empleado_id ?? null;
