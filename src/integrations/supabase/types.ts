@@ -98,24 +98,24 @@ export type Database = {
       }
       chat_conversaciones: {
         Row: {
-          created_at: string
           creada_por: string | null
+          created_at: string
           id: string
           nombre: string | null
           tipo: string
           ultimo_mensaje_at: string
         }
         Insert: {
-          created_at?: string
           creada_por?: string | null
+          created_at?: string
           id?: string
           nombre?: string | null
           tipo: string
           ultimo_mensaje_at?: string
         }
         Update: {
-          created_at?: string
           creada_por?: string | null
+          created_at?: string
           id?: string
           nombre?: string | null
           tipo?: string
@@ -206,6 +206,7 @@ export type Database = {
         Row: {
           activo: boolean
           aplica_a: string
+          aplica_valores: string[]
           base_calculo: string | null
           cantidad_default: number | null
           codigo: string
@@ -218,13 +219,13 @@ export type Database = {
           orden: number | null
           porcentaje: number | null
           tipo: Database["public"]["Enums"]["tipo_concepto"]
-          aplica_valores: string[]
           tope_base: number | null
           unidad: string | null
         }
         Insert: {
           activo?: boolean
           aplica_a?: string
+          aplica_valores?: string[]
           base_calculo?: string | null
           cantidad_default?: number | null
           codigo: string
@@ -237,13 +238,13 @@ export type Database = {
           orden?: number | null
           porcentaje?: number | null
           tipo: Database["public"]["Enums"]["tipo_concepto"]
-          aplica_valores?: string[]
           tope_base?: number | null
           unidad?: string | null
         }
         Update: {
           activo?: boolean
           aplica_a?: string
+          aplica_valores?: string[]
           base_calculo?: string | null
           cantidad_default?: number | null
           codigo?: string
@@ -256,7 +257,6 @@ export type Database = {
           orden?: number | null
           porcentaje?: number | null
           tipo?: Database["public"]["Enums"]["tipo_concepto"]
-          aplica_valores?: string[]
           tope_base?: number | null
           unidad?: string | null
         }
@@ -1820,34 +1820,43 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      chat_crear_grupo: { Args: { _miembros: string[]; _nombre: string }; Returns: string }
+      chat_crear_grupo: {
+        Args: { _miembros: string[]; _nombre: string }
+        Returns: string
+      }
       chat_directorio: {
         Args: never
         Returns: {
           apellido: string
-          avatar_url: string | null
-          empresa: string | null
+          avatar_url: string
+          empresa: string
           nombre: string
-          puesto: string | null
+          puesto: string
           user_id: string
         }[]
       }
-      chat_es_participante: { Args: { _conversacion_id: string }; Returns: boolean }
-      chat_es_participante_carpeta: { Args: { _carpeta: string }; Returns: boolean }
+      chat_es_participante: {
+        Args: { _conversacion_id: string }
+        Returns: boolean
+      }
+      chat_es_participante_carpeta: {
+        Args: { _carpeta: string }
+        Returns: boolean
+      }
       chat_iniciar_directa: { Args: { _otro: string }; Returns: string }
       chat_mis_conversaciones: {
         Args: never
         Returns: {
           id: string
           no_leidos: number
-          nombre: string | null
-          participantes: string[] | null
+          nombre: string
+          participantes: string[]
           tipo: string
-          ultimo_adjunto_tipo: string | null
-          ultimo_autor_id: string | null
-          ultimo_eliminado: boolean | null
+          ultimo_adjunto_tipo: string
+          ultimo_autor_id: string
+          ultimo_eliminado: boolean
           ultimo_mensaje_at: string
-          ultimo_texto: string | null
+          ultimo_texto: string
         }[]
       }
       get_server_time: { Args: never; Returns: string }
