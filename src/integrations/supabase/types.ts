@@ -900,6 +900,132 @@ export type Database = {
           },
         ]
       }
+      encuesta_participaciones: {
+        Row: {
+          encuesta_id: string
+          respondida_at: string
+          user_id: string
+        }
+        Insert: {
+          encuesta_id: string
+          respondida_at?: string
+          user_id: string
+        }
+        Update: {
+          encuesta_id?: string
+          respondida_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      encuesta_preguntas: {
+        Row: {
+          encuesta_id: string
+          id: string
+          obligatoria: boolean
+          opciones: Json
+          orden: number
+          texto: string
+          tipo: string
+        }
+        Insert: {
+          encuesta_id: string
+          id?: string
+          obligatoria?: boolean
+          opciones?: Json
+          orden?: number
+          texto: string
+          tipo: string
+        }
+        Update: {
+          encuesta_id?: string
+          id?: string
+          obligatoria?: boolean
+          opciones?: Json
+          orden?: number
+          texto?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
+      encuesta_respuestas: {
+        Row: {
+          encuesta_id: string
+          envio_id: string
+          escala: number | null
+          id: string
+          opciones: number[] | null
+          pregunta_id: string
+          respondente: string | null
+          texto: string | null
+        }
+        Insert: {
+          encuesta_id: string
+          envio_id: string
+          escala?: number | null
+          id?: string
+          opciones?: number[] | null
+          pregunta_id: string
+          respondente?: string | null
+          texto?: string | null
+        }
+        Update: {
+          encuesta_id?: string
+          envio_id?: string
+          escala?: number | null
+          id?: string
+          opciones?: number[] | null
+          pregunta_id?: string
+          respondente?: string | null
+          texto?: string | null
+        }
+        Relationships: []
+      }
+      encuestas: {
+        Row: {
+          anonima: boolean
+          cierra_at: string | null
+          created_at: string
+          creada_por: string
+          descripcion: string
+          estado: string
+          id: string
+          mostrar_resultados: string
+          publicacion_id: string | null
+          publicada_at: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          anonima?: boolean
+          cierra_at?: string | null
+          created_at?: string
+          creada_por?: string
+          descripcion?: string
+          estado?: string
+          id?: string
+          mostrar_resultados?: string
+          publicacion_id?: string | null
+          publicada_at?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          anonima?: boolean
+          cierra_at?: string | null
+          created_at?: string
+          creada_por?: string
+          descripcion?: string
+          estado?: string
+          id?: string
+          mostrar_resultados?: string
+          publicacion_id?: string | null
+          publicada_at?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fichadas: {
         Row: {
           created_at: string
@@ -1197,6 +1323,27 @@ export type Database = {
           },
         ]
       }
+      muro_lecturas: {
+        Row: {
+          confirmado_at: string | null
+          publicacion_id: string
+          user_id: string
+          visto_at: string
+        }
+        Insert: {
+          confirmado_at?: string | null
+          publicacion_id: string
+          user_id?: string
+          visto_at?: string
+        }
+        Update: {
+          confirmado_at?: string | null
+          publicacion_id?: string
+          user_id?: string
+          visto_at?: string
+        }
+        Relationships: []
+      }
       muro_publicaciones: {
         Row: {
           autor_id: string
@@ -1208,6 +1355,7 @@ export type Database = {
           imagen_url: string | null
           mencion_user_id: string | null
           oculta: boolean
+          requiere_confirmacion: boolean
           tipo: string
           updated_at: string
         }
@@ -1221,6 +1369,7 @@ export type Database = {
           imagen_url?: string | null
           mencion_user_id?: string | null
           oculta?: boolean
+          requiere_confirmacion?: boolean
           tipo?: string
           updated_at?: string
         }
@@ -1234,6 +1383,7 @@ export type Database = {
           imagen_url?: string | null
           mencion_user_id?: string | null
           oculta?: boolean
+          requiere_confirmacion?: boolean
           tipo?: string
           updated_at?: string
         }
@@ -1820,6 +1970,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      encuesta_publicar: { Args: { _encuesta_id: string }; Returns: string }
+      encuesta_responder: { Args: { _encuesta_id: string; _respuestas: Json }; Returns: undefined }
+      encuesta_resultados: { Args: { _encuesta_id: string }; Returns: Json }
+      muro_confirmar_lectura: { Args: { _publicacion_id: string }; Returns: string }
+      muro_lecturas_detalle: {
+        Args: { _publicacion_id: string }
+        Returns: {
+          apellido: string
+          avatar_url: string | null
+          confirmado_at: string | null
+          nombre: string
+          puesto: string | null
+          user_id: string
+          visto_at: string | null
+        }[]
+      }
+      muro_lecturas_resumen: {
+        Args: { _ids: string[] }
+        Returns: {
+          confirmados: number
+          publicacion_id: string
+          vistos: number
+          yo_confirmado_at: string | null
+        }[]
+      }
+      muro_registrar_vistas: { Args: { _ids: string[] }; Returns: undefined }
       chat_crear_grupo: {
         Args: { _miembros: string[]; _nombre: string }
         Returns: string

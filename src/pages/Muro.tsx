@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Megaphone, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  useCelebraciones, useEsModerador, useFeed, usePerfiles, useSessionUserId, type TipoPublicacion,
+  useCelebraciones, useEsModerador, useFeed, useLecturas, usePerfiles, useSessionUserId, type TipoPublicacion,
 } from "@/hooks/useMuro";
 import { CelebracionesCard, Composer, PostCard, type Celebracion } from "@/components/muro/MuroComponents";
 import { AccesosRapidos, AccesosRapidosMovil, ContactosCard } from "@/components/muro/MuroLaterales";
@@ -32,6 +32,7 @@ export default function Muro() {
     return ids;
   }, [publicaciones, userId]);
   const { data: perfiles = new Map() } = usePerfiles(idsPerfiles);
+  const { data: lecturas } = useLecturas(publicaciones.map((p) => p.id));
 
   // Scroll infinito
   useEffect(() => {
@@ -103,7 +104,7 @@ export default function Muro() {
             </div>
           ) : (
             visibles.map((p) => (
-              <PostCard key={p.id} pub={p} perfiles={perfiles} userId={userId} esModerador={esModerador} />
+              <PostCard key={p.id} pub={p} perfiles={perfiles} userId={userId} esModerador={esModerador} lectura={lecturas?.get(p.id)} />
             ))
           )}
 

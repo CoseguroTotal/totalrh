@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ClipboardList, DollarSign, FileText, Loader2, MessageCircle, Palmtree, QrCode, Search, Users,
-  LayoutDashboard, type LucideIcon,
+  LayoutDashboard, Vote, type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useDirectorio, useIniciarDirecta, useNoLeidosTotal } from "@/hooks/useChat";
 import type { PerfilMuro } from "@/hooks/useMuro";
+import { useEncuestasPendientes } from "@/hooks/useEncuestas";
 import { UserAvatar, nombreCompleto } from "@/components/muro/MuroComponents";
 
 interface Acceso { label: string; to: string; icon: LucideIcon; color: string; badge?: number }
@@ -18,10 +19,12 @@ interface Acceso { label: string; to: string; icon: LucideIcon; color: string; b
 export function AccesosRapidos({ perfil }: { perfil?: PerfilMuro | null }) {
   const { data: role } = useUserRole();
   const noLeidos = useNoLeidosTotal();
+  const encuestas = useEncuestasPendientes();
   const gestion = !!role && !["empleado", "registro_asistencia"].includes(role);
 
   const accesos: Acceso[] = [
     { label: "Mensajes", to: "/mensajes", icon: MessageCircle, color: "bg-primary/15 text-primary", badge: noLeidos },
+    { label: "Encuestas", to: "/encuestas", icon: Vote, color: "bg-violet-500/15 text-violet-600 dark:text-violet-400", badge: encuestas },
     ...(role !== "contador" ? [
       { label: "Fichar", to: "/autogestion?tab=token", icon: QrCode, color: "bg-success/15 text-success" },
       { label: "Mis recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
@@ -61,8 +64,10 @@ export function AccesosRapidos({ perfil }: { perfil?: PerfilMuro | null }) {
 export function AccesosRapidosMovil() {
   const { data: role } = useUserRole();
   const noLeidos = useNoLeidosTotal();
+  const encuestas = useEncuestasPendientes();
   const items: Acceso[] = [
     { label: "Mensajes", to: "/mensajes", icon: MessageCircle, color: "bg-primary/15 text-primary", badge: noLeidos },
+    { label: "Encuestas", to: "/encuestas", icon: Vote, color: "bg-violet-500/15 text-violet-600 dark:text-violet-400", badge: encuestas },
     ...(role !== "contador" ? [
       { label: "Fichar", to: "/autogestion?tab=token", icon: QrCode, color: "bg-success/15 text-success" },
       { label: "Recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "bg-emerald-500/15 text-emerald-600" },

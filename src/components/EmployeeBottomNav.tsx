@@ -1,4 +1,4 @@
-import { QrCode, Palmtree, Home, MessageCircle, User, Menu, FileText, DollarSign, type LucideIcon } from "lucide-react";
+import { QrCode, Palmtree, Home, MessageCircle, User, LayoutGrid, FileText, DollarSign, type LucideIcon } from "lucide-react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useNoLeidosTotal } from "@/hooks/useChat";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -20,25 +20,15 @@ function itemsParaRol(role: string | null | undefined): Item[] {
     { ruta: "/muro", label: "Inicio", icon: Home },
     { ruta: "/mensajes", label: "Mensajes", icon: MessageCircle },
   ];
+  // "Apps" reúne todos los módulos en una grilla de íconos
+  const apps: Item = { ruta: "/apps", label: "Apps", icon: LayoutGrid };
   if (role === "empleado") {
-    return [...base,
-      { tab: "token", label: "Fichar", icon: QrCode },
-      { tab: "vacaciones", label: "Vacaciones", icon: Palmtree },
-      { tab: "datos", label: "Perfil", icon: User },
-    ];
+    return [...base, { tab: "token", label: "Fichar", icon: QrCode }, apps, { tab: "datos", label: "Perfil", icon: User }];
   }
   if (role === "contador") {
-    return [...base,
-      { ruta: "/liquidacion", label: "Sueldos", icon: DollarSign },
-      { ruta: "/vacaciones", label: "Vacaciones", icon: Palmtree },
-      { menu: true, label: "Menú", icon: Menu },
-    ];
+    return [...base, { ruta: "/liquidacion", label: "Sueldos", icon: DollarSign }, { ruta: "/vacaciones", label: "Vacaciones", icon: Palmtree }, apps];
   }
-  return [...base,
-    { ruta: "/legajos", label: "Legajos", icon: FileText },
-    { ruta: "/vacaciones", label: "Vacaciones", icon: Palmtree },
-    { menu: true, label: "Menú", icon: Menu },
-  ];
+  return [...base, { ruta: "/legajos", label: "Legajos", icon: FileText }, { ruta: "/vacaciones", label: "Vacaciones", icon: Palmtree }, apps];
 }
 
 /** Barra inferior tipo app en el celular, con los accesos de cada rol. */

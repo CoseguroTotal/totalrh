@@ -3,12 +3,14 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   Cake, Award, ImagePlus, Loader2, MessageCircle, MoreHorizontal, Pin, PinOff,
-  Megaphone, Send, Trash2, EyeOff, Eye, Pencil, X, Sparkles,
+  Megaphone, Send, Trash2, EyeOff, Eye, Pencil, X, Sparkles, ShieldCheck, Vote,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
+import { BloqueConfirmacion, TarjetaEncuesta, VistoPor, useVistaAlMostrar } from "@/components/muro/MuroLecturas";
 import { useIniciarDirecta } from "@/hooks/useChat";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -20,7 +22,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
-  REACCIONES, type PerfilMuro, type Publicacion, type TipoReaccion, type TipoPublicacion,
+  REACCIONES, type PerfilMuro, type Publicacion, type ResumenLectura, type TipoReaccion, type TipoPublicacion,
   useActualizarPublicacion, useComentar, useCrearPublicacion, useEliminarComentario,
   useEliminarPublicacion, useReaccionar,
 } from "@/hooks/useMuro";
@@ -61,6 +63,7 @@ export function Composer({
   const [imagen, setImagen] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [comunicado, setComunicado] = useState(false);
+  const [pedirConfirmacion, setPedirConfirmacion] = useState(false);
   const [enfocado, setEnfocado] = useState(false);
   const [extra, setExtra] = useState<{ tipo: TipoPublicacion; mencion_user_id: string | null } | null>(null);
   const [ultimaClave, setUltimaClave] = useState<number | null>(null);
@@ -88,6 +91,7 @@ export function Composer({
     if (preview) URL.revokeObjectURL(preview);
     setPreview(null);
     setComunicado(false);
+    setPedirConfirmacion(false);
     setExtra(null);
   };
 
@@ -99,6 +103,7 @@ export function Composer({
         imagen,
         tipo: comunicado ? "comunicado" : extra?.tipo ?? "post",
         mencion_user_id: extra?.mencion_user_id ?? null,
+        requiere_confirmacion: comunicado && pedirConfirmacion,
       },
       {
         onSuccess: () => { limpiar(); toast.success("¡Publicado!"); },
@@ -153,6 +158,13 @@ export function Composer({
         </div>
       )}
 
+      {comunicado && (
+        <label className="mt-3 ml-[52px] flex items-center gap-2 text-sm cursor-pointer">
+          <Switch checked={pedirConfirmacion} onCheckedChange={setPedirConfirmacion} />
+          <ShieldCheck className="h-4 w-4 text-warning" />Pedir confirmación de lectura a todos
+        </label>
+      )}
+
       <div className="mt-3 flex items-center gap-1 border-t pt-2">
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { elegirImagen(e.target.files?.[0]); e.target.value = ""; }} />
         <Button type="button" variant="ghost" onClick={() => fileRef.current?.click()} className="h-10 flex-1 sm:flex-none rounded-lg text-muted-foreground font-medium">
@@ -184,16 +196,20 @@ const ETIQUETA_TIPO: Partial<Record<TipoPublicacion, { label: string; icon: type
   cumpleanios: { label: "Cumpleaños", icon: Cake, className: "bg-pink-500/10 text-pink-600 dark:text-pink-400" },
   aniversario: { label: "Aniversario", icon: Award, className: "bg-primary/10 text-primary" },
   bienvenida: { label: "Bienvenida", icon: Sparkles, className: "bg-success/15 text-success" },
+  encuesta: { label: "Encuesta", icon: Vote, className: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
 };
 
 export function PostCard({
-  pub, perfiles, userId, esModerador,
+  pub, perfiles, userId, esModerador, lectura,
 }: {
   pub: Publicacion;
   perfiles: Map<string, PerfilMuro>;
   userId: string | null | undefined;
   esModerador: boolean;
+  lectura?: ResumenLectura;
 }) {
+  const articuloRef = useRef<HTMLElement>(null);
+  useVistaAlMostrar(articuloRef, pub.id);
   const autor = perfiles.get(pub.autor_id);
   const mencion = pub.mencion_user_id ? perfiles.get(pub.mencion_user_id) : null;
   const esMia = pub.autor_id === userId;
@@ -220,7 +236,7 @@ export function PostCard({
   const reaccion = (tipo: TipoReaccion) => reaccionar.mutate({ publicacion_id: pub.id, tipo, actual: miReaccion });
 
   return (
-    <article className={cn("rounded-2xl border bg-card shadow-sm", pub.fijada && "border-primary/40", pub.oculta && "opacity-60")}>
+    <article ref={articuloRef} className={cn("rounded-2xl border bg-card shadow-sm", pub.fijada && "border-primary/40", pub.oculta && "opacity-60")}>
       <header className="flex items-start gap-3 p-4 pb-2">
         <UserAvatar perfil={autor} />
         <div className="min-w-0 flex-1">
@@ -291,13 +307,15 @@ export function PostCard({
       </header>
 
       {pub.contenido && <p className="px-4 pb-3 text-[15px] whitespace-pre-wrap break-words">{pub.contenido}</p>}
+      {pub.tipo === "encuesta" && <TarjetaEncuesta publicacionId={pub.id} />}
+      {pub.requiere_confirmacion && <BloqueConfirmacion pub={pub} lectura={lectura} puedeVerDetalle={esMia || esModerador} />}
       {pub.imagen_url && (
         <a href={pub.imagen_url} target="_blank" rel="noreferrer" className="block bg-muted">
           <img src={pub.imagen_url} alt="" loading="lazy" className="w-full max-h-[520px] object-contain" />
         </a>
       )}
 
-      {(conteo.length > 0 || pub.comentarios.length > 0) && (
+      {(conteo.length > 0 || pub.comentarios.length > 0 || (lectura?.vistos ?? 0) > 0) && (
         <div className="flex items-center justify-between px-4 py-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             {conteo.length > 0 && (
@@ -307,11 +325,14 @@ export function PostCard({
               </>
             )}
           </span>
+          <span className="flex items-center gap-3">
           {pub.comentarios.length > 0 && (
             <button type="button" className="hover:underline" onClick={() => setVerComentarios((v) => !v)}>
               {pub.comentarios.length} {pub.comentarios.length === 1 ? "comentario" : "comentarios"}
             </button>
           )}
+          <VistoPor pub={pub} lectura={lectura} puedeVerDetalle={esMia || esModerador} />
+          </span>
         </div>
       )}
 

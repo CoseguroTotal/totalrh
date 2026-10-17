@@ -11,7 +11,7 @@ export const REACCIONES = [
 ] as const;
 
 export type TipoReaccion = (typeof REACCIONES)[number]["tipo"];
-export type TipoPublicacion = "post" | "comunicado" | "cumpleanios" | "aniversario" | "bienvenida";
+export type TipoPublicacion = "post" | "comunicado" | "cumpleanios" | "aniversario" | "bienvenida" | "encuesta";
 
 export interface PerfilMuro {
   user_id: string;
@@ -40,6 +40,7 @@ export interface Publicacion {
   fijada: boolean;
   oculta: boolean;
   editada: boolean;
+  requiere_confirmacion: boolean;
   created_at: string;
   comentarios: Comentario[];
   reacciones: { user_id: string; tipo: TipoReaccion }[];
@@ -153,6 +154,7 @@ export function useCrearPublicacion() {
       imagen?: File | null;
       tipo?: TipoPublicacion;
       mencion_user_id?: string | null;
+      requiere_confirmacion?: boolean;
     }) => {
       const imagen_url = input.imagen ? await subirImagen(input.imagen) : null;
       const { error } = await supabase.from("muro_publicaciones").insert({
@@ -160,6 +162,7 @@ export function useCrearPublicacion() {
         imagen_url,
         tipo: input.tipo ?? "post",
         mencion_user_id: input.mencion_user_id ?? null,
+        requiere_confirmacion: !!input.requiere_confirmacion,
       });
       if (error) throw error;
     },
@@ -246,5 +249,66 @@ export function useReaccionar(userId: string | null | undefined) {
     },
     onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(FEED_KEY, ctx.prev); },
     onSettled: () => qc.invalidateQueries({ queryKey: FEED_KEY }),
+  });
+}
+
+/* ─────────────── Lecturas: "Visto por N" y confirmación ─────────────── */
+
+export interface ResumenLectura { vistos: number; confirmados: number; yo_confirmado_at: string | null }
+
+export function useLecturas(ids: string[]) {
+  const clave = [...ids].sort();
+  return useQuery({
+    queryKey: ["muro", "lecturas", clave],
+    enabled: clave.length > 0,
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("muro_lecturas_resumen", { _ids: clave });
+      if (error) throw error;
+      return new Map((data ?? []).map((r) => [r.publicacion_id, r as ResumenLectura]));
+    },
+  });
+}
+
+// Las vistas se juntan y se mandan en lote (una llamada cada 2 s como máximo)
+const vistasPendientes = new Set<string>();
+const yaRegistradas = new Set<string>();
+let timerVistas: ReturnType<typeof setTimeout> | undefined;
+
+export function registrarVista(id: string) {
+  if (yaRegistradas.has(id)) return;
+  yaRegistradas.add(id);
+  vistasPendientes.add(id);
+  if (timerVistas) return;
+  timerVistas = setTimeout(async () => {
+    const ids = [...vistasPendientes];
+    vistasPendientes.clear();
+    timerVistas = undefined;
+    const { error } = await supabase.rpc("muro_registrar_vistas", { _ids: ids });
+    if (error) ids.forEach((i) => yaRegistradas.delete(i)); // se reintenta la próxima vez que se vea
+  }, 2000);
+}
+
+export function useConfirmarLectura() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (publicacionId: string) => {
+      const { error } = await supabase.rpc("muro_confirmar_lectura", { _publicacion_id: publicacionId });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["muro", "lecturas"] }),
+  });
+}
+
+export function useDetalleLecturas(publicacionId: string | undefined, habilitado: boolean) {
+  return useQuery({
+    queryKey: ["muro", "lecturas-detalle", publicacionId],
+    enabled: !!publicacionId && habilitado,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("muro_lecturas_detalle", { _publicacion_id: publicacionId! });
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 }

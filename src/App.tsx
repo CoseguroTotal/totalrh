@@ -20,6 +20,10 @@ const Login = lazy(() => import("@/pages/Login"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Muro = lazy(() => import("@/pages/Muro"));
 const Mensajes = lazy(() => import("@/pages/Mensajes"));
+const Encuestas = lazy(() => import("@/pages/Encuestas"));
+const EncuestaEditor = lazy(() => import("@/pages/EncuestaEditor"));
+const EncuestaDetalle = lazy(() => import("@/pages/EncuestaDetalle"));
+const Apps = lazy(() => import("@/pages/Apps"));
 const Legajos = lazy(() => import("@/pages/Legajos"));
 const LegajoDetail = lazy(() => import("@/pages/LegajoDetail"));
 const Empresas = lazy(() => import("@/pages/Empresas"));
@@ -77,6 +81,11 @@ const App = () => (
                   <Route path="/muro" element={<Muro />} />
                   <Route path="/mensajes" element={<Mensajes />} />
                   <Route path="/mensajes/:id" element={<Mensajes />} />
+                  <Route path="/encuestas" element={<Encuestas />} />
+                  <Route path="/encuestas/nueva" element={<EncuestaEditor />} />
+                  <Route path="/encuestas/:id" element={<EncuestaDetalle />} />
+                  <Route path="/encuestas/:id/editar" element={<EncuestaEditor />} />
+                  <Route path="/apps" element={<Apps />} />
                   <Route path="/autogestion" element={<Autogestion />} />
                 </Route>
                 <Route element={<EmployeeGuard />}>
