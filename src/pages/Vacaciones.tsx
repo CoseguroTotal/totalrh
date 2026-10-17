@@ -19,6 +19,8 @@ import { supabase } from "@/integrations/supabase/client";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import CalendarioVacaciones from "@/components/vacaciones/CalendarioVacaciones";
+import { fechaLocal, formatoFecha, type SolicitudCal } from "@/lib/vacacionesCalendario";
 
 const estadoBadge: Record<string, string> = {
   pendiente: "bg-warning/15 text-warning",
@@ -91,8 +93,8 @@ function SolicitudesTab({ empresaId }: { empresaId: string }) {
         const empleadoEmail = sol.empleado?.email;
         if (empleadoEmail) {
           const estadoLabel = estado === "aprobada" ? "aprobadas ✅" : "rechazadas ❌";
-          const fechaDesde = new Date(sol.fecha_desde).toLocaleDateString("es-AR");
-          const fechaHasta = new Date(sol.fecha_hasta).toLocaleDateString("es-AR");
+          const fechaDesde = formatoFecha(sol.fecha_desde);
+          const fechaHasta = formatoFecha(sol.fecha_hasta);
           await sendNotificationEmailIfEnabled(configGrupo, {
             to: empleadoEmail,
             subject: `Vacaciones ${estado}`,
@@ -117,7 +119,7 @@ function SolicitudesTab({ empresaId }: { empresaId: string }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">{sol.empleado?.apellido}, {sol.empleado?.nombre} ({sol.empleado?.legajo})</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al {new Date(sol.fecha_hasta).toLocaleDateString("es-AR")}
+                  {formatoFecha(sol.fecha_desde)} al {formatoFecha(sol.fecha_hasta)}
                   {" · "}{sol.dias_solicitados} días · Período {sol.periodo_anual}
                 </p>
                 {sol.observaciones && <p className="text-xs text-muted-foreground mt-0.5">{sol.observaciones}</p>}
@@ -146,39 +148,22 @@ function SolicitudesTab({ empresaId }: { empresaId: string }) {
 /* ── Calendario ── */
 function CalendarioTab({ empresaId, empresas }: { empresaId: string; empresas: any[] }) {
   const { data: solicitudes = [] } = useSolicitudesVacaciones(empresaId);
-  const [mes, setMes] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  });
-
-  const aprobadas = solicitudes.filter((s: any) => s.estado === "aprobada" && s.empleado?.empresa_id === empresaId);
-  const allFiltered = solicitudes.filter((s: any) => s.empleado?.empresa_id === empresaId);
-
-  const year = parseInt(mes.split("-")[0]);
-  const month = parseInt(mes.split("-")[1]) - 1;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDay = new Date(year, month, 1).getDay();
-
-  const vacByDay = useMemo(() => {
-    const map = new Map<number, any[]>();
-    for (const sol of aprobadas) {
-      const desde = new Date(sol.fecha_desde);
-      const hasta = new Date(sol.fecha_hasta);
-      for (let d = new Date(desde); d <= hasta; d.setDate(d.getDate() + 1)) {
-        if (d.getMonth() === month && d.getFullYear() === year) {
-          const day = d.getDate();
-          if (!map.has(day)) map.set(day, []);
-          map.get(day)!.push(sol);
-        }
-      }
-    }
-    return map;
-  }, [aprobadas, month, year]);
-
+  const delaEmpresa = useMemo(
+    () => solicitudes.filter((s: any) => s.empleado?.empresa_id === empresaId) as SolicitudCal[],
+    [solicitudes, empresaId]
+  );
   const empresa = empresas.find((e: any) => e.id === empresaId);
-  const monthName = new Date(year, month).toLocaleDateString("es-AR", { month: "long", year: "numeric" });
 
-  const exportPDF = () => {
+  // Exporta las solicitudes que tocan el mes elegido
+  const delMes = (mes: string) => {
+    const [y, m] = mes.split("-").map(Number);
+    const inicio = new Date(y, m - 1, 1), fin = new Date(y, m, 0);
+    return delaEmpresa.filter((s) => fechaLocal(s.fecha_hasta) >= inicio && fechaLocal(s.fecha_desde) <= fin);
+  };
+
+  const exportPDF = (mes: string) => {
+    const [y, m] = mes.split("-").map(Number);
+    const monthName = new Date(y, m - 1).toLocaleDateString("es-AR", { month: "long", year: "numeric" });
     const doc = new jsPDF();
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
@@ -187,33 +172,33 @@ function CalendarioTab({ empresaId, empresas }: { empresaId: string; empresas: a
     doc.setFont("helvetica", "normal");
     doc.text(`Período: ${monthName}`, 14, 26);
 
-    const rows = allFiltered.map((s: any) => [
-      `${s.empleado?.apellido}, ${s.empleado?.nombre}`,
-      s.empleado?.legajo || "",
-      new Date(s.fecha_desde).toLocaleDateString("es-AR"),
-      new Date(s.fecha_hasta).toLocaleDateString("es-AR"),
-      String(s.dias_solicitados),
-      s.estado,
-    ]);
-
     autoTable(doc, {
       startY: 32,
-      head: [["Empleado", "Legajo", "Desde", "Hasta", "Días", "Estado"]],
-      body: rows,
+      head: [["Empleado", "Legajo", "Sucursal", "Desde", "Hasta", "Días", "Estado"]],
+      body: delMes(mes).map((s: any) => [
+        `${s.empleado?.apellido}, ${s.empleado?.nombre}`,
+        s.empleado?.legajo || "",
+        s.empleado?.sucursal?.nombre || "",
+        formatoFecha(s.fecha_desde),
+        formatoFecha(s.fecha_hasta),
+        String(s.dias_solicitados),
+        s.estado,
+      ]),
       styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
+      headStyles: { fillColor: [38, 166, 154] },
     });
 
     doc.save(`vacaciones_${empresa?.nombre || "empresa"}_${mes}.pdf`);
     toast.success("PDF exportado");
   };
 
-  const exportExcel = () => {
-    const rows = allFiltered.map((s: any) => ({
+  const exportExcel = (mes: string) => {
+    const rows = delMes(mes).map((s: any) => ({
       Empleado: `${s.empleado?.apellido}, ${s.empleado?.nombre}`,
       Legajo: s.empleado?.legajo || "",
-      Desde: new Date(s.fecha_desde).toLocaleDateString("es-AR"),
-      Hasta: new Date(s.fecha_hasta).toLocaleDateString("es-AR"),
+      Sucursal: s.empleado?.sucursal?.nombre || "",
+      Desde: formatoFecha(s.fecha_desde),
+      Hasta: formatoFecha(s.fecha_hasta),
       Días: s.dias_solicitados,
       Estado: s.estado,
       Período: s.periodo_anual,
@@ -225,41 +210,9 @@ function CalendarioTab({ empresaId, empresas }: { empresaId: string; empresas: a
     toast.success("Excel exportado");
   };
 
-  return (
-    <div className="rounded-xl border bg-card p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h3 className="text-sm font-medium flex items-center gap-2"><CalendarDays className="h-4 w-4" />Calendario de Vacaciones</h3>
-        <div className="flex items-center gap-2">
-          <Input type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="w-40 h-8 text-xs" />
-          <Button variant="outline" size="sm" onClick={exportPDF}><FileDown className="h-3.5 w-3.5 mr-1" />PDF</Button>
-          <Button variant="outline" size="sm" onClick={exportExcel}><FileSpreadsheet className="h-3.5 w-3.5 mr-1" />Excel</Button>
-        </div>
-      </div>
-      <div className="grid grid-cols-7 gap-1 text-center">
-        {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((d) => (
-          <div key={d} className="text-xs font-medium text-muted-foreground py-1">{d}</div>
-        ))}
-        {Array.from({ length: firstDay }).map((_, i) => <div key={`e-${i}`} />)}
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const day = i + 1;
-          const vacs = vacByDay.get(day) || [];
-          const hasVac = vacs.length > 0;
-          return (
-            <div key={day} className={cn(
-              "rounded-md p-1 min-h-[40px] text-xs border",
-              hasVac ? "bg-primary/10 border-primary/30" : "border-transparent"
-            )} title={vacs.map((v: any) => `${v.empleado?.apellido}, ${v.empleado?.nombre}`).join("\n")}>
-              <span className="font-medium">{day}</span>
-              {hasVac && <div className="text-[10px] text-primary font-medium mt-0.5">{vacs.length} emp.</div>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  return <CalendarioVacaciones solicitudes={delaEmpresa} onExportarPDF={exportPDF} onExportarExcel={exportExcel} />;
 }
 
-/* ── Configuración ── */
 function ConfiguracionTab({ empresaId }: { empresaId: string }) {
   const { data: configs = [], isLoading } = useVacacionesConfig(empresaId);
   const saveConfig = useSaveVacacionesConfig();

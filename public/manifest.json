@@ -1,22 +1,52 @@
 {
+  "id": "/",
   "name": "TotalRH - Gestión de Personal",
   "short_name": "TotalRH",
-  "description": "Sistema de gestión de recursos humanos",
+  "description": "Muro, mensajes, fichada, recibos y vacaciones del grupo en una sola app.",
+  "lang": "es-AR",
+  "dir": "ltr",
   "theme_color": "#26A69A",
   "background_color": "#f8fafc",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
   "scope": "/",
-  "start_url": "/",
+  "start_url": "/muro?origen=app",
+  "categories": ["business", "productivity"],
   "icons": [
+    { "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-maskable-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/pwa-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
     {
-      "src": "/pwa-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
+      "name": "Fichar entrada o salida",
+      "short_name": "Fichar",
+      "description": "Escaneá el QR de la terminal",
+      "url": "/autogestion?tab=token&origen=atajo",
+      "icons": [{ "src": "/shortcut-fichar.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "src": "/pwa-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "name": "Mensajes",
+      "short_name": "Mensajes",
+      "description": "Chat con tus compañeros",
+      "url": "/mensajes?origen=atajo",
+      "icons": [{ "src": "/shortcut-mensajes.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Mis recibos de sueldo",
+      "short_name": "Recibos",
+      "description": "Ver y descargar tus recibos",
+      "url": "/autogestion?tab=recibos&origen=atajo",
+      "icons": [{ "src": "/shortcut-recibos.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Vacaciones",
+      "short_name": "Vacaciones",
+      "description": "Pedí vacaciones y mirá tu saldo",
+      "url": "/autogestion?tab=vacaciones&origen=atajo",
+      "icons": [{ "src": "/shortcut-vacaciones.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

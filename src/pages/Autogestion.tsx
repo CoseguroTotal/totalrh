@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { formatoFecha } from "@/lib/vacacionesCalendario";
 import { useMiEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
 import { RegistroFacialCard } from "@/components/asistencia/FaceCapture";
 import { useDocumentosLegajo } from "@/hooks/useEmpleados";
@@ -242,7 +243,7 @@ export default function Autogestion() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{sol.motivo}{sol.motivo_detalle ? ` — ${sol.motivo_detalle}` : ""}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al {new Date(sol.fecha_hasta).toLocaleDateString("es-AR")}
+                        {formatoFecha(sol.fecha_desde)} al {formatoFecha(sol.fecha_hasta)}
                         {sol.sujeto_descuento && " · Con descuento"}
                       </p>
                     </div>
@@ -320,7 +321,7 @@ export default function Autogestion() {
                   <div key={sol.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-lg border px-3 sm:px-4 py-3 hover:bg-muted/30 transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">
-                        {new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al {new Date(sol.fecha_hasta).toLocaleDateString("es-AR")}
+                        {formatoFecha(sol.fecha_desde)} al {formatoFecha(sol.fecha_hasta)}
                         {" · "}{sol.dias_solicitados} días
                       </p>
                       {sol.observaciones && <p className="text-xs text-muted-foreground">{sol.observaciones}</p>}

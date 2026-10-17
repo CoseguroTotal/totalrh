@@ -1,4 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { formatoFecha } from "@/lib/vacacionesCalendario";
 import { useState } from "react";
 import { useEmpleado, useEventosLegajo, useDocumentosLegajo, useGrupoFamiliar, useDatosMedicos } from "@/hooks/useEmpleados";
 import { useEstudiosEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
@@ -546,7 +547,7 @@ export default function LegajoDetail() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{sol.motivo}{sol.motivo_detalle ? ` — ${sol.motivo_detalle}` : ""}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al {new Date(sol.fecha_hasta).toLocaleDateString("es-AR")}
+                        {formatoFecha(sol.fecha_desde)} al {formatoFecha(sol.fecha_hasta)}
                         {sol.sujeto_descuento && " · Con descuento"}
                       </p>
                     </div>
@@ -672,7 +673,7 @@ export default function LegajoDetail() {
                   <div key={sol.id} className="flex items-center gap-3 rounded-lg border px-4 py-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">
-                        {new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al {new Date(sol.fecha_hasta).toLocaleDateString("es-AR")}
+                        {formatoFecha(sol.fecha_desde)} al {formatoFecha(sol.fecha_hasta)}
                         {" · "}{sol.dias_solicitados} días · Período {sol.periodo_anual}
                       </p>
                       {sol.observaciones && <p className="text-xs text-muted-foreground">{sol.observaciones}</p>}
@@ -690,7 +691,7 @@ export default function LegajoDetail() {
                                 await sendNotificationEmailIfEnabled(configGrupo, {
                                   to: emp.email,
                                   subject: "Vacaciones aprobadas",
-                                  html: `<h2>Vacaciones Aprobadas ✅</h2><p>Hola ${emp.nombre},</p><p>Tu solicitud de vacaciones del ${new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al ${new Date(sol.fecha_hasta).toLocaleDateString("es-AR")} ha sido <strong>aprobada</strong>.</p><p>Saludos,<br/>RRHH</p>`,
+                                  html: `<h2>Vacaciones Aprobadas ✅</h2><p>Hola ${emp.nombre},</p><p>Tu solicitud de vacaciones del ${formatoFecha(sol.fecha_desde)} al ${formatoFecha(sol.fecha_hasta)} ha sido <strong>aprobada</strong>.</p><p>Saludos,<br/>RRHH</p>`,
                                 });
                               }
                             }
@@ -704,7 +705,7 @@ export default function LegajoDetail() {
                                 await sendNotificationEmailIfEnabled(configGrupo, {
                                   to: emp.email,
                                   subject: "Vacaciones rechazadas",
-                                  html: `<h2>Vacaciones Rechazadas ❌</h2><p>Hola ${emp.nombre},</p><p>Tu solicitud de vacaciones del ${new Date(sol.fecha_desde).toLocaleDateString("es-AR")} al ${new Date(sol.fecha_hasta).toLocaleDateString("es-AR")} ha sido <strong>rechazada</strong>.</p><p>Saludos,<br/>RRHH</p>`,
+                                  html: `<h2>Vacaciones Rechazadas ❌</h2><p>Hola ${emp.nombre},</p><p>Tu solicitud de vacaciones del ${formatoFecha(sol.fecha_desde)} al ${formatoFecha(sol.fecha_hasta)} ha sido <strong>rechazada</strong>.</p><p>Saludos,<br/>RRHH</p>`,
                                 });
                               }
                             }

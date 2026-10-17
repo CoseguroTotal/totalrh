@@ -20,6 +20,11 @@ if (shouldDisableAppShellWorker && "serviceWorker" in navigator) {
   });
 }
 
+// App instalable (PWA): sólo en producción y fuera de la vista previa de Lovable
+if (!shouldDisableAppShellWorker && "serviceWorker" in navigator) {
+  import("virtual:pwa-register").then(({ registerSW }) => registerSW({ immediate: true })).catch(() => undefined);
+}
+
 const root = document.getElementById("root");
 
 if (!root) {

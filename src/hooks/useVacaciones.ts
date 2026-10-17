@@ -54,7 +54,7 @@ export function useSolicitudesVacaciones(empresaId?: string) {
     queryFn: async () => {
       let q = supabase
         .from("solicitudes_vacaciones")
-        .select("*, empleado:empleados(id, nombre, apellido, legajo, empresa_id, fecha_ingreso)")
+        .select("*, empleado:empleados(id, nombre, apellido, legajo, empresa_id, fecha_ingreso, puesto, avatar_url, sucursal_id, sucursal:sucursales(id, nombre))")
         .order("created_at", { ascending: false });
       if (empresaId) {
         q = q.eq("empleado.empresa_id", empresaId);

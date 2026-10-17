@@ -33,8 +33,10 @@ function BotonMensajes() {
 export default function AppLayout() {
   const { data: role } = useUserRole();
   const { pathname } = useLocation();
-  const isEmpleado = role === "empleado";
+
   const esTerminal = role === "registro_asistencia";
+  // En el celular todos (menos la terminal) navegan con la barra inferior tipo app
+  const conBarra = !!role && !esTerminal;
   // El chat ocupa toda la pantalla, sin márgenes ni pie
   const modoChat = pathname.startsWith("/mensajes");
   useChatRealtime();
@@ -63,8 +65,8 @@ export default function AppLayout() {
           <main
             className={cn(
               modoChat
-                ? cn("flex-1 min-h-0 overflow-hidden", isEmpleado && "pb-[calc(56px+env(safe-area-inset-bottom))] sm:pb-0")
-                : cn("flex-1 overflow-auto p-3 sm:p-6", isEmpleado ? "pb-24 sm:pb-16" : "pb-16")
+                ? cn("flex-1 min-h-0 overflow-hidden", conBarra && "pb-[calc(58px+env(safe-area-inset-bottom))] sm:pb-0")
+                : cn("flex-1 overflow-auto p-3 sm:p-6", conBarra ? "pb-24 sm:pb-16" : "pb-16")
             )}
           >
             <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
@@ -75,14 +77,14 @@ export default function AppLayout() {
             <footer
               className={cn(
                 "shrink-0 border-t bg-card/50 px-4 py-2 flex items-center justify-center gap-2 text-[10px] sm:text-[11px] text-muted-foreground/60 text-center",
-                isEmpleado && "hidden sm:flex"
+                conBarra && "hidden sm:flex"
               )}
             >
               <img src="/logo_total_rh.png" alt="TotalRH" className="h-4 w-4 opacity-50" />
               <span>TotalRH — Gestión de Personal · Sky Studio 2026 todos los derechos reservados</span>
             </footer>
           )}
-          {isEmpleado && <EmployeeBottomNav />}
+          {conBarra && <EmployeeBottomNav />}
         </div>
       </div>
     </SidebarProvider>
