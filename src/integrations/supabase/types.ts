@@ -100,6 +100,7 @@ export type Database = {
         Row: {
           activo: boolean
           aplica_a: string
+          aplica_valores: string[]
           base_calculo: string | null
           cantidad_default: number | null
           codigo: string
@@ -118,6 +119,7 @@ export type Database = {
         Insert: {
           activo?: boolean
           aplica_a?: string
+          aplica_valores?: string[]
           base_calculo?: string | null
           cantidad_default?: number | null
           codigo: string
@@ -136,6 +138,7 @@ export type Database = {
         Update: {
           activo?: boolean
           aplica_a?: string
+          aplica_valores?: string[]
           base_calculo?: string | null
           cantidad_default?: number | null
           codigo?: string
