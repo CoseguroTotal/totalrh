@@ -29,6 +29,13 @@
       "when": 1792199005696,
       "tag": "0003_conceptos_aplica_valores",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792199051500,
+      "tag": "0004_chat_interno",
+      "breakpoints": true
     }
   ]
 }

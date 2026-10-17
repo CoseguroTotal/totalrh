@@ -96,6 +96,112 @@ export type Database = {
           },
         ]
       }
+      chat_conversaciones: {
+        Row: {
+          creada_por: string | null
+          created_at: string
+          id: string
+          nombre: string | null
+          tipo: string
+          ultimo_mensaje_at: string
+        }
+        Insert: {
+          creada_por?: string | null
+          created_at?: string
+          id?: string
+          nombre?: string | null
+          tipo: string
+          ultimo_mensaje_at?: string
+        }
+        Update: {
+          creada_por?: string | null
+          created_at?: string
+          id?: string
+          nombre?: string | null
+          tipo?: string
+          ultimo_mensaje_at?: string
+        }
+        Relationships: []
+      }
+      chat_mensajes: {
+        Row: {
+          adjunto_duracion: number | null
+          adjunto_nombre: string | null
+          adjunto_path: string | null
+          adjunto_tamano: number | null
+          adjunto_tipo: string | null
+          autor_id: string
+          contenido: string
+          conversacion_id: string
+          created_at: string
+          eliminado: boolean
+          id: string
+        }
+        Insert: {
+          adjunto_duracion?: number | null
+          adjunto_nombre?: string | null
+          adjunto_path?: string | null
+          adjunto_tamano?: number | null
+          adjunto_tipo?: string | null
+          autor_id?: string
+          contenido?: string
+          conversacion_id: string
+          created_at?: string
+          eliminado?: boolean
+          id?: string
+        }
+        Update: {
+          adjunto_duracion?: number | null
+          adjunto_nombre?: string | null
+          adjunto_path?: string | null
+          adjunto_tamano?: number | null
+          adjunto_tipo?: string | null
+          autor_id?: string
+          contenido?: string
+          conversacion_id?: string
+          created_at?: string
+          eliminado?: boolean
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_mensajes_conversacion_id_fkey"
+            columns: ["conversacion_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_participantes: {
+        Row: {
+          conversacion_id: string
+          created_at: string
+          ultimo_leido_at: string
+          user_id: string
+        }
+        Insert: {
+          conversacion_id: string
+          created_at?: string
+          ultimo_leido_at?: string
+          user_id: string
+        }
+        Update: {
+          conversacion_id?: string
+          created_at?: string
+          ultimo_leido_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_participantes_conversacion_id_fkey"
+            columns: ["conversacion_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conceptos_liquidacion: {
         Row: {
           activo: boolean
@@ -1714,6 +1820,45 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      chat_crear_grupo: {
+        Args: { _miembros: string[]; _nombre: string }
+        Returns: string
+      }
+      chat_directorio: {
+        Args: never
+        Returns: {
+          apellido: string
+          avatar_url: string
+          empresa: string
+          nombre: string
+          puesto: string
+          user_id: string
+        }[]
+      }
+      chat_es_participante: {
+        Args: { _conversacion_id: string }
+        Returns: boolean
+      }
+      chat_es_participante_carpeta: {
+        Args: { _carpeta: string }
+        Returns: boolean
+      }
+      chat_iniciar_directa: { Args: { _otro: string }; Returns: string }
+      chat_mis_conversaciones: {
+        Args: never
+        Returns: {
+          id: string
+          no_leidos: number
+          nombre: string
+          participantes: string[]
+          tipo: string
+          ultimo_adjunto_tipo: string
+          ultimo_autor_id: string
+          ultimo_eliminado: boolean
+          ultimo_mensaje_at: string
+          ultimo_texto: string
+        }[]
+      }
       get_server_time: { Args: never; Returns: string }
       get_users_with_roles: {
         Args: never
