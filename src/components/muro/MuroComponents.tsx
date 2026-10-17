@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import {
   REACCIONES, type PerfilMuro, type Publicacion, type ResumenLectura, type TipoReaccion, type TipoPublicacion,
   useActualizarPublicacion, useComentar, useCrearPublicacion, useEliminarComentario,
-  useEliminarPublicacion, useReaccionar,
+  useEliminarPublicacion, useImagenMuro, useReaccionar,
 } from "@/hooks/useMuro";
 
 const MAX_IMAGEN_MB = 5;
@@ -191,6 +191,17 @@ export function Composer({
 
 /* ───────────────────────── Publicación ───────────────────────── */
 
+function ImagenPublicacion({ imagenUrl }: { imagenUrl: string }) {
+  const { data: url, isError } = useImagenMuro(imagenUrl);
+  if (isError) return <div className="flex h-40 items-center justify-center bg-muted text-sm text-muted-foreground">No se pudo cargar la imagen</div>;
+  if (!url) return <div className="flex h-64 items-center justify-center bg-muted"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="block bg-muted">
+      <img src={url} alt="" loading="lazy" className="w-full max-h-[520px] object-contain" />
+    </a>
+  );
+}
+
 const ETIQUETA_TIPO: Partial<Record<TipoPublicacion, { label: string; icon: typeof Cake; className: string }>> = {
   comunicado: { label: "Comunicado oficial", icon: Megaphone, className: "bg-warning/15 text-warning" },
   cumpleanios: { label: "Cumpleaños", icon: Cake, className: "bg-pink-500/10 text-pink-600 dark:text-pink-400" },
@@ -309,11 +320,7 @@ export function PostCard({
       {pub.contenido && <p className="px-4 pb-3 text-[15px] whitespace-pre-wrap break-words">{pub.contenido}</p>}
       {pub.tipo === "encuesta" && <TarjetaEncuesta publicacionId={pub.id} />}
       {pub.requiere_confirmacion && <BloqueConfirmacion pub={pub} lectura={lectura} puedeVerDetalle={esMia || esModerador} />}
-      {pub.imagen_url && (
-        <a href={pub.imagen_url} target="_blank" rel="noreferrer" className="block bg-muted">
-          <img src={pub.imagen_url} alt="" loading="lazy" className="w-full max-h-[520px] object-contain" />
-        </a>
-      )}
+      {pub.imagen_url && <ImagenPublicacion imagenUrl={pub.imagen_url} />}
 
       {(conteo.length > 0 || pub.comentarios.length > 0 || (lectura?.vistos ?? 0) > 0) && (
         <div className="flex items-center justify-between px-4 py-2 text-xs text-muted-foreground">

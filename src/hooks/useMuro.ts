@@ -143,7 +143,8 @@ async function subirImagen(file: File) {
   const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from("muro").upload(path, file, { contentType: file.type });
   if (error) throw error;
-  return supabase.storage.from("muro").getPublicUrl(path).data.publicUrl;
+  // Se guarda la ruta: el bucket es privado y la imagen se muestra con URL firmada
+  return path;
 }
 
 export function useCrearPublicacion() {
@@ -309,6 +310,33 @@ export function useDetalleLecturas(publicacionId: string | undefined, habilitado
       const { data, error } = await supabase.rpc("muro_lecturas_detalle", { _publicacion_id: publicacionId! });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+}
+
+/* ─────────────── Imágenes del muro (bucket privado) ─────────────── */
+
+/**
+ * Ruta dentro del bucket "muro". Las publicaciones viejas guardaron la URL "pública"
+ * (que no abre porque el bucket es privado): se le extrae la ruta.
+ */
+export function rutaImagenMuro(imagenUrl: string) {
+  const marca = "/storage/v1/object/public/muro/";
+  const i = imagenUrl.indexOf(marca);
+  return i >= 0 ? decodeURIComponent(imagenUrl.slice(i + marca.length).split("?")[0]) : imagenUrl;
+}
+
+/** URL firmada (1 h) para mostrar una imagen del muro. */
+export function useImagenMuro(imagenUrl: string | null | undefined) {
+  const ruta = imagenUrl ? rutaImagenMuro(imagenUrl) : null;
+  return useQuery({
+    queryKey: ["muro", "imagen", ruta],
+    enabled: !!ruta,
+    staleTime: 50 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.storage.from("muro").createSignedUrl(ruta!, 3600);
+      if (error) throw error;
+      return data.signedUrl;
     },
   });
 }
