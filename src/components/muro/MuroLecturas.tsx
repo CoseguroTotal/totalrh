@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { registrarVista, useConfirmarLectura, useDetalleLecturas, type Publicacion, type ResumenLectura } from "@/hooks/useMuro";
 import { estaAbierta, useEncuestaDePublicacion } from "@/hooks/useEncuestas";
+import { horario, useEventoDePublicacion } from "@/hooks/useEventos";
 import { UserAvatar, nombreCompleto } from "@/components/muro/MuroComponents";
 
 /** Cuenta la publicación como vista cuando se ve al menos la mitad durante un segundo. */
@@ -130,6 +131,26 @@ export function TarjetaEncuesta({ publicacionId }: { publicacionId: string }) {
         <p className="text-xs text-muted-foreground">{abierta ? "Tu opinión cuenta: tarda un par de minutos" : "Encuesta cerrada · ver resultados"}</p>
       </div>
       <span className={cn("shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold", abierta ? "bg-primary text-primary-foreground" : "bg-muted")}>{abierta ? "Responder" : "Ver"}</span>
+    </Link>
+  );
+}
+
+/** Tarjeta de evento dentro del muro. */
+export function TarjetaEventoMuro({ publicacionId }: { publicacionId: string }) {
+  const { data: ev } = useEventoDePublicacion(publicacionId);
+  if (!ev) return null;
+  const d = new Date(ev.inicio);
+  return (
+    <Link to={`/eventos?evento=${ev.id}`} className="mx-4 mb-3 flex items-center gap-3 rounded-xl border bg-gradient-to-r from-sky-500/10 to-primary/10 p-3 transition-shadow hover:shadow-md">
+      <div className="flex w-12 shrink-0 flex-col items-center rounded-xl border bg-card py-1">
+        <span className="text-[10px] font-semibold uppercase text-primary">{d.toLocaleDateString("es-AR", { month: "short" }).replace(".", "")}</span>
+        <span className="text-xl font-bold leading-tight">{d.getDate()}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold">{ev.titulo}</p>
+        <p className="truncate text-xs text-muted-foreground">{horario(ev)}{ev.lugar ? ` · ${ev.lugar}` : ""}</p>
+      </div>
+      <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground">Ver</span>
     </Link>
   );
 }

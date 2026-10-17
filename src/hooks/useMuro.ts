@@ -11,7 +11,7 @@ export const REACCIONES = [
 ] as const;
 
 export type TipoReaccion = (typeof REACCIONES)[number]["tipo"];
-export type TipoPublicacion = "post" | "comunicado" | "cumpleanios" | "aniversario" | "bienvenida" | "encuesta";
+export type TipoPublicacion = "post" | "comunicado" | "cumpleanios" | "aniversario" | "bienvenida" | "encuesta" | "evento";
 
 export interface PerfilMuro {
   user_id: string;

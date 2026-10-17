@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ClipboardList, DollarSign, FileText, Loader2, MessageCircle, Palmtree, QrCode, Search, Users,
-  LayoutDashboard, Vote, type LucideIcon,
+  LayoutDashboard, Vote, CalendarDays, CheckSquare, type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useDirectorio, useIniciarDirecta, useNoLeidosTotal } from "@/hooks/useChat";
 import type { PerfilMuro } from "@/hooks/useMuro";
 import { useEncuestasPendientes } from "@/hooks/useEncuestas";
+import { horario, useProximosEventos } from "@/hooks/useEventos";
 import { UserAvatar, nombreCompleto } from "@/components/muro/MuroComponents";
 
 interface Acceso { label: string; to: string; icon: LucideIcon; color: string; badge?: number }
@@ -25,6 +26,8 @@ export function AccesosRapidos({ perfil }: { perfil?: PerfilMuro | null }) {
   const accesos: Acceso[] = [
     { label: "Mensajes", to: "/mensajes", icon: MessageCircle, color: "bg-primary/15 text-primary", badge: noLeidos },
     { label: "Encuestas", to: "/encuestas", icon: Vote, color: "bg-violet-500/15 text-violet-600 dark:text-violet-400", badge: encuestas },
+    { label: "Tareas", to: "/tareas", icon: CheckSquare, color: "bg-teal-500/15 text-teal-600 dark:text-teal-400" },
+    { label: "Eventos", to: "/eventos", icon: CalendarDays, color: "bg-sky-500/15 text-sky-600 dark:text-sky-400" },
     ...(role !== "contador" ? [
       { label: "Fichar", to: "/autogestion?tab=token", icon: QrCode, color: "bg-success/15 text-success" },
       { label: "Mis recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
@@ -68,6 +71,8 @@ export function AccesosRapidosMovil() {
   const items: Acceso[] = [
     { label: "Mensajes", to: "/mensajes", icon: MessageCircle, color: "bg-primary/15 text-primary", badge: noLeidos },
     { label: "Encuestas", to: "/encuestas", icon: Vote, color: "bg-violet-500/15 text-violet-600 dark:text-violet-400", badge: encuestas },
+    { label: "Tareas", to: "/tareas", icon: CheckSquare, color: "bg-teal-500/15 text-teal-600 dark:text-teal-400" },
+    { label: "Eventos", to: "/eventos", icon: CalendarDays, color: "bg-sky-500/15 text-sky-600 dark:text-sky-400" },
     ...(role !== "contador" ? [
       { label: "Fichar", to: "/autogestion?tab=token", icon: QrCode, color: "bg-success/15 text-success" },
       { label: "Recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "bg-emerald-500/15 text-emerald-600" },
@@ -145,6 +150,41 @@ export function ContactosCard() {
               </button>
             </li>
           ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Columna derecha del muro: próximos eventos. */
+export function ProximosEventosCard() {
+  const { data: eventos = [], isLoading } = useProximosEventos(4);
+  if (!isLoading && eventos.length === 0) return null;
+  return (
+    <div className="rounded-2xl border bg-card p-4 shadow-sm">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="flex items-center gap-2 text-sm font-semibold"><CalendarDays className="h-4 w-4 text-sky-500" />Próximos eventos</h3>
+        <Link to="/eventos" className="text-xs font-medium text-primary hover:underline">Ver calendario</Link>
+      </div>
+      {isLoading ? <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div> : (
+        <ul className="space-y-2">
+          {eventos.map((e) => {
+            const d = new Date(e.inicio);
+            return (
+              <li key={e.id}>
+                <Link to={`/eventos?evento=${e.id}`} className="flex items-center gap-3 rounded-xl px-1 py-1 hover:bg-muted">
+                  <span className="flex w-10 shrink-0 flex-col items-center rounded-lg bg-sky-500/10 py-0.5 text-sky-700 dark:text-sky-300">
+                    <span className="text-[9px] font-semibold uppercase">{d.toLocaleDateString("es-AR", { month: "short" }).replace(".", "")}</span>
+                    <span className="text-base font-bold leading-tight">{d.getDate()}</span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{e.titulo}</span>
+                    <span className="block truncate text-[11px] text-muted-foreground">{horario(e)}</span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

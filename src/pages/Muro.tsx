@@ -5,7 +5,7 @@ import {
   useCelebraciones, useEsModerador, useFeed, useLecturas, usePerfiles, useSessionUserId, type TipoPublicacion,
 } from "@/hooks/useMuro";
 import { CelebracionesCard, Composer, PostCard, type Celebracion } from "@/components/muro/MuroComponents";
-import { AccesosRapidos, AccesosRapidosMovil, ContactosCard } from "@/components/muro/MuroLaterales";
+import { AccesosRapidos, AccesosRapidosMovil, ContactosCard, ProximosEventosCard } from "@/components/muro/MuroLaterales";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
 
 type Filtro = "todo" | "comunicados";
@@ -71,6 +71,7 @@ export default function Muro() {
               onSaludar={saludar}
               userId={userId}
             />
+            <ProximosEventosCard />
             <div className="hidden lg:block"><ContactosCard /></div>
           </div>
         </aside>

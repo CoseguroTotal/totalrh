@@ -3,14 +3,14 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   Cake, Award, ImagePlus, Loader2, MessageCircle, MoreHorizontal, Pin, PinOff,
-  Megaphone, Send, Trash2, EyeOff, Eye, Pencil, X, Sparkles, ShieldCheck, Vote,
+  Megaphone, Send, Trash2, EyeOff, Eye, Pencil, X, Sparkles, ShieldCheck, Vote, CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
-import { BloqueConfirmacion, TarjetaEncuesta, VistoPor, useVistaAlMostrar } from "@/components/muro/MuroLecturas";
+import { BloqueConfirmacion, TarjetaEncuesta, TarjetaEventoMuro, VistoPor, useVistaAlMostrar } from "@/components/muro/MuroLecturas";
 import { useIniciarDirecta } from "@/hooks/useChat";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -207,6 +207,7 @@ const ETIQUETA_TIPO: Partial<Record<TipoPublicacion, { label: string; icon: type
   cumpleanios: { label: "Cumpleaños", icon: Cake, className: "bg-pink-500/10 text-pink-600 dark:text-pink-400" },
   aniversario: { label: "Aniversario", icon: Award, className: "bg-primary/10 text-primary" },
   bienvenida: { label: "Bienvenida", icon: Sparkles, className: "bg-success/15 text-success" },
+  evento: { label: "Evento", icon: CalendarDays, className: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
   encuesta: { label: "Encuesta", icon: Vote, className: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
 };
 
@@ -319,6 +320,7 @@ export function PostCard({
 
       {pub.contenido && <p className="px-4 pb-3 text-[15px] whitespace-pre-wrap break-words">{pub.contenido}</p>}
       {pub.tipo === "encuesta" && <TarjetaEncuesta publicacionId={pub.id} />}
+      {pub.tipo === "evento" && <TarjetaEventoMuro publicacionId={pub.id} />}
       {pub.requiere_confirmacion && <BloqueConfirmacion pub={pub} lectura={lectura} puedeVerDetalle={esMia || esModerador} />}
       {pub.imagen_url && <ImagenPublicacion imagenUrl={pub.imagen_url} />}
 

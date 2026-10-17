@@ -1,13 +1,15 @@
 import { Link } from "react-router-dom";
 import {
   BarChart3, Briefcase, Building2, Clock, ClipboardList, DollarSign, FileCheck, FileText, Home, LayoutDashboard,
-  MessageCircle, Palmtree, QrCode, Settings, ShieldAlert, UserCircle, Vote, FolderOpen, type LucideIcon,
+  MessageCircle, Palmtree, QrCode, Settings, ShieldAlert, UserCircle, Vote, FolderOpen, CalendarDays, CheckSquare, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useNoLeidosTotal } from "@/hooks/useChat";
 import { useEncuestasPendientes } from "@/hooks/useEncuestas";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
+import { useSessionUserId } from "@/hooks/useMuro";
+import { useTareasPendientes } from "@/hooks/useTareas";
 
 interface App { label: string; to: string; icon: LucideIcon; color: string; roles?: string[]; badge?: number }
 
@@ -20,6 +22,8 @@ export default function Apps() {
   const { data: role } = useUserRole();
   const noLeidos = useNoLeidosTotal();
   const encuestas = useEncuestasPendientes();
+  const { data: yo } = useSessionUserId();
+  const tareas = useTareasPendientes(yo);
 
   const secciones: { titulo: string; apps: App[] }[] = [
     {
@@ -28,6 +32,8 @@ export default function Apps() {
         { label: "Inicio", to: "/muro", icon: Home, color: "text-primary bg-primary/10" },
         { label: "Mensajes", to: "/mensajes", icon: MessageCircle, color: "text-sky-600 bg-sky-500/10", badge: noLeidos },
         { label: "Encuestas", to: "/encuestas", icon: Vote, color: "text-violet-600 bg-violet-500/10", badge: encuestas },
+        { label: "Tareas", to: "/tareas", icon: CheckSquare, color: "text-teal-600 bg-teal-500/10", badge: tareas },
+        { label: "Eventos", to: "/eventos", icon: CalendarDays, color: "text-sky-600 bg-sky-500/10" },
         { label: "Fichar", to: "/autogestion?tab=token", icon: QrCode, color: "text-green-600 bg-green-500/10", roles: PERSONAL },
         { label: "Vacaciones", to: "/autogestion?tab=vacaciones", icon: Palmtree, color: "text-orange-600 bg-orange-500/10", roles: PERSONAL },
         { label: "Permisos", to: "/autogestion?tab=permisos", icon: ClipboardList, color: "text-indigo-600 bg-indigo-500/10", roles: PERSONAL },

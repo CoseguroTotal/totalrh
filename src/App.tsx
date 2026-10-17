@@ -24,6 +24,8 @@ const Encuestas = lazy(() => import("@/pages/Encuestas"));
 const EncuestaEditor = lazy(() => import("@/pages/EncuestaEditor"));
 const EncuestaDetalle = lazy(() => import("@/pages/EncuestaDetalle"));
 const Apps = lazy(() => import("@/pages/Apps"));
+const Eventos = lazy(() => import("@/pages/Eventos"));
+const Tareas = lazy(() => import("@/pages/Tareas"));
 const Legajos = lazy(() => import("@/pages/Legajos"));
 const LegajoDetail = lazy(() => import("@/pages/LegajoDetail"));
 const Empresas = lazy(() => import("@/pages/Empresas"));
@@ -86,6 +88,8 @@ const App = () => (
                   <Route path="/encuestas/:id" element={<EncuestaDetalle />} />
                   <Route path="/encuestas/:id/editar" element={<EncuestaEditor />} />
                   <Route path="/apps" element={<Apps />} />
+                  <Route path="/eventos" element={<Eventos />} />
+                  <Route path="/tareas" element={<Tareas />} />
                   <Route path="/autogestion" element={<Autogestion />} />
                 </Route>
                 <Route element={<EmployeeGuard />}>

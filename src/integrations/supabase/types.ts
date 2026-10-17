@@ -1065,6 +1065,86 @@ export type Database = {
           },
         ]
       }
+      evento_asistencias: {
+        Row: {
+          evento_id: string
+          respuesta: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          evento_id: string
+          respuesta: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          evento_id?: string
+          respuesta?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evento_asistencias_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eventos: {
+        Row: {
+          created_at: string
+          creado_por: string
+          descripcion: string
+          enlace: string | null
+          fin: string | null
+          id: string
+          inicio: string
+          lugar: string | null
+          pide_asistencia: boolean
+          publicacion_id: string | null
+          tipo: string
+          titulo: string
+          todo_el_dia: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creado_por?: string
+          descripcion?: string
+          enlace?: string | null
+          fin?: string | null
+          id?: string
+          inicio: string
+          lugar?: string | null
+          pide_asistencia?: boolean
+          publicacion_id?: string | null
+          tipo?: string
+          titulo: string
+          todo_el_dia?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creado_por?: string
+          descripcion?: string
+          enlace?: string | null
+          fin?: string | null
+          id?: string
+          inicio?: string
+          lugar?: string | null
+          pide_asistencia?: boolean
+          publicacion_id?: string | null
+          tipo?: string
+          titulo?: string
+          todo_el_dia?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fichadas: {
         Row: {
           created_at: string
@@ -1830,6 +1910,48 @@ export type Database = {
           },
         ]
       }
+      tareas: {
+        Row: {
+          asignada_a: string
+          completada_at: string | null
+          creada_por: string
+          created_at: string
+          descripcion: string
+          estado: string
+          id: string
+          prioridad: string
+          titulo: string
+          updated_at: string
+          vence: string | null
+        }
+        Insert: {
+          asignada_a?: string
+          completada_at?: string | null
+          creada_por?: string
+          created_at?: string
+          descripcion?: string
+          estado?: string
+          id?: string
+          prioridad?: string
+          titulo: string
+          updated_at?: string
+          vence?: string | null
+        }
+        Update: {
+          asignada_a?: string
+          completada_at?: string | null
+          creada_por?: string
+          created_at?: string
+          descripcion?: string
+          estado?: string
+          id?: string
+          prioridad?: string
+          titulo?: string
+          updated_at?: string
+          vence?: string | null
+        }
+        Relationships: []
+      }
       tokens_asistencia: {
         Row: {
           created_at: string | null
@@ -2017,6 +2139,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      evento_crear: {
+        Args: {
+          _anunciar: boolean
+          _descripcion: string
+          _enlace: string
+          _fin: string | null
+          _inicio: string
+          _lugar: string
+          _pide_asistencia: boolean
+          _tipo: string
+          _titulo: string
+          _todo_el_dia: boolean
+        }
+        Returns: string
+      }
       chat_crear_grupo: {
         Args: { _miembros: string[]; _nombre: string }
         Returns: string
