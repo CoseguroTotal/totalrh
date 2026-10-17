@@ -818,6 +818,171 @@ export type Database = {
         }
         Relationships: []
       }
+      encuesta_participaciones: {
+        Row: {
+          encuesta_id: string
+          respondida_at: string
+          user_id: string
+        }
+        Insert: {
+          encuesta_id: string
+          respondida_at?: string
+          user_id: string
+        }
+        Update: {
+          encuesta_id?: string
+          respondida_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encuesta_participaciones_encuesta_id_fkey"
+            columns: ["encuesta_id"]
+            isOneToOne: false
+            referencedRelation: "encuestas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      encuesta_preguntas: {
+        Row: {
+          encuesta_id: string
+          id: string
+          obligatoria: boolean
+          opciones: Json
+          orden: number
+          texto: string
+          tipo: string
+        }
+        Insert: {
+          encuesta_id: string
+          id?: string
+          obligatoria?: boolean
+          opciones?: Json
+          orden?: number
+          texto: string
+          tipo: string
+        }
+        Update: {
+          encuesta_id?: string
+          id?: string
+          obligatoria?: boolean
+          opciones?: Json
+          orden?: number
+          texto?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encuesta_preguntas_encuesta_id_fkey"
+            columns: ["encuesta_id"]
+            isOneToOne: false
+            referencedRelation: "encuestas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      encuesta_respuestas: {
+        Row: {
+          encuesta_id: string
+          envio_id: string
+          escala: number | null
+          id: string
+          opciones: number[] | null
+          pregunta_id: string
+          respondente: string | null
+          texto: string | null
+        }
+        Insert: {
+          encuesta_id: string
+          envio_id: string
+          escala?: number | null
+          id?: string
+          opciones?: number[] | null
+          pregunta_id: string
+          respondente?: string | null
+          texto?: string | null
+        }
+        Update: {
+          encuesta_id?: string
+          envio_id?: string
+          escala?: number | null
+          id?: string
+          opciones?: number[] | null
+          pregunta_id?: string
+          respondente?: string | null
+          texto?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encuesta_respuestas_encuesta_id_fkey"
+            columns: ["encuesta_id"]
+            isOneToOne: false
+            referencedRelation: "encuestas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encuesta_respuestas_pregunta_id_fkey"
+            columns: ["pregunta_id"]
+            isOneToOne: false
+            referencedRelation: "encuesta_preguntas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      encuestas: {
+        Row: {
+          anonima: boolean
+          cierra_at: string | null
+          creada_por: string
+          created_at: string
+          descripcion: string
+          estado: string
+          id: string
+          mostrar_resultados: string
+          publicacion_id: string | null
+          publicada_at: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          anonima?: boolean
+          cierra_at?: string | null
+          creada_por?: string
+          created_at?: string
+          descripcion?: string
+          estado?: string
+          id?: string
+          mostrar_resultados?: string
+          publicacion_id?: string | null
+          publicada_at?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          anonima?: boolean
+          cierra_at?: string | null
+          creada_por?: string
+          created_at?: string
+          descripcion?: string
+          estado?: string
+          id?: string
+          mostrar_resultados?: string
+          publicacion_id?: string | null
+          publicada_at?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encuestas_publicacion_id_fkey"
+            columns: ["publicacion_id"]
+            isOneToOne: false
+            referencedRelation: "muro_publicaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estudios_empleado: {
         Row: {
           created_at: string
@@ -1197,6 +1362,35 @@ export type Database = {
           },
         ]
       }
+      muro_lecturas: {
+        Row: {
+          confirmado_at: string | null
+          publicacion_id: string
+          user_id: string
+          visto_at: string
+        }
+        Insert: {
+          confirmado_at?: string | null
+          publicacion_id: string
+          user_id?: string
+          visto_at?: string
+        }
+        Update: {
+          confirmado_at?: string | null
+          publicacion_id?: string
+          user_id?: string
+          visto_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "muro_lecturas_publicacion_id_fkey"
+            columns: ["publicacion_id"]
+            isOneToOne: false
+            referencedRelation: "muro_publicaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       muro_publicaciones: {
         Row: {
           autor_id: string
@@ -1208,6 +1402,7 @@ export type Database = {
           imagen_url: string | null
           mencion_user_id: string | null
           oculta: boolean
+          requiere_confirmacion: boolean
           tipo: string
           updated_at: string
         }
@@ -1221,6 +1416,7 @@ export type Database = {
           imagen_url?: string | null
           mencion_user_id?: string | null
           oculta?: boolean
+          requiere_confirmacion?: boolean
           tipo?: string
           updated_at?: string
         }
@@ -1234,6 +1430,7 @@ export type Database = {
           imagen_url?: string | null
           mencion_user_id?: string | null
           oculta?: boolean
+          requiere_confirmacion?: boolean
           tipo?: string
           updated_at?: string
         }
@@ -1859,6 +2056,12 @@ export type Database = {
           ultimo_texto: string
         }[]
       }
+      encuesta_publicar: { Args: { _encuesta_id: string }; Returns: string }
+      encuesta_responder: {
+        Args: { _encuesta_id: string; _respuestas: Json }
+        Returns: undefined
+      }
+      encuesta_resultados: { Args: { _encuesta_id: string }; Returns: Json }
       get_server_time: { Args: never; Returns: string }
       get_users_with_roles: {
         Args: never
@@ -1908,7 +2111,32 @@ export type Database = {
           user_id: string
         }[]
       }
+      muro_confirmar_lectura: {
+        Args: { _publicacion_id: string }
+        Returns: string
+      }
       muro_es_moderador: { Args: never; Returns: boolean }
+      muro_lecturas_detalle: {
+        Args: { _publicacion_id: string }
+        Returns: {
+          apellido: string
+          avatar_url: string
+          confirmado_at: string
+          nombre: string
+          puesto: string
+          user_id: string
+          visto_at: string
+        }[]
+      }
+      muro_lecturas_resumen: {
+        Args: { _ids: string[] }
+        Returns: {
+          confirmados: number
+          publicacion_id: string
+          vistos: number
+          yo_confirmado_at: string
+        }[]
+      }
       muro_perfiles: {
         Args: { _user_ids: string[] }
         Returns: {
@@ -1920,6 +2148,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      muro_registrar_vistas: { Args: { _ids: string[] }; Returns: undefined }
       my_empleado_id: { Args: never; Returns: string }
       terminal_ultimas_fichadas: {
         Args: never
