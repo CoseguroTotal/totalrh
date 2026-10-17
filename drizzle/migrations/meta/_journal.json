@@ -43,6 +43,13 @@
       "when": 1792203510159,
       "tag": "0005_encuestas_y_lecturas",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792203688289,
+      "tag": "0006_muro_imagenes_privadas",
+      "breakpoints": true
     }
   ]
 }
