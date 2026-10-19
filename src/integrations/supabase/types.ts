@@ -285,8 +285,6 @@ export type Database = {
           fichado_facial_activo: boolean
           fichado_qr_activo: boolean
           fichado_token_activo: boolean
-          fichado_geo_activo: boolean
-          geo_exigir_en_qr: boolean
           id: string
           logo_url: string | null
           nombre_grupo: string
@@ -309,8 +307,6 @@ export type Database = {
           fichado_facial_activo?: boolean
           fichado_qr_activo?: boolean
           fichado_token_activo?: boolean
-          fichado_geo_activo?: boolean
-          geo_exigir_en_qr?: boolean
           id?: string
           logo_url?: string | null
           nombre_grupo?: string
@@ -333,8 +329,6 @@ export type Database = {
           fichado_facial_activo?: boolean
           fichado_qr_activo?: boolean
           fichado_token_activo?: boolean
-          fichado_geo_activo?: boolean
-          geo_exigir_en_qr?: boolean
           id?: string
           logo_url?: string | null
           nombre_grupo?: string
@@ -1167,11 +1161,6 @@ export type Database = {
           fecha: string
           hora_entrada: string | null
           hora_salida: string | null
-          distancia_m: number | null
-          latitud: number | null
-          longitud: number | null
-          metodo_salida: string | null
-          precision_m: number | null
           id: string
           metodo: string | null
           observaciones: string | null
@@ -1185,11 +1174,6 @@ export type Database = {
           fecha?: string
           hora_entrada?: string | null
           hora_salida?: string | null
-          distancia_m?: number | null
-          latitud?: number | null
-          longitud?: number | null
-          metodo_salida?: string | null
-          precision_m?: number | null
           id?: string
           metodo?: string | null
           observaciones?: string | null
@@ -1203,11 +1187,6 @@ export type Database = {
           fecha?: string
           hora_entrada?: string | null
           hora_salida?: string | null
-          distancia_m?: number | null
-          latitud?: number | null
-          longitud?: number | null
-          metodo_salida?: string | null
-          precision_m?: number | null
           id?: string
           metodo?: string | null
           observaciones?: string | null
@@ -2001,9 +1980,6 @@ export type Database = {
           direccion: string | null
           empresa_id: string
           id: string
-          latitud: number | null
-          longitud: number | null
-          radio_metros: number
           nombre: string
         }
         Insert: {
@@ -2011,9 +1987,6 @@ export type Database = {
           direccion?: string | null
           empresa_id: string
           id?: string
-          latitud?: number | null
-          longitud?: number | null
-          radio_metros?: number
           nombre: string
         }
         Update: {
@@ -2021,9 +1994,6 @@ export type Database = {
           direccion?: string | null
           empresa_id?: string
           id?: string
-          latitud?: number | null
-          longitud?: number | null
-          radio_metros?: number
           nombre?: string
         }
         Relationships: [
