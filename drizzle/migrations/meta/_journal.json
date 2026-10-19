@@ -50,6 +50,13 @@
       "when": 1792203688289,
       "tag": "0006_muro_imagenes_privadas",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792414911979,
+      "tag": "0007_eventos_y_tareas",
+      "breakpoints": true
     }
   ]
 }
