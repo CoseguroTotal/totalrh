@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
+import { ListaAdjuntosPermiso } from "@/components/AdjuntosPermiso";
 import { useMiEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
 import { RegistroFacialCard } from "@/components/asistencia/FaceCapture";
 import { useDocumentosLegajo } from "@/hooks/useEmpleados";
@@ -48,6 +49,9 @@ const tipoSancionLabel: Record<string, string> = {
   amonestacion: "Amonestación",
   suspension: "Suspensión",
 };
+
+/** El personal no ve sus sanciones en Autogestión (RRHH las gestiona desde el legajo). */
+const MOSTRAR_SANCIONES = false;
 
 export default function Autogestion() {
   const { data: emp, isLoading } = useMiEmpleado();
@@ -181,7 +185,7 @@ export default function Autogestion() {
           <TabsTrigger value="vacaciones" className="text-xs sm:text-sm shrink-0"><Palmtree className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Vacaciones</TabsTrigger>
           <TabsTrigger value="documentos" className="text-xs sm:text-sm shrink-0"><FileText className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Docs</TabsTrigger>
           <TabsTrigger value="memorandums" className="text-xs sm:text-sm shrink-0"><FileCheck className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Memos</TabsTrigger>
-          <TabsTrigger value="sanciones" className="text-xs sm:text-sm shrink-0"><ShieldAlert className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Sanciones</TabsTrigger>
+          {MOSTRAR_SANCIONES && <TabsTrigger value="sanciones" className="text-xs sm:text-sm shrink-0"><ShieldAlert className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Sanciones</TabsTrigger>}
           <TabsTrigger value="fichadas" className="text-xs sm:text-sm shrink-0"><Clock className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Fichadas</TabsTrigger>
           <TabsTrigger value="recibos" className="text-xs sm:text-sm shrink-0"><DollarSign className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Recibos</TabsTrigger>
           <TabsTrigger value="token" className="text-xs sm:text-sm shrink-0"><QrCode className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Fichar</TabsTrigger>
@@ -193,7 +197,7 @@ export default function Autogestion() {
           <TabsTrigger value="permisos" className="text-xs shrink-0 min-h-[38px]">Permisos</TabsTrigger>
           <TabsTrigger value="documentos" className="text-xs shrink-0 min-h-[38px]">Docs</TabsTrigger>
           <TabsTrigger value="memorandums" className="text-xs shrink-0 min-h-[38px]">Memos</TabsTrigger>
-          <TabsTrigger value="sanciones" className="text-xs shrink-0 min-h-[38px]">Sanciones</TabsTrigger>
+          {MOSTRAR_SANCIONES && <TabsTrigger value="sanciones" className="text-xs shrink-0 min-h-[38px]">Sanciones</TabsTrigger>}
           <TabsTrigger value="recibos" className="text-xs shrink-0 min-h-[38px]">Recibos</TabsTrigger>
           <TabsTrigger value="fichadas" className="text-xs shrink-0 min-h-[38px]">Fichadas</TabsTrigger>
           <TabsTrigger value="password" className="text-xs shrink-0 min-h-[38px]">Clave</TabsTrigger>
@@ -246,6 +250,7 @@ export default function Autogestion() {
                         {formatoFecha(sol.fecha_desde)} al {formatoFecha(sol.fecha_hasta)}
                         {sol.sujeto_descuento && " · Con descuento"}
                       </p>
+                      <ListaAdjuntosPermiso adjuntos={sol.adjuntos} />
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoBadge[sol.estado])}>
@@ -371,8 +376,9 @@ export default function Autogestion() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">#{m.numero} — {m.titulo}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(m.fecha).toLocaleDateString("es-AR")}
+                          {formatoFecha(m.fecha)}
                           {m.empresa && ` · ${m.empresa.nombre}`}
+                          {(m.emisor_sector || m.emisor_nombre) && ` · Emite: ${[m.emisor_sector, m.emisor_nombre].filter(Boolean).join(" — ")}`}
                         </p>
                       </div>
                       <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full capitalize", memoEstadoBadge[m.estado])}>
@@ -397,6 +403,7 @@ export default function Autogestion() {
           </div>
         </TabsContent>
 
+        {MOSTRAR_SANCIONES && (
         <TabsContent value="sanciones">
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <h3 className="text-sm font-medium mb-4 flex items-center gap-2"><ShieldAlert className="h-4 w-4" />Mis Sanciones</h3>
@@ -472,6 +479,7 @@ export default function Autogestion() {
             )}
           </div>
         </TabsContent>
+        )}
 
         <TabsContent value="fichadas">
           <FichadasTab empleadoId={emp.id} />

@@ -39,7 +39,13 @@ export function useSaveMemorandum() {
       id?: string; empresa_id?: string | null; titulo: string; contenido: string;
       destinatario_empleado_id?: string | null; destinatario_nombre?: string | null;
       fecha: string; estado?: string;
+      emisor_nombre?: string | null; emisor_cargo?: string | null; emisor_sector?: string | null;
     }) => {
+      const emisor = {
+        emisor_nombre: memo.emisor_nombre?.trim() || null,
+        emisor_cargo: memo.emisor_cargo?.trim() || null,
+        emisor_sector: memo.emisor_sector?.trim() || null,
+      };
       const { data: { user } } = await supabase.auth.getUser();
       if (memo.id) {
         const { error } = await supabase.from("memorandums").update({
@@ -50,6 +56,7 @@ export function useSaveMemorandum() {
           destinatario_nombre: memo.destinatario_nombre || null,
           fecha: memo.fecha,
           estado: (memo.estado || "borrador") as any,
+          ...emisor,
         }).eq("id", memo.id);
         if (error) throw error;
       } else {
@@ -62,6 +69,8 @@ export function useSaveMemorandum() {
           fecha: memo.fecha,
           estado: (memo.estado || "borrador") as any,
           created_by: user?.id,
+          emitido_por: user?.id,
+          ...emisor,
         });
         if (error) throw error;
       }

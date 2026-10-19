@@ -8,6 +8,7 @@ interface MemoForPdf {
   contenido: string;
   destinatarioNombre: string;
   fecha: string;
+  emisor?: { nombre?: string | null; cargo?: string | null; sector?: string | null } | null;
   empresa: any;
   grupo: any;
 }

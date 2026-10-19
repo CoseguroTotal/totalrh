@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FileText, DollarSign, UserCircle, Clock, Briefcase, BarChart3,
-  Settings, FileCheck, Palmtree, Building2, Home, MessageCircle, Vote, CalendarDays, CheckSquare, type LucideIcon,
+  Settings, FileCheck, Palmtree, Building2, Home, MessageCircle, Vote, CalendarDays, CheckSquare, Users, type LucideIcon,
 } from "lucide-react";
 
 export interface ModuloNav {
@@ -27,6 +27,7 @@ export const SECCIONES: SeccionNav[] = [
     items: [
       { title: "Inicio", url: "/muro", icon: Home, desc: "Muro: novedades, comunicados y cumpleaños", roles: [...GESTION_Y_CONTADOR, "empleado"] },
       { title: "Mensajes", url: "/mensajes", icon: MessageCircle, desc: "Chat interno con fotos, audios y documentos", roles: [...GESTION_Y_CONTADOR, "empleado"] },
+      { title: "Grupos", url: "/grupos", icon: Users, desc: "Muro de cada área o equipo", roles: [...GESTION_Y_CONTADOR, "empleado"] },
       { title: "Encuestas", url: "/encuestas", icon: Vote, desc: "Respondé encuestas y mirá resultados", roles: [...GESTION_Y_CONTADOR, "empleado"] },
       { title: "Tareas", url: "/tareas", icon: CheckSquare, desc: "Pendientes propios y asignados", roles: [...GESTION_Y_CONTADOR, "empleado"] },
       { title: "Eventos", url: "/eventos", icon: CalendarDays, desc: "Calendario de eventos y capacitaciones", roles: [...GESTION_Y_CONTADOR, "empleado"] },

@@ -40,6 +40,7 @@ export interface Publicacion {
   fijada: boolean;
   oculta: boolean;
   editada: boolean;
+  grupo_id: string | null;
   requiere_confirmacion: boolean;
   created_at: string;
   comentarios: Comentario[];
@@ -72,17 +73,20 @@ export function useEsModerador() {
   });
 }
 
-export function useFeed() {
+/** Feed del muro. Con grupoId muestra sólo ese grupo; sin él, todo lo visible (general y mis grupos). */
+export function useFeed(grupoId?: string) {
   const qc = useQueryClient();
 
   const query = useInfiniteQuery({
-    queryKey: FEED_KEY,
+    queryKey: [...FEED_KEY, grupoId ?? "todos"],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const from = pageParam * PAGE_SIZE;
-      const { data, error } = await supabase
+      let q = supabase
         .from("muro_publicaciones")
-        .select("*, comentarios:muro_comentarios(*), reacciones:muro_reacciones(user_id, tipo)")
+        .select("*, comentarios:muro_comentarios(*), reacciones:muro_reacciones(user_id, tipo)");
+      if (grupoId) q = q.eq("grupo_id", grupoId);
+      const { data, error } = await q
         .order("fijada", { ascending: false })
         .order("created_at", { ascending: false })
         .order("created_at", { referencedTable: "muro_comentarios", ascending: true })
@@ -156,6 +160,7 @@ export function useCrearPublicacion() {
       tipo?: TipoPublicacion;
       mencion_user_id?: string | null;
       requiere_confirmacion?: boolean;
+      grupo_id?: string | null;
     }) => {
       const imagen_url = input.imagen ? await subirImagen(input.imagen) : null;
       const { error } = await supabase.from("muro_publicaciones").insert({
@@ -163,6 +168,7 @@ export function useCrearPublicacion() {
         imagen_url,
         tipo: input.tipo ?? "post",
         mencion_user_id: input.mencion_user_id ?? null,
+        grupo_id: input.grupo_id ?? null,
         requiere_confirmacion: !!input.requiere_confirmacion,
       });
       if (error) throw error;
@@ -232,8 +238,8 @@ export function useReaccionar(userId: string | null | undefined) {
     },
     onMutate: async ({ publicacion_id, tipo, actual }) => {
       await qc.cancelQueries({ queryKey: FEED_KEY });
-      const prev = qc.getQueryData(FEED_KEY);
-      qc.setQueryData(FEED_KEY, (old: { pages: Publicacion[][]; pageParams: unknown[] } | undefined) => {
+      const prev = qc.getQueriesData({ queryKey: FEED_KEY });
+      qc.setQueriesData({ queryKey: FEED_KEY }, (old: { pages: Publicacion[][]; pageParams: unknown[] } | undefined) => {
         if (!old || !userId) return old;
         return {
           ...old,
@@ -248,7 +254,7 @@ export function useReaccionar(userId: string | null | undefined) {
       });
       return { prev };
     },
-    onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(FEED_KEY, ctx.prev); },
+    onError: (_e, _v, ctx) => { ctx?.prev.forEach(([key, data]) => qc.setQueryData(key, data)); },
     onSettled: () => qc.invalidateQueries({ queryKey: FEED_KEY }),
   });
 }

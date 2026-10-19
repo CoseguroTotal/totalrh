@@ -11,6 +11,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useDirectorio, useIniciarDirecta, useNoLeidosTotal } from "@/hooks/useChat";
 import type { PerfilMuro } from "@/hooks/useMuro";
 import { useEncuestasPendientes } from "@/hooks/useEncuestas";
+import { useGrupos } from "@/hooks/useGrupos";
 import { horario, useProximosEventos } from "@/hooks/useEventos";
 import { UserAvatar, nombreCompleto } from "@/components/muro/MuroComponents";
 
@@ -18,6 +19,8 @@ interface Acceso { label: string; to: string; icon: LucideIcon; color: string; b
 
 /** Columna izquierda: perfil y accesos a lo que más se usa, con íconos grandes y de color. */
 export function AccesosRapidos({ perfil }: { perfil?: PerfilMuro | null }) {
+  const { data: grupos = [] } = useGrupos();
+  const misGrupos = grupos.filter((g) => g.soy_miembro).slice(0, 6);
   const { data: role } = useUserRole();
   const noLeidos = useNoLeidosTotal();
   const encuestas = useEncuestasPendientes();
@@ -59,6 +62,22 @@ export function AccesosRapidos({ perfil }: { perfil?: PerfilMuro | null }) {
           )}
         </Link>
       ))}
+      <div className="mt-4 border-t pt-3">
+        <div className="mb-1 flex items-center justify-between px-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tus grupos</p>
+          <Link to="/grupos" className="text-xs font-medium text-primary hover:underline">Ver todos</Link>
+        </div>
+        {misGrupos.length === 0 ? (
+          <Link to="/grupos" className="block px-2 py-1.5 text-sm text-muted-foreground hover:underline">Explorar grupos</Link>
+        ) : misGrupos.map((g) => (
+          <Link key={g.id} to={`/grupos/${g.id}`} className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-card">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white" style={{ background: g.color }}>
+              {g.nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase()}
+            </span>
+            <span className="truncate text-sm font-medium">{g.nombre}</span>
+          </Link>
+        ))}
+      </div>
     </nav>
   );
 }

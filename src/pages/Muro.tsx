@@ -7,6 +7,7 @@ import {
 import { CelebracionesCard, Composer, PostCard, type Celebracion } from "@/components/muro/MuroComponents";
 import { AccesosRapidos, AccesosRapidosMovil, ContactosCard, ProximosEventosCard } from "@/components/muro/MuroLaterales";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
+import { useMapaGrupos } from "@/hooks/useGrupos";
 
 type Filtro = "todo" | "comunicados";
 
@@ -33,6 +34,7 @@ export default function Muro() {
   }, [publicaciones, userId]);
   const { data: perfiles = new Map() } = usePerfiles(idsPerfiles);
   const { data: lecturas } = useLecturas(publicaciones.map((p) => p.id));
+  const grupos = useMapaGrupos();
 
   // Scroll infinito
   useEffect(() => {
@@ -105,7 +107,7 @@ export default function Muro() {
             </div>
           ) : (
             visibles.map((p) => (
-              <PostCard key={p.id} pub={p} perfiles={perfiles} userId={userId} esModerador={esModerador} lectura={lecturas?.get(p.id)} />
+              <PostCard key={p.id} pub={p} perfiles={perfiles} userId={userId} esModerador={esModerador} lectura={lecturas?.get(p.id)} grupo={p.grupo_id ? grupos.get(p.grupo_id) ?? null : null} />
             ))
           )}
 

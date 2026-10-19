@@ -8,7 +8,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { BloqueConfirmacion, TarjetaEncuesta, TarjetaEventoMuro, VistoPor, useVistaAlMostrar } from "@/components/muro/MuroLecturas";
 import { useIniciarDirecta } from "@/hooks/useChat";
@@ -53,10 +53,12 @@ function tiempo(fecha: string) {
 /* ───────────────────────── Crear publicación ───────────────────────── */
 
 export function Composer({
-  perfil, esModerador, inicial,
+  perfil, esModerador, inicial, grupo,
 }: {
   perfil?: PerfilMuro | null;
   esModerador: boolean;
+  /** Si se publica dentro de un grupo */
+  grupo?: { id: string; nombre: string } | null;
   inicial?: { contenido: string; tipo: TipoPublicacion; mencion_user_id: string | null; key: number } | null;
 }) {
   const [texto, setTexto] = useState("");
@@ -104,6 +106,7 @@ export function Composer({
         tipo: comunicado ? "comunicado" : extra?.tipo ?? "post",
         mencion_user_id: extra?.mencion_user_id ?? null,
         requiere_confirmacion: comunicado && pedirConfirmacion,
+        grupo_id: grupo?.id ?? null,
       },
       {
         onSuccess: () => { limpiar(); toast.success("¡Publicado!"); },
@@ -126,7 +129,7 @@ export function Composer({
           onFocus={() => setEnfocado(true)}
           onBlur={() => setEnfocado(false)}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) publicar(); }}
-          placeholder={`¿Qué estás pensando${perfil?.nombre ? `, ${perfil.nombre}` : ""}?`}
+          placeholder={grupo ? `Escribí algo en ${grupo.nombre}…` : `¿Qué estás pensando${perfil?.nombre ? `, ${perfil.nombre}` : ""}?`}
           rows={expandido ? 3 : 1}
           className={cn(
             "resize-none border-0 bg-muted text-[15px] transition-all focus-visible:ring-1",
@@ -161,7 +164,7 @@ export function Composer({
       {comunicado && (
         <label className="mt-3 ml-[52px] flex items-center gap-2 text-sm cursor-pointer">
           <Switch checked={pedirConfirmacion} onCheckedChange={setPedirConfirmacion} />
-          <ShieldCheck className="h-4 w-4 text-warning" />Pedir confirmación de lectura a todos
+          <ShieldCheck className="h-4 w-4 text-warning" />{grupo ? "Pedir confirmación de lectura al grupo" : "Pedir confirmación de lectura a todos"}
         </label>
       )}
 
@@ -212,13 +215,15 @@ const ETIQUETA_TIPO: Partial<Record<TipoPublicacion, { label: string; icon: type
 };
 
 export function PostCard({
-  pub, perfiles, userId, esModerador, lectura,
+  pub, perfiles, userId, esModerador, lectura, grupo,
 }: {
   pub: Publicacion;
   perfiles: Map<string, PerfilMuro>;
   userId: string | null | undefined;
   esModerador: boolean;
   lectura?: ResumenLectura;
+  /** En el muro general: grupo donde se publicó, para mostrar "en Grupo" */
+  grupo?: { id: string; nombre: string; color: string } | null;
 }) {
   const articuloRef = useRef<HTMLElement>(null);
   useVistaAlMostrar(articuloRef, pub.id);
@@ -258,6 +263,12 @@ export function PostCard({
               <>
                 <span className="text-muted-foreground"> {pub.tipo === "cumpleanios" ? "saludó a" : "le escribió a"} </span>
                 <span className="font-semibold">{nombreCompleto(mencion)}</span>
+              </>
+            )}
+            {grupo && (
+              <>
+                <span className="text-muted-foreground"> ▸ </span>
+                <Link to={`/grupos/${grupo.id}`} className="font-semibold hover:underline" style={{ color: grupo.color }}>{grupo.nombre}</Link>
               </>
             )}
           </p>

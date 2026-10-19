@@ -107,6 +107,7 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
         contenido: selectedMemo.contenido,
         destinatarioNombre: "",
         fecha: selectedMemo.fecha,
+        emisor: { nombre: selectedMemo.emisor_nombre, cargo: selectedMemo.emisor_cargo, sector: selectedMemo.emisor_sector },
         empresa: empresa ? { nombre: empresa.nombre, razon_social: empresa.razon_social, cuit: empresa.cuit, domicilio: empresa.domicilio_fiscal, telefono: empresa.telefono, email: empresa.email, logo_url: empresa.logo_url } : null,
         grupo: config ? { nombre: config.nombre_grupo, cuit: config.cuit, domicilio: config.domicilio, telefono: config.telefono, email: config.email, logo_url: config.logo_url } : null,
       });

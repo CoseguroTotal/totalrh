@@ -4,7 +4,7 @@ import { useEmpleados, useEmpresas } from "@/hooks/useEmpleados";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Send, FileText, Download, Mail, Users, Filter } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Send, FileText, Download, Mail, Users, Filter, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { generarMemorandumPDF } from "@/components/MemorandumPDF";
+import { formatoFecha } from "@/lib/vacacionesCalendario";
+import { usePerfiles, useSessionUserId } from "@/hooks/useMuro";
+import { nombreCompleto } from "@/components/muro/MuroComponents";
 import { uploadMemoPdfAndGetUrl } from "@/lib/uploadMemoPdf";
 import EnviarEmailDialog from "@/components/EnviarEmailDialog";
 import EnvioMasivoMemoDialog from "@/components/EnvioMasivoMemoDialog";
@@ -52,7 +55,12 @@ export default function Memorandums() {
   const [form, setForm] = useState({
     titulo: "", contenido: "", empresa_id: "", destinatario_empleado_id: "",
     destinatario_nombre: "", fecha: new Date().toISOString().slice(0, 10),
+    emisor_nombre: "", emisor_cargo: "", emisor_sector: "Recursos Humanos",
   });
+  // Por defecto firma quien lo crea (nombre y puesto de su legajo)
+  const { data: yo } = useSessionUserId();
+  const { data: perfiles } = usePerfiles(yo ? [yo] : []);
+  const miPerfil = yo ? perfiles?.get(yo) : null;
   const [search, setSearch] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("todos");
   const [emailDialog, setEmailDialog] = useState<{ open: boolean; memo?: any; pdfUrl?: string }>({ open: false });
@@ -68,6 +76,7 @@ export default function Memorandums() {
       contenido: m.contenido,
       destinatarioNombre: m.destinatario_nombre || (m.destinatario ? `${m.destinatario.apellido}, ${m.destinatario.nombre}` : ""),
       fecha: m.fecha,
+      emisor: { nombre: m.emisor_nombre, cargo: m.emisor_cargo, sector: m.emisor_sector },
       empresa: empresa ? { nombre: empresa.nombre, razon_social: (empresa as any).razon_social, cuit: (empresa as any).cuit, domicilio: (empresa as any).domicilio_fiscal, telefono: (empresa as any).telefono, email: (empresa as any).email, logo_url: (empresa as any).logo_url } : null,
       grupo: config ? { nombre: config.nombre_grupo, cuit: config.cuit, domicilio: config.domicilio, telefono: config.telefono, email: config.email, logo_url: config.logo_url } : null,
     };
@@ -80,7 +89,8 @@ export default function Memorandums() {
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
         <h2 style="color:#333;border-bottom:2px solid #2563eb;padding-bottom:10px;">Memorándum #${m.numero}</h2>
         <p style="color:#666;font-size:14px;"><strong>Empresa:</strong> ${nombreEmpresa}</p>
-        <p style="color:#666;font-size:14px;"><strong>Fecha:</strong> ${new Date(m.fecha).toLocaleDateString("es-AR")}</p>
+        <p style="color:#666;font-size:14px;"><strong>Fecha:</strong> ${formatoFecha(m.fecha)}</p>
+        ${m.emisor_sector || m.emisor_nombre ? `<p style="color:#666;font-size:14px;"><strong>Emite:</strong> ${[m.emisor_sector, m.emisor_nombre, m.emisor_cargo].filter(Boolean).join(" — ")}</p>` : ""}
         ${m.destinatario_nombre ? `<p style="color:#666;font-size:14px;"><strong>Para:</strong> ${m.destinatario_nombre}</p>` : ""}
         <h3 style="color:#333;margin-top:20px;">${m.titulo}</h3>
         <div style="color:#444;font-size:14px;line-height:1.6;white-space:pre-wrap;">${m.contenido}</div>
@@ -97,7 +107,10 @@ export default function Memorandums() {
   };
 
   const openNew = () => {
-    setForm({ titulo: "", contenido: "", empresa_id: "", destinatario_empleado_id: "", destinatario_nombre: "", fecha: new Date().toISOString().slice(0, 10) });
+    setForm({
+      titulo: "", contenido: "", empresa_id: "", destinatario_empleado_id: "", destinatario_nombre: "", fecha: new Date().toISOString().slice(0, 10),
+      emisor_nombre: miPerfil ? nombreCompleto(miPerfil) : "", emisor_cargo: miPerfil?.puesto ?? "", emisor_sector: "Recursos Humanos",
+    });
     setDialog({ open: true });
   };
 
@@ -107,12 +120,14 @@ export default function Memorandums() {
       destinatario_empleado_id: m.destinatario_empleado_id || "",
       destinatario_nombre: m.destinatario_nombre || "",
       fecha: m.fecha,
+      emisor_nombre: m.emisor_nombre ?? "", emisor_cargo: m.emisor_cargo ?? "", emisor_sector: m.emisor_sector ?? "",
     });
     setDialog({ open: true, memo: m });
   };
 
   const handleSave = () => {
     if (!form.titulo.trim()) { toast.error("El título es requerido"); return; }
+    if (!form.emisor_nombre.trim() || !form.emisor_sector.trim()) { toast.error("Indicá quién emite el memorándum y de qué sector"); return; }
     saveMemo.mutate({
       id: dialog.memo?.id,
       titulo: form.titulo,
@@ -121,6 +136,7 @@ export default function Memorandums() {
       destinatario_empleado_id: form.destinatario_empleado_id || null,
       destinatario_nombre: form.destinatario_nombre || null,
       fecha: form.fecha,
+      emisor_nombre: form.emisor_nombre, emisor_cargo: form.emisor_cargo, emisor_sector: form.emisor_sector,
     }, {
       onSuccess: () => { toast.success("Memorándum guardado"); setDialog({ open: false }); },
       onError: (err: Error) => toast.error(err.message),
@@ -211,6 +227,14 @@ export default function Memorandums() {
               <div className="space-y-1.5"><Label className="text-xs">O nombre libre</Label><Input value={form.destinatario_nombre} onChange={(e) => setForm({ ...form, destinatario_nombre: e.target.value })} /></div>
             </div>
             <div className="space-y-1.5"><Label className="text-xs">Contenido</Label><Textarea rows={6} value={form.contenido} onChange={(e) => setForm({ ...form, contenido: e.target.value })} /></div>
+            <div className="rounded-lg border bg-muted/40 p-3 space-y-3">
+              <p className="text-xs font-semibold flex items-center gap-1.5"><PenLine className="h-3.5 w-3.5" />Firma de quien emite</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label className="text-xs">Nombre *</Label><Input value={form.emisor_nombre} onChange={(e) => setForm({ ...form, emisor_nombre: e.target.value })} placeholder="Nombre y apellido" /></div>
+                <div className="space-y-1.5"><Label className="text-xs">Cargo</Label><Input value={form.emisor_cargo} onChange={(e) => setForm({ ...form, emisor_cargo: e.target.value })} placeholder="Ej.: Jefa de RRHH" /></div>
+              </div>
+              <div className="space-y-1.5"><Label className="text-xs">Sector que emite *</Label><Input value={form.emisor_sector} onChange={(e) => setForm({ ...form, emisor_sector: e.target.value })} placeholder="Recursos Humanos" /></div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialog({ open: false })}>Cancelar</Button>
@@ -233,8 +257,9 @@ export default function Memorandums() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">#{m.numero} — {m.titulo}</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(m.fecha).toLocaleDateString("es-AR")}
+                  {formatoFecha(m.fecha)}
                   {m.destinatario_nombre && ` · Para: ${m.destinatario_nombre}`}
+                  {(m.emisor_sector || m.emisor_nombre) && ` · Emite: ${[m.emisor_sector, m.emisor_nombre].filter(Boolean).join(" — ")}`}
                   {m.empresa && ` · ${m.empresa.nombre}`}
                 </p>
               </div>

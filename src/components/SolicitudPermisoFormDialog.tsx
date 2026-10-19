@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { SelectorAdjuntos, subirAdjuntosPermiso } from "@/components/AdjuntosPermiso";
+import type { Json } from "@/integrations/supabase/types";
 
 const motivos = [
   "Lic. por Paternidad",
@@ -20,6 +22,8 @@ const motivos = [
   "Lic. Sin goce de haberes",
   "Otros",
 ];
+
+const MOTIVOS_CON_DOCUMENTO = ["Lic. por Paternidad", "Lic. por Estudio", "Lic. por Fallecimiento"];
 
 interface Props {
   open: boolean;
@@ -34,11 +38,15 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
   const [fechaHasta, setFechaHasta] = useState("");
   const [horaReintegro, setHoraReintegro] = useState("");
   const [sujetoDescuento, setSujetoDescuento] = useState(false);
+  const [archivos, setArchivos] = useState<File[]>([]);
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!fechaDesde || !fechaHasta) throw new Error("Las fechas son requeridas");
+      if (fechaHasta < fechaDesde) throw new Error("La fecha hasta no puede ser anterior a la fecha desde");
+      if (requiereDocumento && archivos.length === 0) throw new Error("Este motivo requiere adjuntar un comprobante");
+      const adjuntos = await subirAdjuntosPermiso(empleadoId, archivos);
       const { error } = await supabase.from("solicitudes_permiso").insert({
         empleado_id: empleadoId,
         motivo,
@@ -47,18 +55,22 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
         fecha_hasta: fechaHasta,
         hora_reintegro: horaReintegro || null,
         sujeto_descuento: sujetoDescuento,
+        adjuntos: adjuntos as unknown as Json,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Solicitud enviada");
       queryClient.invalidateQueries({ queryKey: ["solicitudes_permiso", empleadoId] });
+      setArchivos([]);
       onOpenChange(false);
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
   const needsDetail = motivo === "Lic. por Fallecimiento" || motivo === "Otros";
+  // Licencias que en la práctica se justifican con un certificado
+  const requiereDocumento = MOTIVOS_CON_DOCUMENTO.includes(motivo);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -97,6 +109,10 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
             <Label className="text-xs">Hora de reintegro</Label>
             <Input type="time" value={horaReintegro} onChange={(e) => setHoraReintegro(e.target.value)} />
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Documentación{requiereDocumento ? " *" : " (opcional)"}</Label>
+            <SelectorAdjuntos archivos={archivos} onChange={setArchivos} />
+          </div>
           <div className="flex items-center gap-3">
             <Switch checked={sujetoDescuento} onCheckedChange={setSujetoDescuento} />
             <Label className="text-xs">Sujeto a descuento</Label>
@@ -106,7 +122,7 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Enviar Solicitud
+            {mutation.isPending && archivos.length ? "Subiendo documentos…" : "Enviar Solicitud"}
           </Button>
         </DialogFooter>
       </DialogContent>

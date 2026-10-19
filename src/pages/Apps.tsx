@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   BarChart3, Briefcase, Building2, Clock, ClipboardList, DollarSign, FileCheck, FileText, Home, LayoutDashboard,
-  MessageCircle, Palmtree, QrCode, Settings, ShieldAlert, UserCircle, Vote, FolderOpen, CalendarDays, CheckSquare, type LucideIcon,
+  MessageCircle, Palmtree, QrCode, Settings, UserCircle, Vote, FolderOpen, CalendarDays, CheckSquare, UsersRound, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -31,6 +31,7 @@ export default function Apps() {
       apps: [
         { label: "Inicio", to: "/muro", icon: Home, color: "text-primary bg-primary/10" },
         { label: "Mensajes", to: "/mensajes", icon: MessageCircle, color: "text-sky-600 bg-sky-500/10", badge: noLeidos },
+        { label: "Grupos", to: "/grupos", icon: UsersRound, color: "text-primary bg-primary/10" },
         { label: "Encuestas", to: "/encuestas", icon: Vote, color: "text-violet-600 bg-violet-500/10", badge: encuestas },
         { label: "Tareas", to: "/tareas", icon: CheckSquare, color: "text-teal-600 bg-teal-500/10", badge: tareas },
         { label: "Eventos", to: "/eventos", icon: CalendarDays, color: "text-sky-600 bg-sky-500/10" },
@@ -40,7 +41,6 @@ export default function Apps() {
         { label: "Mis recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "text-emerald-600 bg-emerald-500/10", roles: PERSONAL },
         { label: "Documentos", to: "/autogestion?tab=documentos", icon: FolderOpen, color: "text-amber-600 bg-amber-500/10", roles: PERSONAL },
         { label: "Memorándums", to: "/autogestion?tab=memorandums", icon: FileCheck, color: "text-rose-600 bg-rose-500/10", roles: PERSONAL },
-        { label: "Sanciones", to: "/autogestion?tab=sanciones", icon: ShieldAlert, color: "text-red-600 bg-red-500/10", roles: PERSONAL },
         { label: "Mi perfil", to: "/autogestion?tab=datos", icon: UserCircle, color: "text-teal-600 bg-teal-500/10", roles: PERSONAL },
       ],
     },
