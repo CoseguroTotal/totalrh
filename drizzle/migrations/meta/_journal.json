@@ -64,6 +64,13 @@
       "when": 1792416342522,
       "tag": "0008_permisos_memos_grupos",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792418435572,
+      "tag": "0009_geocerca_asistencia",
+      "breakpoints": true
     }
   ]
 }

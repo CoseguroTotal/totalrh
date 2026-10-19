@@ -283,8 +283,10 @@ export type Database = {
           email: string | null
           email_remitente: string | null
           fichado_facial_activo: boolean
+          fichado_geo_activo: boolean
           fichado_qr_activo: boolean
           fichado_token_activo: boolean
+          geo_exigir_en_qr: boolean
           id: string
           logo_url: string | null
           nombre_grupo: string
@@ -305,8 +307,10 @@ export type Database = {
           email?: string | null
           email_remitente?: string | null
           fichado_facial_activo?: boolean
+          fichado_geo_activo?: boolean
           fichado_qr_activo?: boolean
           fichado_token_activo?: boolean
+          geo_exigir_en_qr?: boolean
           id?: string
           logo_url?: string | null
           nombre_grupo?: string
@@ -327,8 +331,10 @@ export type Database = {
           email?: string | null
           email_remitente?: string | null
           fichado_facial_activo?: boolean
+          fichado_geo_activo?: boolean
           fichado_qr_activo?: boolean
           fichado_token_activo?: boolean
+          geo_exigir_en_qr?: boolean
           id?: string
           logo_url?: string | null
           nombre_grupo?: string
@@ -1156,40 +1162,55 @@ export type Database = {
       fichadas: {
         Row: {
           created_at: string
+          distancia_m: number | null
           empleado_id: string
           estado: string
           fecha: string
           hora_entrada: string | null
           hora_salida: string | null
           id: string
+          latitud: number | null
+          longitud: number | null
           metodo: string | null
+          metodo_salida: string | null
           observaciones: string | null
+          precision_m: number | null
           terminal_user_id: string | null
           turno_id: string | null
         }
         Insert: {
           created_at?: string
+          distancia_m?: number | null
           empleado_id: string
           estado?: string
           fecha?: string
           hora_entrada?: string | null
           hora_salida?: string | null
           id?: string
+          latitud?: number | null
+          longitud?: number | null
           metodo?: string | null
+          metodo_salida?: string | null
           observaciones?: string | null
+          precision_m?: number | null
           terminal_user_id?: string | null
           turno_id?: string | null
         }
         Update: {
           created_at?: string
+          distancia_m?: number | null
           empleado_id?: string
           estado?: string
           fecha?: string
           hora_entrada?: string | null
           hora_salida?: string | null
           id?: string
+          latitud?: number | null
+          longitud?: number | null
           metodo?: string | null
+          metodo_salida?: string | null
           observaciones?: string | null
+          precision_m?: number | null
           terminal_user_id?: string | null
           turno_id?: string | null
         }
@@ -1980,21 +2001,30 @@ export type Database = {
           direccion: string | null
           empresa_id: string
           id: string
+          latitud: number | null
+          longitud: number | null
           nombre: string
+          radio_metros: number
         }
         Insert: {
           created_at?: string
           direccion?: string | null
           empresa_id: string
           id?: string
+          latitud?: number | null
+          longitud?: number | null
           nombre: string
+          radio_metros?: number
         }
         Update: {
           created_at?: string
           direccion?: string | null
           empresa_id?: string
           id?: string
+          latitud?: number | null
+          longitud?: number | null
           nombre?: string
+          radio_metros?: number
         }
         Relationships: [
           {
