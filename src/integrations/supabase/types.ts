@@ -279,8 +279,8 @@ export type Database = {
           demo_max_fallos_ip_hora: number
           demo_max_intentos_codigo: number
           demo_max_solicitudes_ip_hora: number
-          domicilio: string | null
           divisor_hora: number
+          domicilio: string | null
           email: string | null
           email_remitente: string | null
           extra_minimo_minutos: number
@@ -305,8 +305,8 @@ export type Database = {
           demo_max_fallos_ip_hora?: number
           demo_max_intentos_codigo?: number
           demo_max_solicitudes_ip_hora?: number
-          domicilio?: string | null
           divisor_hora?: number
+          domicilio?: string | null
           email?: string | null
           email_remitente?: string | null
           extra_minimo_minutos?: number
@@ -331,8 +331,8 @@ export type Database = {
           demo_max_fallos_ip_hora?: number
           demo_max_intentos_codigo?: number
           demo_max_solicitudes_ip_hora?: number
-          domicilio?: string | null
           divisor_hora?: number
+          domicilio?: string | null
           email?: string | null
           email_remitente?: string | null
           extra_minimo_minutos?: number
