@@ -59,3 +59,15 @@ describe("plazo para presentar el original", () => {
     expect([dom.getDate(), dom.getHours()]).toEqual([26, 23]);
   });
 });
+
+describe("plazo con feriados", () => {
+  it("saltea el feriado: presentado el viernes 9/10, con el lunes 12/10 feriado, vence el martes", () => {
+    const p = plazoPresentacion(new Date(2026, 9, 9, 10, 0), new Set(["2026-10-12"]));
+    expect([p.getDate(), p.getHours()]).toEqual([13, 10]);
+  });
+
+  it("presentado en un feriado, vence a las 23:59 del próximo día hábil", () => {
+    const p = plazoPresentacion(new Date(2026, 9, 12, 9, 0), new Set(["2026-10-12"]));
+    expect([p.getDate(), p.getHours(), p.getMinutes()]).toEqual([13, 23, 59]);
+  });
+});

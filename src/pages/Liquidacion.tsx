@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { calcularLiquidacion } from "@/lib/liquidacionEngine";
 import ConceptoFormDialog from "@/components/ConceptoFormDialog";
 import SimuladorRecibo from "@/components/SimuladorRecibo";
+import LiquidacionFinalTab from "@/components/LiquidacionFinalTab";
 import EnviarEmailDialog from "@/components/EnviarEmailDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,7 @@ export default function Liquidacion() {
           <TabsTrigger value="simulador">Simulador</TabsTrigger>
           <TabsTrigger value="masiva">Masiva</TabsTrigger>
           <TabsTrigger value="guardadas">Guardadas</TabsTrigger>
+          <TabsTrigger value="final">Liquidación final</TabsTrigger>
         </TabsList>
 
         {/* Conceptos */}
@@ -147,6 +149,8 @@ export default function Liquidacion() {
         </TabsContent>
 
         {/* Guardadas */}
+        <TabsContent value="final"><LiquidacionFinalTab /></TabsContent>
+
         <TabsContent value="guardadas">
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <h3 className="text-sm font-medium mb-4">Liquidaciones Guardadas</h3>

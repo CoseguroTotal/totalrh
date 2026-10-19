@@ -16,6 +16,7 @@ import { ETIQUETA_METODO, asignacionVigente, horaCorta, hoyArgentina, minutosExt
 import { enlaceMapa } from "@/lib/ubicacion";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
 import { MapPin } from "lucide-react";
+import HorasExtraTab from "@/components/asistencia/HorasExtraTab";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -37,12 +38,14 @@ export default function Asistencia() {
         <TabsList className="flex-wrap">
           <TabsTrigger value="fichada">Fichada</TabsTrigger>
           <TabsTrigger value="turnos">Turnos</TabsTrigger>
+          <TabsTrigger value="extras">Horas extra</TabsTrigger>
           <TabsTrigger value="novedades">Novedades</TabsTrigger>
           <TabsTrigger value="planillas">Planillas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="fichada"><FichadaTab canEdit={canEdit} /></TabsContent>
         <TabsContent value="turnos"><TurnosTab dialogState={turnoDialog} setDialog={setTurnoDialog} canEdit={canEdit} /></TabsContent>
+        <TabsContent value="extras"><HorasExtraTab /></TabsContent>
         <TabsContent value="novedades"><NovedadesTab canEdit={canEdit} /></TabsContent>
         <TabsContent value="planillas"><PlanillasTab canEdit={canEdit} /></TabsContent>
       </Tabs>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Clock, Download, ExternalLink, Loader2, MapPin, Plus, Trash2, Users,
+  CalendarDays, CalendarPlus, CalendarX2, ChevronLeft, ChevronRight, Clock, Download, ExternalLink, Loader2, MapPin, Plus, Trash2, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ import {
   type Evento, type Respuesta, type TipoEvento,
 } from "@/hooks/useEventos";
 import { UserAvatar, nombreCompleto } from "@/components/muro/MuroComponents";
+import FeriadosDialog from "@/components/FeriadosDialog";
+import { TIPOS_FERIADO, mapaFeriados, useFeriados } from "@/hooks/useFeriados";
 
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const lunes0 = (d: Date) => (d.getDay() + 6) % 7;
@@ -59,6 +61,10 @@ export default function Eventos() {
   const desde = useMemo(() => new Date(anio, mes0, 1), [anio, mes0]);
   const hasta = useMemo(() => new Date(anio, mes0 + 1, 0, 23, 59, 59), [anio, mes0]);
   const { data: eventos = [], isLoading } = useEventos(desde, hasta);
+  const { data: feriadosAnio = [] } = useFeriados(anio);
+  const feriados = useMemo(() => mapaFeriados(feriadosAnio), [feriadosAnio]);
+  const [verFeriados, setVerFeriados] = useState(false);
+  const isoDia = (d: number) => `${anio}-${String(mes0 + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const porDia = useMemo(() => eventosPorDia(eventos, anio, mes0), [eventos, anio, mes0]);
   const porId = useMemo(() => new Map(eventos.map((e) => [e.id, e])), [eventos]);
 
@@ -92,7 +98,10 @@ export default function Eventos() {
           <h1 className="flex items-center gap-2 text-2xl font-bold"><CalendarDays className="h-6 w-6 text-sky-500" />Eventos</h1>
           <p className="mt-1 text-sm text-muted-foreground">Capacitaciones, reuniones, feriados y celebraciones del grupo.</p>
         </div>
-        {esModerador && <Button className="rounded-full" onClick={() => setNuevo(true)}><Plus className="h-4 w-4 mr-1.5" />Nuevo evento</Button>}
+        <div className="flex gap-2">
+          <Button variant="outline" className="rounded-full" onClick={() => setVerFeriados(true)}><CalendarX2 className="h-4 w-4 mr-1.5 text-red-500" />Feriados</Button>
+          {esModerador && <Button className="rounded-full" onClick={() => setNuevo(true)}><Plus className="h-4 w-4 mr-1.5" />Nuevo evento</Button>}
+        </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -114,6 +123,7 @@ export default function Eventos() {
               const esHoy = esMesActual && dia === hoy.getDate();
               const sel = diaSel === dia;
               const finde = lunes0(new Date(anio, mes0, dia)) >= 5;
+              const fer = feriados.get(isoDia(dia)) ?? [];
               return (
                 <button
                   key={dia}
@@ -122,16 +132,20 @@ export default function Eventos() {
                   className={cn(
                     "flex min-h-[56px] sm:min-h-[92px] flex-col rounded-lg border p-1 sm:p-1.5 text-left transition-colors",
                     sel ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50",
-                    finde && !sel && "bg-muted/30"
+                    finde && !sel && "bg-muted/30",
+                    fer.length > 0 && !sel && "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/30"
                   )}
                   aria-pressed={sel}
-                  aria-label={`${dia}${evs.length ? `: ${evs.length} ${evs.length === 1 ? "evento" : "eventos"}` : ""}`}
+                  aria-label={`${dia}${fer.length ? ` (${fer[0].nombre})` : ""}${evs.length ? `: ${evs.length} ${evs.length === 1 ? "evento" : "eventos"}` : ""}`}
                 >
-                  <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-xs sm:text-sm font-semibold", esHoy && "bg-primary text-primary-foreground", finde && !esHoy && "text-muted-foreground")}>{dia}</span>
+                  <span className={cn("flex h-6 w-6 items-center justify-center rounded-full text-xs sm:text-sm font-semibold", esHoy && "bg-primary text-primary-foreground", fer.length > 0 && !esHoy && "text-red-600", finde && !esHoy && !fer.length && "text-muted-foreground")}>{dia}</span>
                   <div className="mt-1 flex flex-wrap gap-0.5 sm:hidden">
                     {evs.slice(0, 4).map((e) => <span key={e.id} className={cn("h-1.5 w-1.5 rounded-full", TIPOS_EVENTO[e.tipo].punto)} />)}
                   </div>
                   <div className="mt-1 hidden flex-col gap-0.5 sm:flex">
+                    {fer.slice(0, 1).map((f) => (
+                      <span key={f.id} className={cn("truncate rounded px-1 py-0.5 text-[11px] font-semibold", TIPOS_FERIADO[f.tipo].color)} title={TIPOS_FERIADO[f.tipo].label}>🇦🇷 {f.nombre}</span>
+                    ))}
                     {evs.slice(0, 2).map((e) => (
                       <span key={e.id} onClick={(ev) => { ev.stopPropagation(); abrir(e.id); }}
                         className={cn("truncate rounded px-1 py-0.5 text-[11px] font-medium cursor-pointer hover:opacity-80", TIPOS_EVENTO[e.tipo].color)}>
@@ -145,6 +159,7 @@ export default function Eventos() {
             })}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 border-t px-4 py-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded border border-red-300 bg-red-100" />Feriado</span>
             {Object.entries(TIPOS_EVENTO).map(([k, t]) => <span key={k} className="flex items-center gap-1.5"><span className={cn("h-2.5 w-2.5 rounded-full", t.punto)} />{t.label}</span>)}
           </div>
         </section>
@@ -153,6 +168,12 @@ export default function Eventos() {
           <h2 className="font-semibold">
             {diaSel ? mayus(new Date(anio, mes0, diaSel).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })) : "Próximos eventos"}
           </h2>
+          {diaSel && (feriados.get(isoDia(diaSel)) ?? []).map((f) => (
+            <div key={f.id} className="flex items-center gap-3 rounded-2xl border border-red-300 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/30">
+              <CalendarX2 className="h-5 w-5 shrink-0 text-red-600" />
+              <div><p className="font-semibold">{f.nombre}</p><p className="text-xs text-muted-foreground">{TIPOS_FERIADO[f.tipo].label}</p></div>
+            </div>
+          ))}
           {lista.length === 0 ? (
             <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground">
               {diaSel ? "No hay eventos este día." : "No hay eventos próximos este mes."}
@@ -162,6 +183,7 @@ export default function Eventos() {
         </aside>
       </div>
 
+      <FeriadosDialog open={verFeriados} onOpenChange={setVerFeriados} puedeEditar={esModerador} />
       {abierto && <DetalleEvento e={abierto} esModerador={esModerador} onClose={() => abrir(null)} />}
       <NuevoEventoDialog open={nuevo} onOpenChange={setNuevo} fechaInicial={diaSel ? new Date(anio, mes0, diaSel) : new Date()} />
     </div>

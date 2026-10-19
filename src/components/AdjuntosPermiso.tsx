@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { esFeriadoPleno, useFeriados } from "@/hooks/useFeriados";
 import { Clock, FileText, Image as ImageIcon, Loader2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -108,38 +109,53 @@ export function ListaAdjuntosPermiso({ adjuntos }: { adjuntos: unknown }) {
   );
 }
 
+const isoLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/** Día hábil: de lunes a viernes y que no sea feriado. */
+export function esDiaHabil(d: Date, feriados: Set<string> = new Set()) {
+  const dia = d.getDay();
+  return dia !== 0 && dia !== 6 && !feriados.has(isoLocal(d));
+}
+
 /**
  * Plazo para presentar el original en papel: 24 hs hábiles.
- * De lunes a viernes vence a la misma hora del día hábil siguiente (viernes → lunes).
- * Si se presenta sábado o domingo, vence el lunes a las 23:59. No contempla feriados.
+ * En día hábil vence a la misma hora del día hábil siguiente (viernes → lunes; se saltean feriados).
+ * Si se presenta en fin de semana o feriado, vence a las 23:59 del próximo día hábil.
  */
-export function plazoPresentacion(desde: Date) {
+export function plazoPresentacion(desde: Date, feriados: Set<string> = new Set()) {
   const d = new Date(desde);
-  const dia = d.getDay();
-  if (dia === 6 || dia === 0) {
-    d.setDate(d.getDate() + (dia === 6 ? 2 : 1));
+  const siguienteHabil = () => { do { d.setDate(d.getDate() + 1); } while (!esDiaHabil(d, feriados)); };
+  if (!esDiaHabil(d, feriados)) {
+    siguienteHabil();
     d.setHours(23, 59, 0, 0);
     return d;
   }
-  d.setDate(d.getDate() + (dia === 5 ? 3 : 1));
+  siguienteHabil();
   return d;
 }
 
-export function textoPlazo(desde: Date) {
-  const p = plazoPresentacion(desde);
+export function textoPlazo(desde: Date, feriados?: Set<string>) {
+  const p = plazoPresentacion(desde, feriados);
   const dia = p.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "numeric" });
   const hora = p.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   return `${dia} a las ${hora}`;
+}
+
+/** Fechas de feriado (no los días no laborables optativos) para calcular plazos. */
+export function useFechasFeriado() {
+  const { data = [] } = useFeriados();
+  return useMemo(() => new Set(data.filter(esFeriadoPleno).map((f) => f.fecha)), [data]);
 }
 
 export const LEYENDA_ORIGINAL = "El documento original debe presentarse físicamente en Recursos Humanos dentro de las 24 hs hábiles.";
 
 /** Aviso en solicitudes pendientes con documentos adjuntos. */
 export function AvisoPresentacion({ creadaAt }: { creadaAt: string }) {
+  const feriados = useFechasFeriado();
   return (
     <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-warning/10 px-2 py-1 text-[11px] text-warning">
       <Clock className="mt-0.5 h-3 w-3 shrink-0" />
-      <span>Presentá el original en RRHH antes del {textoPlazo(new Date(creadaAt))}.</span>
+      <span>Presentá el original en RRHH antes del {textoPlazo(new Date(creadaAt), feriados)}.</span>
     </p>
   );
 }

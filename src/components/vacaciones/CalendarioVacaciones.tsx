@@ -9,6 +9,7 @@ import {
   coloresPorEmpleado, diaSemanaLunes, fechaLocal, formatoFecha, nivelSuperposicion, ocupacionDelMes,
   personasDistintas, resumenDelMes, superposicionesPorSucursal, type Nivel, type SolicitudCal,
 } from "@/lib/vacacionesCalendario";
+import { mapaFeriados, useFeriados } from "@/hooks/useFeriados";
 
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -52,6 +53,9 @@ export default function CalendarioVacaciones({
   ), [solicitudes, conPendientes, sucursal]);
 
   const ocupacion = useMemo(() => ocupacionDelMes(visibles, anio, mes0), [visibles, anio, mes0]);
+  const { data: feriadosAnio = [] } = useFeriados(anio);
+  const feriados = useMemo(() => mapaFeriados(feriadosAnio), [feriadosAnio]);
+  const isoDia = (d: number) => `${anio}-${String(mes0 + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const colores = useMemo(() => coloresPorEmpleado(visibles), [visibles]);
   const resumen = useMemo(() => resumenDelMes(ocupacion), [ocupacion]);
   const diasMes = new Date(anio, mes0 + 1, 0).getDate();
@@ -144,6 +148,7 @@ export default function CalendarioVacaciones({
               const n = personasDistintas(sols);
               const nivel = nivelSuperposicion(n);
               const finde = diaSemanaLunes(new Date(anio, mes0, dia)) >= 5;
+              const feriado = feriados.get(isoDia(dia))?.[0];
               const esHoy = esMesActual && dia === hoy.getDate();
               const unicos = [...new Map(sols.map((s) => [s.empleado_id, s])).values()];
               return (
@@ -161,7 +166,7 @@ export default function CalendarioVacaciones({
                   aria-label={`${dia}: ${n ? `${n} de vacaciones` : "sin vacaciones"}`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={cn("text-xs sm:text-sm font-semibold", esHoy && "text-primary", finde && "text-muted-foreground")}>{dia}</span>
+                    <span className={cn("text-xs sm:text-sm font-semibold", esHoy && "text-primary", finde && !feriado && "text-muted-foreground", feriado && "text-red-600")} title={feriado?.nombre}>{dia}{feriado && <span className="ml-1 hidden text-[10px] font-medium sm:inline">Feriado</span>}</span>
                     {n > 0 && (
                       <span className="flex items-center gap-1 text-[10px] font-bold">
                         <span className={cn("h-2 w-2 rounded-full", PUNTO_NIVEL[nivel])} />{n}

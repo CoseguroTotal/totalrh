@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { LEYENDA_ORIGINAL, SelectorAdjuntos, subirAdjuntosPermiso, textoPlazo } from "@/components/AdjuntosPermiso";
+import { LEYENDA_ORIGINAL, SelectorAdjuntos, subirAdjuntosPermiso, textoPlazo, useFechasFeriado } from "@/components/AdjuntosPermiso";
 import type { Json } from "@/integrations/supabase/types";
 
 const motivos = [
@@ -42,6 +42,7 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
   // Confirmación con el plazo para presentar el original
   const [enviada, setEnviada] = useState<{ conDocumentos: boolean; plazo: string } | null>(null);
   const queryClient = useQueryClient();
+  const feriados = useFechasFeriado();
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -63,7 +64,7 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["solicitudes_permiso", empleadoId] });
-      setEnviada({ conDocumentos: archivos.length > 0, plazo: textoPlazo(new Date()) });
+      setEnviada({ conDocumentos: archivos.length > 0, plazo: textoPlazo(new Date(), feriados) });
       setArchivos([]);
     },
     onError: (err: Error) => toast.error(err.message),

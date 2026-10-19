@@ -409,9 +409,13 @@ function AsistenciaConfigTab() {
   const { data: config, isLoading } = useConfigGrupo();
   const qc = useQueryClient();
   const [duracion, setDuracion] = useState<number>(10);
+  const [divisor, setDivisor] = useState<number>(200);
+  const [minimoExtra, setMinimoExtra] = useState<number>(15);
 
   useEffect(() => {
     if (config?.qr_duracion_segundos) setDuracion(config.qr_duracion_segundos);
+    if (config?.divisor_hora) setDivisor(config.divisor_hora);
+    if (config?.extra_minimo_minutos != null) setMinimoExtra(config.extra_minimo_minutos);
   }, [config]);
 
   const updateMutation = useMutation({
@@ -508,6 +512,30 @@ function AsistenciaConfigTab() {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">Menos segundos = más seguridad. Recomendado: 10.</p>
+      </div>
+
+      <div className="border-t pt-5 space-y-4">
+        <h3 className="text-sm font-medium">Horas extra</h3>
+        <div className="grid gap-4 sm:grid-cols-2 max-w-xl">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Divisor del valor hora</Label>
+            <div className="flex gap-2">
+              <Input type="number" min={100} max={300} value={divisor} onChange={(e) => setDivisor(Number(e.target.value))} />
+              <Button variant="outline" disabled={updateMutation.isPending}
+                onClick={() => updateMutation.mutate({ divisor_hora: Math.min(300, Math.max(100, Math.round(divisor))) })}><Save className="h-4 w-4" /></Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Valor hora = remuneración mensual ÷ divisor. 200 para jornada completa; revisá tu convenio.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Minutos de cortesía</Label>
+            <div className="flex gap-2">
+              <Input type="number" min={0} max={120} value={minimoExtra} onChange={(e) => setMinimoExtra(Number(e.target.value))} />
+              <Button variant="outline" disabled={updateMutation.isPending}
+                onClick={() => updateMutation.mutate({ extra_minimo_minutos: Math.min(120, Math.max(0, Math.round(minimoExtra))) })}><Save className="h-4 w-4" /></Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Las extras más cortas que esto no se cuentan (por ejemplo, quedarse 10 min).</p>
+          </div>
+        </div>
       </div>
     </div>
   );
