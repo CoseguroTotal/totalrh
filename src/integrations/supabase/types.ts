@@ -1257,68 +1257,6 @@ export type Database = {
           },
         ]
       }
-      grupo_miembros: {
-        Row: {
-          created_at: string
-          grupo_id: string
-          rol: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          grupo_id: string
-          rol?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          grupo_id?: string
-          rol?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "grupo_miembros_grupo_id_fkey"
-            columns: ["grupo_id"]
-            isOneToOne: false
-            referencedRelation: "grupos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      grupos: {
-        Row: {
-          color: string
-          created_at: string
-          creado_por: string
-          descripcion: string
-          id: string
-          nombre: string
-          tipo: string
-          updated_at: string
-        }
-        Insert: {
-          color?: string
-          created_at?: string
-          creado_por?: string
-          descripcion?: string
-          id?: string
-          nombre: string
-          tipo?: string
-          updated_at?: string
-        }
-        Update: {
-          color?: string
-          created_at?: string
-          creado_por?: string
-          descripcion?: string
-          id?: string
-          nombre?: string
-          tipo?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       liquidacion_lineas: {
         Row: {
           base: number | null
@@ -1424,10 +1362,6 @@ export type Database = {
           created_by: string | null
           destinatario_empleado_id: string | null
           destinatario_nombre: string | null
-          emisor_cargo: string | null
-          emisor_nombre: string | null
-          emisor_sector: string | null
-          emitido_por: string | null
           empresa_id: string | null
           estado: Database["public"]["Enums"]["estado_memorandum"]
           fecha: string
@@ -1443,10 +1377,6 @@ export type Database = {
           created_by?: string | null
           destinatario_empleado_id?: string | null
           destinatario_nombre?: string | null
-          emisor_cargo?: string | null
-          emisor_nombre?: string | null
-          emisor_sector?: string | null
-          emitido_por?: string | null
           empresa_id?: string | null
           estado?: Database["public"]["Enums"]["estado_memorandum"]
           fecha?: string
@@ -1462,10 +1392,6 @@ export type Database = {
           created_by?: string | null
           destinatario_empleado_id?: string | null
           destinatario_nombre?: string | null
-          emisor_cargo?: string | null
-          emisor_nombre?: string | null
-          emisor_sector?: string | null
-          emitido_por?: string | null
           empresa_id?: string | null
           estado?: Database["public"]["Enums"]["estado_memorandum"]
           fecha?: string
@@ -1560,7 +1486,6 @@ export type Database = {
           created_at: string
           editada: boolean
           fijada: boolean
-          grupo_id: string | null
           id: string
           imagen_url: string | null
           mencion_user_id: string | null
@@ -1575,7 +1500,6 @@ export type Database = {
           created_at?: string
           editada?: boolean
           fijada?: boolean
-          grupo_id?: string | null
           id?: string
           imagen_url?: string | null
           mencion_user_id?: string | null
@@ -1590,7 +1514,6 @@ export type Database = {
           created_at?: string
           editada?: boolean
           fijada?: boolean
-          grupo_id?: string | null
           id?: string
           imagen_url?: string | null
           mencion_user_id?: string | null
@@ -1859,7 +1782,6 @@ export type Database = {
       }
       solicitudes_permiso: {
         Row: {
-          adjuntos: Json
           aprobado_por: string | null
           created_at: string
           empleado_id: string
@@ -1875,7 +1797,6 @@ export type Database = {
           sujeto_descuento: boolean
         }
         Insert: {
-          adjuntos?: Json
           aprobado_por?: string | null
           created_at?: string
           empleado_id: string
@@ -1891,7 +1812,6 @@ export type Database = {
           sujeto_descuento?: boolean
         }
         Update: {
-          adjuntos?: Json
           aprobado_por?: string | null
           created_at?: string
           empleado_id?: string
@@ -2227,23 +2147,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      es_admin_grupo: { Args: { _grupo_id: string }; Returns: boolean }
-      es_miembro_grupo: { Args: { _grupo_id: string }; Returns: boolean }
-      grupo_agregar_masivo: { Args: { _empresa_id: string | null; _grupo_id: string; _sucursal_id: string | null }; Returns: number }
-      grupos_listado: {
-        Args: never
-        Returns: {
-          color: string
-          descripcion: string
-          id: string
-          miembros: number
-          nombre: string
-          soy_admin: boolean
-          soy_miembro: boolean
-          tipo: string
-          ultima_actividad: string | null
-        }[]
-      }
       chat_crear_grupo: {
         Args: { _miembros: string[]; _nombre: string }
         Returns: string
