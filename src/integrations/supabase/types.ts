@@ -1289,8 +1289,8 @@ export type Database = {
       grupos: {
         Row: {
           color: string
-          created_at: string
           creado_por: string
+          created_at: string
           descripcion: string
           id: string
           nombre: string
@@ -1299,8 +1299,8 @@ export type Database = {
         }
         Insert: {
           color?: string
-          created_at?: string
           creado_por?: string
+          created_at?: string
           descripcion?: string
           id?: string
           nombre: string
@@ -1309,8 +1309,8 @@ export type Database = {
         }
         Update: {
           color?: string
-          created_at?: string
           creado_por?: string
+          created_at?: string
           descripcion?: string
           id?: string
           nombre?: string
@@ -1599,7 +1599,15 @@ export type Database = {
           tipo?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "muro_publicaciones_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       muro_reacciones: {
         Row: {
@@ -2227,23 +2235,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      es_admin_grupo: { Args: { _grupo_id: string }; Returns: boolean }
-      es_miembro_grupo: { Args: { _grupo_id: string }; Returns: boolean }
-      grupo_agregar_masivo: { Args: { _empresa_id: string | null; _grupo_id: string; _sucursal_id: string | null }; Returns: number }
-      grupos_listado: {
-        Args: never
-        Returns: {
-          color: string
-          descripcion: string
-          id: string
-          miembros: number
-          nombre: string
-          soy_admin: boolean
-          soy_miembro: boolean
-          tipo: string
-          ultima_actividad: string | null
-        }[]
-      }
       chat_crear_grupo: {
         Args: { _miembros: string[]; _nombre: string }
         Returns: string
@@ -2289,6 +2280,8 @@ export type Database = {
         Returns: undefined
       }
       encuesta_resultados: { Args: { _encuesta_id: string }; Returns: Json }
+      es_admin_grupo: { Args: { _grupo_id: string }; Returns: boolean }
+      es_miembro_grupo: { Args: { _grupo_id: string }; Returns: boolean }
       evento_crear: {
         Args: {
           _anunciar: boolean
@@ -2312,6 +2305,24 @@ export type Database = {
           id: string
           role: string
           user_id: string
+        }[]
+      }
+      grupo_agregar_masivo: {
+        Args: { _empresa_id: string; _grupo_id: string; _sucursal_id: string }
+        Returns: number
+      }
+      grupos_listado: {
+        Args: never
+        Returns: {
+          color: string
+          descripcion: string
+          id: string
+          miembros: number
+          nombre: string
+          soy_admin: boolean
+          soy_miembro: boolean
+          tipo: string
+          ultima_actividad: string
         }[]
       }
       guardar_liquidacion: {
