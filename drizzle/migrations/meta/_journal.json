@@ -71,6 +71,13 @@
       "when": 1792418435572,
       "tag": "0009_geocerca_asistencia",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792420829018,
+      "tag": "0010_20261020120000_feriados_horas_extra",
+      "breakpoints": true
     }
   ]
 }
