@@ -280,10 +280,8 @@ export type Database = {
           demo_max_intentos_codigo: number
           demo_max_solicitudes_ip_hora: number
           domicilio: string | null
-          divisor_hora: number
           email: string | null
           email_remitente: string | null
-          extra_minimo_minutos: number
           fichado_facial_activo: boolean
           fichado_geo_activo: boolean
           fichado_qr_activo: boolean
@@ -306,10 +304,8 @@ export type Database = {
           demo_max_intentos_codigo?: number
           demo_max_solicitudes_ip_hora?: number
           domicilio?: string | null
-          divisor_hora?: number
           email?: string | null
           email_remitente?: string | null
-          extra_minimo_minutos?: number
           fichado_facial_activo?: boolean
           fichado_geo_activo?: boolean
           fichado_qr_activo?: boolean
@@ -332,10 +328,8 @@ export type Database = {
           demo_max_intentos_codigo?: number
           demo_max_solicitudes_ip_hora?: number
           domicilio?: string | null
-          divisor_hora?: number
           email?: string | null
           email_remitente?: string | null
-          extra_minimo_minutos?: number
           fichado_facial_activo?: boolean
           fichado_geo_activo?: boolean
           fichado_qr_activo?: boolean
@@ -1164,33 +1158,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      feriados: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          fecha: string
-          id: string
-          nombre: string
-          tipo: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          fecha: string
-          id?: string
-          nombre: string
-          tipo?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          fecha?: string
-          id?: string
-          nombre?: string
-          tipo?: string
-        }
-        Relationships: []
       }
       fichadas: {
         Row: {
