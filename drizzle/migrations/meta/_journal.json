@@ -57,6 +57,13 @@
       "when": 1792414911979,
       "tag": "0007_eventos_y_tareas",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792416342522,
+      "tag": "0008_permisos_memos_grupos",
+      "breakpoints": true
     }
   ]
 }
