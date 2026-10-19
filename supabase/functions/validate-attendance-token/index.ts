@@ -1,9 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  ESPERA_REFICHAR_SEG, UMBRAL_DUPLICADO, distanciaMinima, esDescriptorValido, fechaArgentina,
+  UMBRAL_DUPLICADO, distanciaMinima, esDescriptorValido, fechaArgentina,
   mejorCoincidencia, muestrasConsistentes, type Descriptor,
 } from "../_shared/face-match.ts";
-import { puedeOperarTerminal, puedeRegistrarRostro } from "../_shared/attendance-rules.ts";
+import {
+  decidirFichada, esUbicacionValida, evaluarGeocerca, puedeOperarTerminal, puedeRegistrarRostro,
+  type ResultadoGeocerca, type Ubicacion,
+} from "../_shared/attendance-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,6 +40,72 @@ Deno.serve(async (req) => {
     const rolesDe = async (userId: string) => {
       const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
       return new Set((data ?? []).map((r: { role: string }) => r.role));
+    };
+
+    type EmpleadoFichada = { id: string; nombre: string; apellido: string; legajo: string };
+    type DatosUbicacion = Ubicacion & { distancia?: number };
+
+    /**
+     * Registra entrada o salida para cualquier método (QR, rostro, ubicación).
+     * Busca la última fichada sin importar el día, así un turno noche cierra con la salida
+     * del día siguiente; evita dobles marcas en menos de un minuto.
+     */
+    const registrarFichada = async (emp: EmpleadoFichada, metodo: "qr" | "facial" | "geo", terminalUserId: string | null, ubic?: DatosUbicacion) => {
+      const { data: ultima, error: ultErr } = await supabaseAdmin
+        .from("fichadas")
+        .select("id, hora_entrada, hora_salida")
+        .eq("empleado_id", emp.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (ultErr) throw ultErr;
+
+      const ahora = new Date();
+      const decision = decidirFichada(ultima ?? null, ahora);
+      const empleado = { id: emp.id, nombre: emp.nombre, apellido: emp.apellido, legajo: emp.legajo };
+      if (decision.accion === "repetida") {
+        return json({ success: false, repetida: true, tipo: decision.tipo, empleado, hora: decision.hora });
+      }
+
+      const iso = ahora.toISOString();
+      if (decision.accion === "salida") {
+        const { error } = await supabaseAdmin.from("fichadas").update({ hora_salida: iso, metodo_salida: metodo }).eq("id", decision.fichadaId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabaseAdmin.from("fichadas").insert({
+          empleado_id: emp.id,
+          fecha: fechaArgentina(ahora),
+          hora_entrada: iso,
+          estado: "presente",
+          metodo,
+          terminal_user_id: terminalUserId,
+          ...(ubic ? {
+            latitud: ubic.latitud,
+            longitud: ubic.longitud,
+            precision_m: Math.round(ubic.precision),
+            distancia_m: ubic.distancia ?? null,
+          } : {}),
+        });
+        if (error) throw error;
+      }
+      return json({ success: true, tipo: decision.accion, empleado, hora: iso, distancia: ubic?.distancia ?? null });
+    };
+
+    /** Geocerca de la sucursal del empleado. */
+    const evaluarUbicacionEmpleado = async (sucursalId: string | null, u: Ubicacion): Promise<{ r: ResultadoGeocerca; sucursal: string }> => {
+      const { data: suc } = sucursalId
+        ? await supabaseAdmin.from("sucursales").select("nombre, latitud, longitud, radio_metros").eq("id", sucursalId).maybeSingle()
+        : { data: null };
+      return {
+        r: evaluarGeocerca(u, { latitud: suc?.latitud ?? null, longitud: suc?.longitud ?? null, radio_metros: suc?.radio_metros ?? null }),
+        sucursal: suc?.nombre ?? "tu sucursal",
+      };
+    };
+
+    const mensajeGeocerca = (r: Exclude<ResultadoGeocerca, { ok: true }>, sucursal: string, precision: number) => {
+      if (r.motivo === "sin_geocerca") return "Tu sucursal todavía no tiene la ubicación cargada. Avisale a RRHH.";
+      if (r.motivo === "imprecisa") return `La ubicación del celular es imprecisa (±${Math.round(precision)} m). Activá el GPS y probá de nuevo cerca de una ventana o al aire libre.`;
+      return `Estás a ${r.distancia} m de ${sucursal}. Para fichar tenés que estar a menos de ${r.radio} m.`;
     };
 
     // ── Action: face-enroll — registrar la plantilla facial de un empleado ──
@@ -135,45 +204,7 @@ Deno.serve(async (req) => {
         | undefined;
       const emp = reg!.empleado;
 
-      const hoy = fechaArgentina();
-      const { data: ultima } = await supabaseAdmin
-        .from("fichadas")
-        .select("id, hora_entrada, hora_salida")
-        .eq("empleado_id", emp.id)
-        .eq("fecha", hoy)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const ultimaMarca = ultima ? new Date(ultima.hora_salida ?? ultima.hora_entrada ?? 0).getTime() : 0;
-      if (ultimaMarca && Date.now() - ultimaMarca < ESPERA_REFICHAR_SEG * 1000) {
-        return json({
-          success: false,
-          repetida: true,
-          tipo: ultima!.hora_salida ? "salida" : "entrada",
-          empleado: emp,
-          hora: ultima!.hora_salida ?? ultima!.hora_entrada,
-        });
-      }
-
-      const ahora = new Date().toISOString();
-      let tipo: "entrada" | "salida";
-      if (ultima && !ultima.hora_salida) {
-        await supabaseAdmin.from("fichadas").update({ hora_salida: ahora }).eq("id", ultima.id);
-        tipo = "salida";
-      } else {
-        await supabaseAdmin.from("fichadas").insert({
-          empleado_id: emp.id,
-          fecha: hoy,
-          hora_entrada: ahora,
-          estado: "presente",
-          metodo: "facial",
-          terminal_user_id: user.id,
-        });
-        tipo = "entrada";
-      }
-
-      return json({ success: true, tipo, empleado: emp, hora: ahora });
+      return await registrarFichada(emp, "facial", user.id);
     }
 
     // ── Action: qr-issue — la terminal solicita un código QR de un solo uso ──
@@ -255,7 +286,7 @@ Deno.serve(async (req) => {
 
       const { data: emp } = await supabaseAdmin
         .from("empleados")
-        .select("id, nombre, apellido, legajo, estado")
+        .select("id, nombre, apellido, legajo, estado, sucursal_id")
         .eq("user_id", userData.user.id)
         .maybeSingle();
 
@@ -270,6 +301,18 @@ Deno.serve(async (req) => {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      // Ubicación del celular: obligatoria si así está configurado (evita fichar con una foto
+      // del QR reenviada); si no, se guarda como dato de auditoría cuando el empleado la comparte.
+      const { data: cfgGeo } = await supabaseAdmin.from("configuracion_grupo").select("geo_exigir_en_qr").limit(1).maybeSingle();
+      let ubicQr: DatosUbicacion | undefined;
+      if (esUbicacionValida(body.ubicacion)) {
+        const { r, sucursal } = await evaluarUbicacionEmpleado(emp.sucursal_id, body.ubicacion);
+        if (cfgGeo?.geo_exigir_en_qr && !r.ok) return json({ error: mensajeGeocerca(r, sucursal, body.ubicacion.precision), motivo: r.motivo }, 403);
+        ubicQr = { ...body.ubicacion, distancia: r.distancia };
+      } else if (cfgGeo?.geo_exigir_en_qr) {
+        return json({ error: "Para fichar tenés que compartir la ubicación del celular.", motivo: "sin_ubicacion" }, 400);
       }
 
       const { data: qr } = await supabaseAdmin
@@ -313,49 +356,31 @@ Deno.serve(async (req) => {
         });
       }
 
-      const hoy = fechaArgentina();
-      const { data: openFichada } = await supabaseAdmin
-        .from("fichadas")
-        .select("id")
-        .eq("empleado_id", emp.id)
-        .eq("fecha", hoy)
-        .is("hora_salida", null)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      const ahora = new Date().toISOString();
-      let tipo: string;
-
-      if (openFichada && openFichada.length > 0) {
-        await supabaseAdmin
-          .from("fichadas")
-          .update({ hora_salida: ahora })
-          .eq("id", openFichada[0].id);
-        tipo = "salida";
-      } else {
-        await supabaseAdmin.from("fichadas").insert({
-          empleado_id: emp.id,
-          fecha: hoy,
-          hora_entrada: ahora,
-          estado: "presente",
-          metodo: "qr",
-          terminal_user_id: qr.terminal_user_id,
-        });
-        tipo = "entrada";
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          tipo,
-          empleado: { id: emp.id, nombre: emp.nombre, apellido: emp.apellido, legajo: emp.legajo },
-          hora: ahora,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return await registrarFichada(emp, "qr", qr.terminal_user_id, ubicQr);
     }
 
+    // ── Action: geo-fichar — el empleado ficha desde el celular dentro de la geocerca de su sucursal ──
+    if (action === "geo-fichar") {
+      const user = await usuarioAutenticado();
+      if (!user) return json({ error: "Debés iniciar sesión para fichar" }, 401);
 
+      const { data: cfg } = await supabaseAdmin.from("configuracion_grupo").select("fichado_geo_activo").limit(1).maybeSingle();
+      if (!cfg?.fichado_geo_activo) return json({ error: "El fichado por ubicación está desactivado" }, 403);
+
+      const { data: emp } = await supabaseAdmin
+        .from("empleados")
+        .select("id, nombre, apellido, legajo, estado, sucursal_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!emp) return json({ error: "No se encontró tu legajo" }, 404);
+      if (emp.estado === "Baja") return json({ error: "Legajo inactivo" }, 403);
+
+      if (!esUbicacionValida(body.ubicacion)) return json({ error: "No llegó la ubicación del celular" }, 400);
+      const { r, sucursal } = await evaluarUbicacionEmpleado(emp.sucursal_id, body.ubicacion);
+      if (!r.ok) return json({ error: mensajeGeocerca(r, sucursal, body.ubicacion.precision), motivo: r.motivo, distancia: r.distancia ?? null }, 403);
+
+      return await registrarFichada(emp, "geo", null, { ...body.ubicacion, distancia: r.distancia });
+    }
 
     return new Response(JSON.stringify({ error: "Acción no válida" }), {
       status: 400,

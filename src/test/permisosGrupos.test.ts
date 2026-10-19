@@ -5,8 +5,9 @@ import { inicialesGrupo } from "@/pages/Grupos";
 const f = (name: string, type: string, mb = 1) => ({ name, type, size: mb * 1024 * 1024 });
 
 describe("adjuntos de permisos", () => {
-  it("acepta PDF, imágenes y Word", () => {
-    expect(validarAdjuntos(0, [f("cert.pdf", "application/pdf"), f("foto.jpg", "image/jpeg"), f("nota.docx", "")])).toBeNull();
+  it("acepta sólo PDF o fotos", () => {
+    expect(validarAdjuntos(0, [f("cert.pdf", "application/pdf"), f("foto.jpg", "image/jpeg"), f("captura.png", "image/png")])).toBeNull();
+    expect(validarAdjuntos(0, [f("nota.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")])).toMatch(/no es PDF ni foto/);
   });
 
   it("rechaza archivos muy grandes", () => {

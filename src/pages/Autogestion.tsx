@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
-import { ListaAdjuntosPermiso } from "@/components/AdjuntosPermiso";
+import { AvisoPresentacion, ListaAdjuntosPermiso } from "@/components/AdjuntosPermiso";
 import { useMiEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
 import { RegistroFacialCard } from "@/components/asistencia/FaceCapture";
 import { useDocumentosLegajo } from "@/hooks/useEmpleados";
@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import SolicitudPermisoFormDialog from "@/components/SolicitudPermisoFormDialog";
 import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
-import QrScanner from "@/components/QrScanner";
+import PanelFichar from "@/components/asistencia/PanelFichar";
 import { useConfigGrupo } from "@/hooks/useConfigGrupo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -175,7 +175,7 @@ export default function Autogestion() {
       </div>
 
       <div className={cn(tab === "token" && "hidden sm:block")}>
-        <HeroFichar />
+        <PanelFichar variante="hero" />
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
@@ -251,6 +251,7 @@ export default function Autogestion() {
                         {sol.sujeto_descuento && " · Con descuento"}
                       </p>
                       <ListaAdjuntosPermiso adjuntos={sol.adjuntos} />
+                      {sol.estado === "pendiente" && Array.isArray(sol.adjuntos) && sol.adjuntos.length > 0 && <AvisoPresentacion creadaAt={sol.created_at} />}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoBadge[sol.estado])}>
@@ -508,7 +509,7 @@ export default function Autogestion() {
 
         <TabsContent value="token">
           <div className="space-y-4">
-            <FicharTab />
+            <PanelFichar />
             {emp?.id && <div className="max-w-md mx-auto"><RegistroFacialCard empleadoId={emp.id} esPropio /></div>}
           </div>
         </TabsContent>
@@ -629,177 +630,5 @@ function FichadasTab({ empleadoId }: { empleadoId: string }) {
 }
 
 
-/* ── Hero de Fichar: visible al inicio del portal ── */
-function HeroFichar() {
-  const { data: config } = useConfigGrupo();
-  const [scanning, setScanning] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState<{ ok: boolean; msg: string } | null>(null);
 
-  const qrActivo = config?.fichado_qr_activo !== false;
-
-  const handleScan = useCallback(async (codigo: string) => {
-    if (enviando) return;
-    setEnviando(true);
-    setResultado(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("validate-attendance-token", {
-        body: { action: "qr-fichar", codigo },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      const hora = data.hora ? new Date(data.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "";
-      setResultado({ ok: true, msg: `${data.tipo === "entrada" ? "Entrada" : "Salida"} registrada ${hora}` });
-      setScanning(false);
-    } catch (err: any) {
-      setResultado({ ok: false, msg: err.message || "No se pudo registrar la fichada" });
-    } finally {
-      setEnviando(false);
-    }
-  }, [enviando]);
-
-  if (!qrActivo) {
-    return (
-      <div className="rounded-2xl border bg-muted/30 p-4 sm:p-5 text-center text-sm text-muted-foreground">
-        El fichado desde la app está desactivado. Consultá con Recursos Humanos.
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-2xl border bg-gradient-to-br from-primary/10 to-accent/10 p-4 sm:p-6 shadow-sm space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-            <Clock className="h-5 w-5 text-primary" />
-            Fichar ahora
-          </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Escaneá el QR de tu sucursal para registrar entrada o salida.
-          </p>
-        </div>
-      </div>
-
-      {scanning ? (
-        <div className="space-y-3">
-          <QrScanner onScan={handleScan} paused={enviando} />
-          <Button variant="outline" className="w-full" onClick={() => setScanning(false)}>
-            Cancelar
-          </Button>
-        </div>
-      ) : (
-        <Button
-          className="w-full h-14 text-base gap-2"
-          onClick={() => {
-            setResultado(null);
-            setScanning(true);
-          }}
-        >
-          <Camera className="h-5 w-5" />
-          Escanear QR
-        </Button>
-      )}
-
-      {enviando && (
-        <p className="text-sm text-muted-foreground flex items-center gap-2 justify-center">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Registrando...
-        </p>
-      )}
-
-      {resultado && (
-        <div
-          className={cn(
-            "rounded-xl border p-4 text-center",
-            resultado.ok ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30"
-          )}
-        >
-          {resultado.ok ? (
-            <CheckCircle2 className="h-8 w-8 mx-auto text-success mb-2" />
-          ) : (
-            <XCircle className="h-8 w-8 mx-auto text-destructive mb-2" />
-          )}
-          <p className={cn("text-sm font-medium", resultado.ok ? "text-success" : "text-destructive")}>
-            {resultado.msg}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Fichar: solo QR ── */
-function FicharTab() {
-  const { data: config } = useConfigGrupo();
-  const [scanning, setScanning] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState<{ ok: boolean; msg: string } | null>(null);
-
-  const qrActivo = config?.fichado_qr_activo !== false;
-
-  const handleScan = useCallback(async (codigo: string) => {
-    if (enviando) return;
-    setEnviando(true);
-    setResultado(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("validate-attendance-token", {
-        body: { action: "qr-fichar", codigo },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      const hora = data.hora ? new Date(data.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "";
-      setResultado({ ok: true, msg: `${data.tipo === "entrada" ? "Entrada" : "Salida"} registrada ${hora}` });
-      setScanning(false);
-    } catch (err: any) {
-      setResultado({ ok: false, msg: err.message || "No se pudo registrar la fichada" });
-    } finally {
-      setEnviando(false);
-    }
-  }, [enviando]);
-
-  if (!qrActivo) {
-    return (
-      <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-        El fichado desde la app está desactivado. Consultá con Recursos Humanos.
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm space-y-4">
-        <h3 className="text-sm font-medium flex items-center gap-2"><QrCode className="h-4 w-4" />Fichar con QR</h3>
-        <p className="text-sm text-muted-foreground">
-          Escaneá el código QR que se muestra en la pantalla de tu sucursal. El código cambia cada pocos segundos.
-        </p>
-
-        {scanning ? (
-          <>
-            <QrScanner onScan={handleScan} paused={enviando} />
-            <Button variant="outline" className="w-full" onClick={() => setScanning(false)}>Cancelar</Button>
-          </>
-        ) : (
-          <Button className="w-full h-12 text-base gap-2" onClick={() => { setResultado(null); setScanning(true); }}>
-            <Camera className="h-5 w-5" />Escanear QR
-          </Button>
-        )}
-
-        {enviando && (
-          <p className="text-sm text-muted-foreground flex items-center gap-2 justify-center">
-            <Loader2 className="h-4 w-4 animate-spin" />Registrando...
-          </p>
-        )}
-
-        {resultado && (
-          <div className={cn("rounded-xl border p-4 text-center", resultado.ok ? "bg-success/10 border-success/30" : "bg-destructive/10 border-destructive/30")}>
-            {resultado.ok
-              ? <CheckCircle2 className="h-8 w-8 mx-auto text-success mb-2" />
-              : <XCircle className="h-8 w-8 mx-auto text-destructive mb-2" />}
-            <p className={cn("text-sm font-medium", resultado.ok ? "text-success" : "text-destructive")}>{resultado.msg}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 

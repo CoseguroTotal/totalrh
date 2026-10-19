@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { hoyArgentina, ultimoDiaDelMes } from "@/lib/asistencia";
+import { HORAS_MAX_JORNADA } from "../../supabase/functions/_shared/attendance-rules";
 
 export function useTurnos() {
   return useQuery({
@@ -55,7 +57,7 @@ export function useFichadas(fecha?: string) {
     queryFn: async () => {
       let q = supabase
         .from("fichadas")
-        .select("*, empleado:empleados(id, nombre, apellido, legajo), turno:turnos(id, nombre)")
+        .select("*, empleado:empleados(id, nombre, apellido, legajo), turno:turnos(id, nombre, tolerancia_minutos)")
         .order("created_at", { ascending: false });
       if (fecha) q = q.eq("fecha", fecha);
       const { data, error } = await q;
@@ -69,7 +71,8 @@ export function useRegistrarFichada() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: { empleado_id: string; turno_id?: string; tipo: "entrada" | "salida" }) => {
-      const hoy = new Date().toISOString().slice(0, 10);
+      // Fecha de Argentina (en UTC, después de las 21 h ya sería mañana)
+      const hoy = hoyArgentina();
       const ahora = new Date().toISOString();
 
       if (params.tipo === "entrada") {
@@ -79,24 +82,26 @@ export function useRegistrarFichada() {
           hora_entrada: ahora,
           turno_id: params.turno_id || null,
           estado: "presente",
+          metodo: "manual",
         });
         if (error) throw error;
       } else {
-        // Find today's open fichada
+        // Entrada abierta de las últimas 16 h (un turno noche sale al día siguiente)
+        const desde = new Date(Date.now() - HORAS_MAX_JORNADA * 3_600_000).toISOString();
         const { data: open } = await supabase
           .from("fichadas")
           .select("id")
           .eq("empleado_id", params.empleado_id)
-          .eq("fecha", hoy)
+          .gte("hora_entrada", desde)
           .is("hora_salida", null)
           .order("created_at", { ascending: false })
           .limit(1);
 
         if (open && open.length > 0) {
-          const { error } = await supabase.from("fichadas").update({ hora_salida: ahora }).eq("id", open[0].id);
+          const { error } = await supabase.from("fichadas").update({ hora_salida: ahora, metodo_salida: "manual" }).eq("id", open[0].id);
           if (error) throw error;
         } else {
-          throw new Error("No hay fichada de entrada abierta para hoy");
+          throw new Error("No hay una entrada abierta en las últimas 16 horas");
         }
       }
     },
@@ -113,7 +118,8 @@ export function useNovedades(mes?: string) {
         .select("*, empleado:empleados(id, nombre, apellido, legajo)")
         .order("fecha", { ascending: false });
       if (mes) {
-        q = q.gte("fecha", `${mes}-01`).lte("fecha", `${mes}-31`);
+        // El 31 no existe en todos los meses: la consulta fallaba en febrero y en los de 30 días
+        q = q.gte("fecha", `${mes}-01`).lte("fecha", ultimoDiaDelMes(mes));
       }
       const { data, error } = await q;
       if (error) throw error;

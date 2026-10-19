@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Image as ImageIcon, Loader2, Paperclip, X } from "lucide-react";
+import { Clock, FileText, Image as ImageIcon, Loader2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,15 +13,16 @@ export interface AdjuntoPermiso {
 
 export const MAX_ADJUNTOS = 5;
 export const MAX_MB_ADJUNTO = 10;
-export const TIPOS_ACEPTADOS = "application/pdf,image/*,.doc,.docx";
+/** Sólo PDF o fotos (en el celular permite sacar la foto con la cámara) */
+export const TIPOS_ACEPTADOS = "application/pdf,image/*";
 
 /** Valida los archivos elegidos: cantidad, tamaño y tipo. Devuelve el error o null. */
 export function validarAdjuntos(actuales: number, archivos: { size: number; type: string; name: string }[]) {
   if (actuales + archivos.length > MAX_ADJUNTOS) return `Podés adjuntar hasta ${MAX_ADJUNTOS} archivos`;
   const grande = archivos.find((f) => f.size > MAX_MB_ADJUNTO * 1024 * 1024);
   if (grande) return `"${grande.name}" supera ${MAX_MB_ADJUNTO} MB`;
-  const raro = archivos.find((f) => !(f.type === "application/pdf" || f.type.startsWith("image/") || /\.(docx?|pdf)$/i.test(f.name)));
-  if (raro) return `"${raro.name}" no es PDF, imagen ni Word`;
+  const raro = archivos.find((f) => !(f.type === "application/pdf" || f.type.startsWith("image/") || /\.pdf$/i.test(f.name)));
+  if (raro) return `"${raro.name}" no es PDF ni foto`;
   return null;
 }
 
@@ -104,5 +105,41 @@ export function ListaAdjuntosPermiso({ adjuntos }: { adjuntos: unknown }) {
         </Button>
       ))}
     </div>
+  );
+}
+
+/**
+ * Plazo para presentar el original en papel: 24 hs hábiles.
+ * De lunes a viernes vence a la misma hora del día hábil siguiente (viernes → lunes).
+ * Si se presenta sábado o domingo, vence el lunes a las 23:59. No contempla feriados.
+ */
+export function plazoPresentacion(desde: Date) {
+  const d = new Date(desde);
+  const dia = d.getDay();
+  if (dia === 6 || dia === 0) {
+    d.setDate(d.getDate() + (dia === 6 ? 2 : 1));
+    d.setHours(23, 59, 0, 0);
+    return d;
+  }
+  d.setDate(d.getDate() + (dia === 5 ? 3 : 1));
+  return d;
+}
+
+export function textoPlazo(desde: Date) {
+  const p = plazoPresentacion(desde);
+  const dia = p.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "numeric" });
+  const hora = p.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  return `${dia} a las ${hora}`;
+}
+
+export const LEYENDA_ORIGINAL = "El documento original debe presentarse físicamente en Recursos Humanos dentro de las 24 hs hábiles.";
+
+/** Aviso en solicitudes pendientes con documentos adjuntos. */
+export function AvisoPresentacion({ creadaAt }: { creadaAt: string }) {
+  return (
+    <p className="mt-1.5 flex items-start gap-1.5 rounded-md bg-warning/10 px-2 py-1 text-[11px] text-warning">
+      <Clock className="mt-0.5 h-3 w-3 shrink-0" />
+      <span>Presentá el original en RRHH antes del {textoPlazo(new Date(creadaAt))}.</span>
+    </p>
   );
 }

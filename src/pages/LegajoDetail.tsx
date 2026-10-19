@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
-import { ListaAdjuntosPermiso } from "@/components/AdjuntosPermiso";
+import { AvisoPresentacion, ListaAdjuntosPermiso } from "@/components/AdjuntosPermiso";
 import { useState } from "react";
 import { useEmpleado, useEventosLegajo, useDocumentosLegajo, useGrupoFamiliar, useDatosMedicos } from "@/hooks/useEmpleados";
 import { useEstudiosEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
@@ -552,6 +552,7 @@ export default function LegajoDetail() {
                         {sol.sujeto_descuento && " · Con descuento"}
                       </p>
                       <ListaAdjuntosPermiso adjuntos={sol.adjuntos} />
+                      {sol.estado === "pendiente" && Array.isArray(sol.adjuntos) && sol.adjuntos.length > 0 && <AvisoPresentacion creadaAt={sol.created_at} />}
                     </div>
                     <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoSolicitudBadge[sol.estado])}>
                       {sol.estado}

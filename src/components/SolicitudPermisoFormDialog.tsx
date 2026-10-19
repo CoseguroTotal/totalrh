@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { CheckCircle2, FileWarning, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { SelectorAdjuntos, subirAdjuntosPermiso } from "@/components/AdjuntosPermiso";
+import { LEYENDA_ORIGINAL, SelectorAdjuntos, subirAdjuntosPermiso, textoPlazo } from "@/components/AdjuntosPermiso";
 import type { Json } from "@/integrations/supabase/types";
 
 const motivos = [
@@ -39,6 +39,8 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
   const [horaReintegro, setHoraReintegro] = useState("");
   const [sujetoDescuento, setSujetoDescuento] = useState(false);
   const [archivos, setArchivos] = useState<File[]>([]);
+  // Confirmación con el plazo para presentar el original
+  const [enviada, setEnviada] = useState<{ conDocumentos: boolean; plazo: string } | null>(null);
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -60,10 +62,9 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Solicitud enviada");
       queryClient.invalidateQueries({ queryKey: ["solicitudes_permiso", empleadoId] });
+      setEnviada({ conDocumentos: archivos.length > 0, plazo: textoPlazo(new Date()) });
       setArchivos([]);
-      onOpenChange(false);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -73,8 +74,25 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
   const requiereDocumento = MOTIVOS_CON_DOCUMENTO.includes(motivo);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) setEnviada(null); onOpenChange(o); }}>
       <DialogContent className="max-w-md">
+        {enviada ? (
+          <div className="space-y-4 py-2 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success"><CheckCircle2 className="h-8 w-8" /></div>
+            <div>
+              <DialogTitle className="text-lg">Solicitud enviada</DialogTitle>
+              <DialogDescription className="mt-1">RRHH la va a revisar y te avisamos cuando la apruebe.</DialogDescription>
+            </div>
+            {enviada.conDocumentos && (
+              <div className="rounded-xl border-2 border-warning/50 bg-warning/10 p-4 text-left">
+                <p className="flex items-center gap-2 font-semibold text-warning"><FileWarning className="h-5 w-5" />Importante</p>
+                <p className="mt-1 text-sm">{LEYENDA_ORIGINAL}</p>
+                <p className="mt-2 text-sm font-semibold">Plazo: hasta el {enviada.plazo}.</p>
+              </div>
+            )}
+            <Button className="w-full" onClick={() => { setEnviada(null); onOpenChange(false); }}>Entendido</Button>
+          </div>
+        ) : (<>
         <DialogHeader>
           <DialogTitle>Nueva Solicitud de Permiso</DialogTitle>
           <DialogDescription>Completá el formulario para solicitar un permiso.</DialogDescription>
@@ -112,6 +130,11 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
           <div className="space-y-1.5">
             <Label className="text-xs">Documentación{requiereDocumento ? " *" : " (opcional)"}</Label>
             <SelectorAdjuntos archivos={archivos} onChange={setArchivos} />
+            {archivos.length > 0 && (
+              <p className="flex items-start gap-1.5 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
+                <FileWarning className="mt-0.5 h-3.5 w-3.5 shrink-0" />{LEYENDA_ORIGINAL}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Switch checked={sujetoDescuento} onCheckedChange={setSujetoDescuento} />
@@ -125,6 +148,7 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
             {mutation.isPending && archivos.length ? "Subiendo documentos…" : "Enviar Solicitud"}
           </Button>
         </DialogFooter>
+        </>)}
       </DialogContent>
     </Dialog>
   );

@@ -12,6 +12,10 @@ import { useCanEdit } from "@/hooks/useCanEdit";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { ETIQUETA_METODO, asignacionVigente, horaCorta, hoyArgentina, minutosExtra, minutosTardanza } from "@/lib/asistencia";
+import { enlaceMapa } from "@/lib/ubicacion";
+import { formatoFecha } from "@/lib/vacacionesCalendario";
+import { MapPin } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -48,7 +52,7 @@ export default function Asistencia() {
 
 /* ── Fichada ── */
 function FichadaTab({ canEdit }: { canEdit: boolean }) {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyArgentina();
   const [fecha, setFecha] = useState(hoy);
   const { data: fichadas, isLoading } = useFichadas(fecha);
   const { data: empleados } = useEmpleados();
@@ -77,26 +81,19 @@ function FichadaTab({ canEdit }: { canEdit: boolean }) {
     },
   });
 
+  // Horario vigente del día (sin el corrimiento de UTC que tomaba el día anterior) y tolerancia del turno
   const computeTardanza = (fichada: any) => {
     if (!fichada.hora_entrada) return null;
-    const diaSemana = new Date(fichada.fecha).getDay();
-    const asig = asignaciones.find((a: any) => a.empleado_id === fichada.empleado_id && a.dia_semana === diaSemana);
+    const asig = asignacionVigente(asignaciones, fichada.empleado_id, fichada.fecha);
     if (!asig) return null;
-    const entradaReal = new Date(fichada.hora_entrada);
-    const entradaProgramada = new Date(fichada.fecha + "T" + (asig as any).hora_entrada);
-    const diffMin = Math.floor((entradaReal.getTime() - entradaProgramada.getTime()) / 60000);
-    return diffMin > 0 ? diffMin : 0;
+    return minutosTardanza(fichada.fecha, fichada.hora_entrada, asig.hora_entrada, fichada.turno?.tolerancia_minutos ?? 0);
   };
 
   const computeHorasExtra = (fichada: any) => {
     if (!fichada.hora_entrada || !fichada.hora_salida) return null;
-    const diaSemana = new Date(fichada.fecha).getDay();
-    const asig = asignaciones.find((a: any) => a.empleado_id === fichada.empleado_id && a.dia_semana === diaSemana);
+    const asig = asignacionVigente(asignaciones, fichada.empleado_id, fichada.fecha);
     if (!asig) return null;
-    const salidaReal = new Date(fichada.hora_salida);
-    const salidaProgramada = new Date(fichada.fecha + "T" + (asig as any).hora_salida);
-    const diffMin = Math.floor((salidaReal.getTime() - salidaProgramada.getTime()) / 60000);
-    return diffMin > 0 ? diffMin : 0;
+    return minutosExtra(fichada.fecha, fichada.hora_salida, asig.hora_entrada, asig.hora_salida);
   };
 
   return (
@@ -155,6 +152,7 @@ function FichadaTab({ canEdit }: { canEdit: boolean }) {
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Turno</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Entrada</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Salida</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Cómo fichó</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Estado</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Tardanza</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground text-xs">Hs Extra</th>
@@ -168,8 +166,22 @@ function FichadaTab({ canEdit }: { canEdit: boolean }) {
                     <tr key={f.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="px-3 py-2">{f.empleado?.apellido}, {f.empleado?.nombre}</td>
                       <td className="px-3 py-2">{f.turno?.nombre ?? "—"}</td>
-                      <td className="px-3 py-2 tabular-nums">{f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
-                      <td className="px-3 py-2 tabular-nums">{f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                      <td className="px-3 py-2 tabular-nums">{f.hora_entrada ? horaCorta(f.hora_entrada) : "—"}</td>
+                      <td className="px-3 py-2 tabular-nums">
+                        {f.hora_salida ? horaCorta(f.hora_salida) : "—"}
+                        {f.hora_salida && f.hora_entrada && new Date(f.hora_salida).toDateString() !== new Date(f.hora_entrada).toDateString() && <span className="ml-1 text-[10px] text-muted-foreground">(+1 día)</span>}
+                      </td>
+                      <td className="px-3 py-2 text-xs">
+                        <span className="flex items-center gap-1">
+                          {f.metodo === "geo" && <MapPin className="h-3 w-3 text-primary" />}
+                          {ETIQUETA_METODO[f.metodo] ?? f.metodo ?? "—"}
+                          {f.distancia_m != null && (
+                            <a href={enlaceMapa(f.latitud, f.longitud)} target="_blank" rel="noreferrer" className="text-muted-foreground hover:underline" title={`Precisión ±${f.precision_m ?? "?"} m`}>
+                              · {f.distancia_m} m
+                            </a>
+                          )}
+                        </span>
+                      </td>
                       <td className="px-3 py-2">
                         <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
                           f.estado === "presente" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
@@ -306,7 +318,7 @@ function NovedadesTab({ canEdit }: { canEdit: boolean }) {
   const { data: empleados } = useEmpleados();
   const saveNovedad = useSaveNovedad();
   const [dialog, setDialog] = useState(false);
-  const [form, setForm] = useState({ empleado_id: "", fecha: new Date().toISOString().slice(0, 10), tipo: "ausencia", descripcion: "" });
+  const [form, setForm] = useState({ empleado_id: "", fecha: hoyArgentina(), tipo: "ausencia", descripcion: "" });
 
   const activos = (empleados ?? []).filter((e) => e.estado === "Activo");
 
@@ -386,7 +398,7 @@ function NovedadesTab({ canEdit }: { canEdit: boolean }) {
                 {(novedades ?? []).map((n: any) => (
                   <tr key={n.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-3 py-2">{n.empleado?.apellido}, {n.empleado?.nombre}</td>
-                    <td className="px-3 py-2">{new Date(n.fecha).toLocaleDateString("es-AR")}</td>
+                    <td className="px-3 py-2">{formatoFecha(n.fecha)}</td>
                     <td className="px-3 py-2 capitalize">{n.tipo}</td>
                     <td className="px-3 py-2 text-muted-foreground">{n.descripcion || "—"}</td>
                   </tr>

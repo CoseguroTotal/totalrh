@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { enlaceMapa, obtenerUbicacion } from "@/lib/ubicacion";
 import { useEmpresas, useSucursales } from "@/hooks/useEmpleados";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -146,6 +147,9 @@ function SucursalesList({ empresaId, onAdd, onEdit }: { empresaId: string; onAdd
               <div className="flex-1 min-w-0">
                 <p className="text-sm">{s.nombre}</p>
                 {s.direccion && <p className="text-xs text-muted-foreground">{s.direccion}</p>}
+                <p className={s.latitud != null ? "text-[11px] text-success" : "text-[11px] text-muted-foreground"}>
+                  {s.latitud != null ? `Geocerca de ${s.radio_metros} m para fichar desde el celular` : "Sin ubicación cargada (no se puede fichar por ubicación)"}
+                </p>
               </div>
               <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => onEdit(s)}>
                 <Pencil className="h-3 w-3" />
@@ -330,22 +334,60 @@ function EmpresaFormDialog({ open, onOpenChange, empresa }: { open: boolean; onO
 function SucursalFormDialog({ open, onOpenChange, empresaId, sucursal }: { open: boolean; onOpenChange: (o: boolean) => void; empresaId?: string; sucursal?: any }) {
   const [nombre, setNombre] = useState("");
   const [direccion, setDireccion] = useState("");
+  const [latitud, setLatitud] = useState("");
+  const [longitud, setLongitud] = useState("");
+  const [radio, setRadio] = useState("150");
+  const [ubicando, setUbicando] = useState(false);
   const queryClient = useQueryClient();
 
-  const resetAndOpen = () => {
+  // Se carga cada vez que se abre (antes los campos quedaban vacíos al editar)
+  useEffect(() => {
+    if (!open) return;
     setNombre(sucursal?.nombre ?? "");
     setDireccion(sucursal?.direccion ?? "");
+    setLatitud(sucursal?.latitud != null ? String(sucursal.latitud) : "");
+    setLongitud(sucursal?.longitud != null ? String(sucursal.longitud) : "");
+    setRadio(String(sucursal?.radio_metros ?? 150));
+  }, [open, sucursal]);
+
+  const usarMiUbicacion = async () => {
+    setUbicando(true);
+    try {
+      const u = await obtenerUbicacion();
+      setLatitud(u.latitud.toFixed(6));
+      setLongitud(u.longitud.toFixed(6));
+      toast.success(`Ubicación tomada (precisión ±${Math.round(u.precision)} m)`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUbicando(false);
+    }
+  };
+
+  /** Acepta "-24.789, -65.410" pegado desde Google Maps en el campo de latitud. */
+  const pegarCoordenadas = (texto: string) => {
+    const m = texto.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+    if (m) { setLatitud(m[1]); setLongitud(m[2]); return true; }
+    return false;
   };
 
   const mutation = useMutation({
     mutationFn: async () => {
       if (!nombre.trim()) throw new Error("El nombre es requerido");
       if (!empresaId) throw new Error("Empresa no seleccionada");
+      const lat = latitud.trim() === "" ? null : Number(latitud);
+      const lng = longitud.trim() === "" ? null : Number(longitud);
+      if ((lat === null) !== (lng === null)) throw new Error("Completá latitud y longitud, o dejá ambas vacías");
+      if (lat !== null && (!Number.isFinite(lat) || Math.abs(lat) > 90)) throw new Error("Latitud inválida");
+      if (lng !== null && (!Number.isFinite(lng) || Math.abs(lng) > 180)) throw new Error("Longitud inválida");
+      const radioM = Math.round(Number(radio));
+      if (!Number.isFinite(radioM) || radioM < 20 || radioM > 5000) throw new Error("El radio debe estar entre 20 y 5000 metros");
+      const datos = { nombre: nombre.trim(), direccion: direccion.trim() || null, latitud: lat, longitud: lng, radio_metros: radioM };
       if (sucursal) {
-        const { error } = await supabase.from("sucursales").update({ nombre: nombre.trim(), direccion: direccion.trim() || null }).eq("id", sucursal.id);
+        const { error } = await supabase.from("sucursales").update(datos).eq("id", sucursal.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("sucursales").insert({ empresa_id: empresaId, nombre: nombre.trim(), direccion: direccion.trim() || null });
+        const { error } = await supabase.from("sucursales").insert({ empresa_id: empresaId, ...datos });
         if (error) throw error;
       }
     },
@@ -357,8 +399,10 @@ function SucursalFormDialog({ open, onOpenChange, empresaId, sucursal }: { open:
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const conUbicacion = latitud.trim() !== "" && longitud.trim() !== "" && Number.isFinite(Number(latitud)) && Number.isFinite(Number(longitud));
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (o) resetAndOpen(); onOpenChange(o); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{sucursal ? "Editar Sucursal" : "Nueva Sucursal"}</DialogTitle>
@@ -372,6 +416,38 @@ function SucursalFormDialog({ open, onOpenChange, empresaId, sucursal }: { open:
           <div className="space-y-1.5">
             <Label className="text-xs">Dirección</Label>
             <Input value={direccion} onChange={(e) => setDireccion(e.target.value)} />
+          </div>
+          <div className="space-y-3 rounded-lg border bg-muted/40 p-3">
+            <div>
+              <p className="flex items-center gap-1.5 text-xs font-semibold"><MapPin className="h-3.5 w-3.5 text-primary" />Ubicación para fichar desde el celular (geocerca)</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Parate en la sucursal y tocá "Usar mi ubicación", o pegá las coordenadas de Google Maps.</p>
+            </div>
+            <Button type="button" variant="outline" size="sm" className="w-full" onClick={usarMiUbicacion} disabled={ubicando}>
+              {ubicando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}Usar mi ubicación actual
+            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Latitud</Label>
+                <Input value={latitud} inputMode="decimal" placeholder="-24.789100"
+                  onChange={(e) => { if (!pegarCoordenadas(e.target.value)) setLatitud(e.target.value); }} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Longitud</Label>
+                <Input value={longitud} inputMode="decimal" placeholder="-65.410300" onChange={(e) => setLongitud(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs">Radio permitido (metros)</Label>
+                <Input type="number" min={20} max={5000} value={radio} onChange={(e) => setRadio(e.target.value)} />
+              </div>
+              {conUbicacion && (
+                <Button asChild variant="ghost" size="sm">
+                  <a href={enlaceMapa(Number(latitud), Number(longitud))} target="_blank" rel="noreferrer">Ver en el mapa</a>
+                </Button>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">Recomendado: 100 a 200 m. Con menos, el GPS del celular puede fallar adentro de edificios.</p>
           </div>
         </div>
         <DialogFooter>

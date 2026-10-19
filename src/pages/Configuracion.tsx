@@ -446,6 +446,36 @@ function AsistenciaConfigTab() {
 
       <div className="flex items-center justify-between rounded-lg border px-4 py-3">
         <div>
+          <p className="text-sm font-medium">Fichado por ubicación (geocerca)</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            El empleado ficha desde su celular sin terminal, sólo si está dentro del radio de su sucursal.
+            Cargá la ubicación de cada sucursal en Empresas → Sucursales.
+          </p>
+        </div>
+        <Switch
+          checked={(config as any)?.fichado_geo_activo ?? false}
+          onCheckedChange={(checked) => updateMutation.mutate({ fichado_geo_activo: checked })}
+          disabled={updateMutation.isPending}
+        />
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+        <div>
+          <p className="text-sm font-medium">Exigir ubicación al fichar con QR</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Además de escanear el QR, el celular tiene que estar dentro de la geocerca. Evita que alguien fiche
+            desde otro lugar con una foto del QR que le reenvían.
+          </p>
+        </div>
+        <Switch
+          checked={(config as any)?.geo_exigir_en_qr ?? false}
+          onCheckedChange={(checked) => updateMutation.mutate({ geo_exigir_en_qr: checked })}
+          disabled={updateMutation.isPending}
+        />
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+        <div>
           <p className="text-sm font-medium">Fichado por reconocimiento facial</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             La terminal reconoce al empleado con la cámara web y le pide un gesto (parpadear o girar la cabeza) para evitar fotos.
