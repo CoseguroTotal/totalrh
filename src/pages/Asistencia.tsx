@@ -17,6 +17,8 @@ import { enlaceMapa } from "@/lib/ubicacion";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
 import { MapPin } from "lucide-react";
 import HorasExtraTab from "@/components/asistencia/HorasExtraTab";
+import RostrosTab from "@/components/asistencia/RostrosTab";
+import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -26,6 +28,9 @@ const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viern
 export default function Asistencia() {
   const [turnoDialog, setTurnoDialog] = useState<{ open: boolean; turno?: any }>({ open: false });
   const { canEdit } = useCanEdit("asistencia");
+  const { data: rol } = useUserRole();
+  // Las plantillas faciales sólo las gestionan RRHH y admin (igual que en la edge function)
+  const gestionaRostros = rol === "admin" || rol === "rrhh";
 
   return (
     <div className="space-y-6">
@@ -39,6 +44,7 @@ export default function Asistencia() {
           <TabsTrigger value="fichada">Fichada</TabsTrigger>
           <TabsTrigger value="turnos">Turnos</TabsTrigger>
           <TabsTrigger value="extras">Horas extra</TabsTrigger>
+          {gestionaRostros && <TabsTrigger value="rostros">Rostros</TabsTrigger>}
           <TabsTrigger value="novedades">Novedades</TabsTrigger>
           <TabsTrigger value="planillas">Planillas</TabsTrigger>
         </TabsList>
@@ -46,6 +52,7 @@ export default function Asistencia() {
         <TabsContent value="fichada"><FichadaTab canEdit={canEdit} /></TabsContent>
         <TabsContent value="turnos"><TurnosTab dialogState={turnoDialog} setDialog={setTurnoDialog} canEdit={canEdit} /></TabsContent>
         <TabsContent value="extras"><HorasExtraTab /></TabsContent>
+        {gestionaRostros && <TabsContent value="rostros"><RostrosTab /></TabsContent>}
         <TabsContent value="novedades"><NovedadesTab canEdit={canEdit} /></TabsContent>
         <TabsContent value="planillas"><PlanillasTab canEdit={canEdit} /></TabsContent>
       </Tabs>

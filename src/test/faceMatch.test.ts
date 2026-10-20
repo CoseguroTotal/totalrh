@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DESCRIPTOR_LEN, UMBRAL_COINCIDENCIA, distancia, esDescriptorValido, fechaArgentina,
-  mejorCoincidencia, muestrasConsistentes,
+  mejorCoincidencia, muestrasConsistentes, aprenderMuestra, MUESTRAS_REGISTRO, MUESTRAS_MAX, UMBRAL_APRENDER,
 } from "../../supabase/functions/_shared/face-match";
 import { PruebaDeVida, type Deteccion } from "@/lib/faceRecognition";
 
@@ -85,5 +85,28 @@ describe("prueba de vida", () => {
     expect(p.actualizar(det(0.3, 0.5))).toBe(false);
     expect(p.actualizar(det(0.3, 0.75))).toBe(false);
     expect(p.actualizar(det(0.3, 0.52))).toBe(true);
+  });
+});
+
+describe("reconocimiento facial: aprendizaje en la terminal", () => {
+  const registro = Array.from({ length: MUESTRAS_REGISTRO }, (_, i) => rostro(1, i * 0.002));
+
+  it("suma una muestra nueva de un reconocimiento seguro", () => {
+    const nueva = rostro(1, 0.03);
+    expect(aprenderMuestra(registro, nueva, 0.3)).toEqual([...registro, nueva]);
+  });
+
+  it("no aprende de reconocimientos dudosos ni de muestras repetidas", () => {
+    expect(aprenderMuestra(registro, rostro(1, 0.03), UMBRAL_APRENDER + 0.01)).toBeNull();
+    expect(aprenderMuestra(registro, rostro(1, 0.001), 0.1)).toBeNull();
+    expect(aprenderMuestra(registro, rostro(1).slice(1), 0.1)).toBeNull();
+  });
+
+  it("conserva las muestras del registro y rota las aprendidas", () => {
+    let muestras = registro;
+    for (let i = 1; i <= 20; i++) muestras = aprenderMuestra(muestras, rostro(1, 0.02 * i), 0.3) ?? muestras;
+    expect(muestras).toHaveLength(MUESTRAS_MAX);
+    expect(muestras.slice(0, MUESTRAS_REGISTRO)).toEqual(registro);
+    expect(muestras[MUESTRAS_MAX - 1]).toEqual(rostro(1, 0.4));
   });
 });

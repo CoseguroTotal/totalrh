@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Globe, Loader2, Lock, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -47,7 +47,14 @@ export default function Grupos() {
           <section>
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tus grupos</h2>
             {mios.length === 0 ? (
-              <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">Todavía no formás parte de ningún grupo.</div>
+              <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">
+                {esModerador ? (
+                  <>
+                    <p>Creá un grupo por área o equipo para publicar novedades sólo para sus miembros.</p>
+                    <Button className="mt-4 rounded-full" onClick={() => setNuevo(true)}><Plus className="h-4 w-4 mr-1.5" />Crear el primer grupo</Button>
+                  </>
+                ) : "Todavía no formás parte de ningún grupo."}
+              </div>
             ) : (
               <ul className="grid gap-3 sm:grid-cols-2">
                 {mios.map((g) => (
@@ -112,6 +119,14 @@ export function GrupoFormDialog({
   const [descripcion, setDescripcion] = useState(grupo?.descripcion ?? "");
   const [tipo, setTipo] = useState<"abierto" | "privado">(grupo?.tipo ?? "privado");
   const [color, setColor] = useState(grupo?.color ?? COLORES_GRUPO[0]);
+
+  useEffect(() => {
+    if (!open) return;
+    setNombre(grupo?.nombre ?? "");
+    setDescripcion(grupo?.descripcion ?? "");
+    setTipo(grupo?.tipo ?? "privado");
+    setColor(grupo?.color ?? COLORES_GRUPO[0]);
+  }, [open, grupo]);
 
   const enviar = () => {
     if (nombre.trim().length < 2) { toast.error("Poné un nombre al grupo"); return; }

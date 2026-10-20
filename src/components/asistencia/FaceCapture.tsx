@@ -11,7 +11,7 @@ import {
   PruebaDeVida, TEXTO_DESAFIO, cargarFaceApi, desafioAleatorio, detectarRostro, mirandoDeFrente,
   type Deteccion,
 } from "@/lib/faceRecognition";
-import { distancia, muestrasConsistentes } from "../../../supabase/functions/_shared/face-match";
+import { MUESTRAS_REGISTRO, distancia, muestrasConsistentes } from "../../../supabase/functions/_shared/face-match";
 
 const INTERVALO_MS = 120;
 const TIEMPO_DESAFIO_MS = 10_000;
@@ -279,7 +279,7 @@ export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
 
 /* ─────────────── Registro del rostro (con consentimiento) ─────────────── */
 
-const MUESTRAS = 3;
+const MUESTRAS = MUESTRAS_REGISTRO;
 
 export function FaceEnrollDialog({
   open, onOpenChange, empleadoId, nombreEmpleado, onRegistrado,
@@ -392,7 +392,7 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
 
     if (fase === "muestras") {
       if (!mirandoDeFrente(d)) { setMensaje("Mirá de frente a la cámara"); return; }
-      if (Date.now() - ultimaMuestra.current < 400) return;
+      if (Date.now() - ultimaMuestra.current < 350) return;
       ultimaMuestra.current = Date.now();
       muestras.current.push(d.descriptor);
       setProgreso(40 + (muestras.current.length / MUESTRAS) * 60);
@@ -433,14 +433,14 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
 /* ─────────────── Estado del registro facial de un empleado ─────────────── */
 
 export function RegistroFacialCard({ empleadoId, nombreEmpleado, esPropio }: { empleadoId: string; nombreEmpleado?: string; esPropio: boolean }) {
-  const [registro, setRegistro] = useState<{ updated_at: string } | null | undefined>(undefined);
+  const [registro, setRegistro] = useState<{ consentimiento_at: string } | null | undefined>(undefined);
   const [abierto, setAbierto] = useState(false);
   const [borrando, setBorrando] = useState(false);
 
   const cargar = useCallback(async () => {
     const { data } = await supabase
       .from("rostros_empleados")
-      .select("empleado_id, updated_at")
+      .select("empleado_id, consentimiento_at")
       .eq("empleado_id", empleadoId)
       .maybeSingle();
     setRegistro(data ?? null);
@@ -468,7 +468,7 @@ export function RegistroFacialCard({ empleadoId, nombreEmpleado, esPropio }: { e
           <p className="text-sm font-medium">Fichada con reconocimiento facial</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {registro === undefined ? "Consultando…"
-              : registro ? `Rostro registrado el ${new Date(registro.updated_at).toLocaleDateString("es-AR")}`
+              : registro ? `Rostro registrado el ${new Date(registro.consentimiento_at).toLocaleDateString("es-AR")}`
                 : esPropio ? "Registrá tu rostro una vez y fichá mirando la cámara de la terminal." : "Sin rostro registrado."}
           </p>
           <div className="flex flex-wrap gap-2 mt-3">

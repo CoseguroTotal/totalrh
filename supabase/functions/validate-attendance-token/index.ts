@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  UMBRAL_DUPLICADO, distanciaMinima, esDescriptorValido, fechaArgentina,
-  mejorCoincidencia, muestrasConsistentes, type Descriptor,
+  UMBRAL_DUPLICADO, aprenderMuestra, distanciaMinima, esDescriptorValido, fechaArgentina,
+  MUESTRAS_REGISTRO, mejorCoincidencia, muestrasConsistentes, type Descriptor,
 } from "../_shared/face-match.ts";
 import {
   decidirFichada, esUbicacionValida, evaluarGeocerca, puedeOperarTerminal, puedeRegistrarRostro,
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
       if (typeof consentimiento_texto !== "string" || consentimiento_texto.length < 20) {
         return json({ error: "Falta el consentimiento del empleado" }, 400);
       }
-      if (!Array.isArray(descriptores) || descriptores.length < 1 || descriptores.length > 5 || !descriptores.every(esDescriptorValido)) {
+      if (!Array.isArray(descriptores) || descriptores.length < 1 || descriptores.length > MUESTRAS_REGISTRO || !descriptores.every(esDescriptorValido)) {
         return json({ error: "Muestras faciales inválidas" }, 400);
       }
       if (!muestrasConsistentes(descriptores as Descriptor[])) {
@@ -200,9 +200,16 @@ Deno.serve(async (req) => {
       }
 
       const reg = (registros ?? []).find((r: { empleado_id: string }) => r.empleado_id === match.id) as
-        | { empleado: { id: string; nombre: string; apellido: string; legajo: string } }
+        | { descriptores: unknown; empleado: { id: string; nombre: string; apellido: string; legajo: string } }
         | undefined;
       const emp = reg!.empleado;
+
+      // Adaptar la plantilla a la cámara de la terminal; si falla no impide fichar
+      const actualizadas = aprenderMuestra((reg!.descriptores as Descriptor[]).filter(esDescriptorValido), descriptor, match.distancia);
+      if (actualizadas) {
+        const { error: aprErr } = await supabaseAdmin.from("rostros_empleados").update({ descriptores: actualizadas }).eq("empleado_id", match.id);
+        if (aprErr) console.error("No se pudo actualizar la plantilla facial", aprErr.message);
+      }
 
       return await registrarFichada(emp, "facial", user.id);
     }

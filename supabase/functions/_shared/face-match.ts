@@ -9,6 +9,15 @@ export const MARGEN_AMBIGUEDAD = 0.06;
 /** Por debajo de esta distancia, un rostro nuevo se considera ya registrado por otra persona. */
 export const UMBRAL_DUPLICADO = 0.38;
 
+/** Muestras que se toman al registrar el rostro; quedan fijas. */
+export const MUESTRAS_REGISTRO = 5;
+/** Tope de muestras por persona: las del registro más las aprendidas en la terminal. */
+export const MUESTRAS_MAX = 12;
+/** Sólo se aprende de reconocimientos muy seguros, para no contaminar la plantilla. */
+export const UMBRAL_APRENDER = 0.4;
+/** Una muestra casi idéntica a otra ya guardada no aporta nada. */
+const DISTANCIA_REDUNDANTE = 0.12;
+
 export type Descriptor = number[];
 
 export function esDescriptorValido(d: unknown): d is Descriptor {
@@ -61,6 +70,20 @@ export function muestrasConsistentes(muestras: Descriptor[]) {
     }
   }
   return true;
+}
+
+/**
+ * Suma a la plantilla un rostro reconocido con seguridad en la terminal, así el sistema se
+ * adapta a esa cámara y a esa luz (el registro suele hacerse con otro equipo). Las muestras
+ * del registro no se tocan; las aprendidas rotan y se descarta la más vieja.
+ * Devuelve null si no hay que guardar nada.
+ */
+export function aprenderMuestra(muestras: Descriptor[], nueva: Descriptor, distanciaMatch: number): Descriptor[] | null {
+  if (!esDescriptorValido(nueva) || distanciaMatch > UMBRAL_APRENDER) return null;
+  if (distanciaMinima(nueva, muestras) < DISTANCIA_REDUNDANTE) return null;
+  const fijas = muestras.slice(0, MUESTRAS_REGISTRO);
+  const aprendidas = [...muestras.slice(MUESTRAS_REGISTRO), nueva].slice(-(MUESTRAS_MAX - fijas.length));
+  return [...fijas, ...aprendidas];
 }
 
 /** Fecha calendario en Argentina (YYYY-MM-DD); evita que después de las 21 h se fiche en el día siguiente. */

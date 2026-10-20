@@ -6,6 +6,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import logoTotalRH from "@/assets/logo_total_rh.png";
 import QRCode from "qrcode";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useConfigGrupo } from "@/hooks/useConfigGrupo";
 import { FaceTerminal } from "@/components/asistencia/FaceCapture";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +21,11 @@ function leerModo(): Modo {
 export default function RegistroAsistencia() {
   const navigate = useNavigate();
   const { data: role, isLoading } = useUserRole();
-  const [modo, setModoState] = useState<Modo>(leerModo);
+  const [modoElegido, setModoState] = useState<Modo>(leerModo);
+  const { data: config } = useConfigGrupo();
+  // Si RRHH desactivó el reconocimiento facial, la terminal queda sólo con QR
+  const facialActivo = config?.fichado_facial_activo !== false;
+  const modo: Modo = facialActivo ? modoElegido : "qr";
   const setModo = (m: Modo) => {
     setModoState(m);
     try { localStorage.setItem(MODO_KEY, m); } catch { /* sin almacenamiento */ }
@@ -60,7 +65,7 @@ export default function RegistroAsistencia() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="tablist" aria-label="Modo de fichada">
+        {facialActivo && <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="tablist" aria-label="Modo de fichada">
           {([
             { id: "qr", label: "Código QR", icon: QrCode },
             { id: "facial", label: "Reconocimiento facial", icon: ScanFace },
@@ -79,7 +84,7 @@ export default function RegistroAsistencia() {
               <m.icon className="h-4 w-4" />{m.label}
             </button>
           ))}
-        </div>
+        </div>}
 
         {modo === "qr" ? <QrTerminal /> : <FaceTerminalConHistorial />}
       </div>
