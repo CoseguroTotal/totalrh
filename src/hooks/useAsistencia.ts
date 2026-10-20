@@ -150,7 +150,7 @@ export function useFichadasEmpleado(empleadoId: string | undefined, mes?: string
         .eq("empleado_id", empleadoId!)
         .order("fecha", { ascending: false });
       if (mes) {
-        q = q.gte("fecha", `${mes}-01`).lte("fecha", `${mes}-31`);
+        q = q.gte("fecha", `${mes}-01`).lte("fecha", ultimoDiaDelMes(mes));
       }
       const { data, error } = await q;
       if (error) throw error;

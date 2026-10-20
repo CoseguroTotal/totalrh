@@ -1,4 +1,4 @@
-import { Bell, Check } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useNotificaciones, useMarcarLeida, useMarcarTodasLeidas } from "@/hooks/useNotificaciones";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,7 @@ export default function NotificacionesBell() {
                 <p className="text-sm font-medium">{n.titulo}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{n.mensaje}</p>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  {new Date(n.created_at).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  {new Date(n.created_at).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}
                 </p>
               </div>
             ))

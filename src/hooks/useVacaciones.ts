@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fechaLocal } from "@/lib/vacacionesCalendario";
 
 export function useVacacionesConfig(empresaId?: string) {
   return useQuery({
@@ -133,9 +134,9 @@ export function calcDiasCorrespondientes(
 }
 
 export function calcDiasHabiles(desde: string, hasta: string): number {
-  const start = new Date(desde);
-  const end = new Date(hasta);
+  const start = fechaLocal(desde);
+  const end = fechaLocal(hasta);
   const diffTime = end.getTime() - start.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
   return diffDays > 0 ? diffDays : 0;
 }

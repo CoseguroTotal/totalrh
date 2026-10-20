@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { hoyArgentina } from "@/lib/asistencia";
 
 const tiposEvento = [
   { value: "ingreso", label: "Ingreso" },
@@ -31,13 +32,13 @@ interface Props {
 export default function EventoFormDialog({ open, onOpenChange, empleadoId }: Props) {
   const queryClient = useQueryClient();
   const [tipo, setTipo] = useState<string>("ingreso");
-  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(() => hoyArgentina());
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
 
   const reset = () => {
     setTipo("ingreso");
-    setFecha(new Date().toISOString().slice(0, 10));
+    setFecha(hoyArgentina());
     setTitulo("");
     setDescripcion("");
   };

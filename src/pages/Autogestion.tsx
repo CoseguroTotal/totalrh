@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef } from "react";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
 import { AvisoPresentacion, ListaAdjuntosPermiso } from "@/components/AdjuntosPermiso";
 import { useMiEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
@@ -9,7 +9,7 @@ import { useSolicitudesVacacionesEmpleado, useSaveSolicitudVacaciones, useVacaci
 import { useSanciones, useUpdateDescargo } from "@/hooks/useSanciones";
 import { useFichadasEmpleado } from "@/hooks/useAsistencia";
 import { useLiquidacionesEmpleado } from "@/hooks/useLiquidacion";
-import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, Clock, DollarSign, Lock, QrCode, CheckCircle2, XCircle, Camera } from "lucide-react";
+import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, Clock, DollarSign, Lock, QrCode } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,6 @@ import SolicitudPermisoFormDialog from "@/components/SolicitudPermisoFormDialog"
 import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
 import PanelFichar from "@/components/asistencia/PanelFichar";
-import { useConfigGrupo } from "@/hooks/useConfigGrupo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
@@ -215,7 +214,7 @@ export default function Autogestion() {
                 { label: "Puesto", value: emp.puesto },
                 { label: "Empresa", value: (emp as any).empresa?.nombre },
                 { label: "Sucursal", value: (emp as any).sucursal?.nombre },
-                { label: "Ingreso", value: new Date(emp.fecha_ingreso).toLocaleDateString("es-AR") },
+                { label: "Ingreso", value: formatoFecha(emp.fecha_ingreso) },
                 { label: "Email", value: emp.email },
                 { label: "Teléfono", value: emp.telefono },
                 { label: "Domicilio", value: domicilioFull || null },
@@ -418,7 +417,7 @@ export default function Autogestion() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">{tipoSancionLabel[s.tipo] || s.tipo}: {s.motivo}</p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(s.fecha).toLocaleDateString("es-AR")}
+                          {formatoFecha(s.fecha)}
                           {s.descripcion && ` · ${s.descripcion}`}
                         </p>
                       </div>
@@ -590,9 +589,9 @@ function FichadasTab({ empleadoId }: { empleadoId: string }) {
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Entrada: {f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                Entrada: {f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "—"}
                 {" · "}
-                Salida: {f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                Salida: {f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "—"}
               </p>
             </div>
           ))}
@@ -611,8 +610,8 @@ function FichadasTab({ empleadoId }: { empleadoId: string }) {
               {fichadas.map((f: any) => (
                 <tr key={f.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="py-2.5 pr-4 font-medium">{new Date(f.fecha + "T12:00:00").toLocaleDateString("es-AR")}</td>
-                  <td className="py-2.5 pr-4">{f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
-                  <td className="py-2.5 pr-4">{f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                  <td className="py-2.5 pr-4">{f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "—"}</td>
+                  <td className="py-2.5 pr-4">{f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "—"}</td>
                   <td className="py-2.5">
                     <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", fichadaEstadoBadge[f.estado] || "bg-muted text-muted-foreground")}>
                       {f.estado}

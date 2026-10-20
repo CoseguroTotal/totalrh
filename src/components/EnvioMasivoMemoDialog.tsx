@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Send, Users, Building2, UserCheck, FileText } from "lucide-react";
 import { uploadMemoPdfAndGetUrl } from "@/lib/uploadMemoPdf";
+import { formatoFecha } from "@/lib/vacacionesCalendario";
 
 type Modo = "todos" | "empresa" | "manual";
 
@@ -52,7 +53,8 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
   const toggleEmpleado = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -72,7 +74,7 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
         <h2 style="color:#333;border-bottom:2px solid #2563eb;padding-bottom:10px;">Memorándum #${m.numero}</h2>
         <p style="color:#666;font-size:14px;"><strong>Empresa:</strong> ${nombreEmpresa}</p>
-        <p style="color:#666;font-size:14px;"><strong>Fecha:</strong> ${new Date(m.fecha).toLocaleDateString("es-AR")}</p>
+        <p style="color:#666;font-size:14px;"><strong>Fecha:</strong> ${formatoFecha(m.fecha)}</p>
         <p style="color:#666;font-size:14px;"><strong>Para:</strong> ${destinatarioNombre}</p>
         <h3 style="color:#333;margin-top:20px;">${m.titulo}</h3>
         <div style="color:#444;font-size:14px;line-height:1.6;white-space:pre-wrap;">${m.contenido}</div>

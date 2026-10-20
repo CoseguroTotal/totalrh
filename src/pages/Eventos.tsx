@@ -292,7 +292,9 @@ function NuevoEventoDialog({ open, onOpenChange, fechaInicial }: { open: boolean
     fecha: isoLocal(fechaInicial), hora: "09:00", fechaFin: isoLocal(fechaInicial), horaFin: "10:00",
     lugar: "", enlace: "", pide_asistencia: true, anunciar: true,
   });
-  useEffect(() => { if (open) setF((x) => ({ ...x, fecha: isoLocal(fechaInicial), fechaFin: isoLocal(fechaInicial) })); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [open]);
+  // Sólo al abrir: si cambia la fecha con el diálogo abierto no se pisa lo que escribió el usuario
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) setF((x) => ({ ...x, fecha: isoLocal(fechaInicial), fechaFin: isoLocal(fechaInicial) })); }, [open]);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
 
   const guardar = () => {

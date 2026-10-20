@@ -5,6 +5,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { formatoFecha } from "@/lib/vacacionesCalendario";
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useDashboardStats();
@@ -91,7 +92,7 @@ export default function Dashboard() {
             {stats.alertas.map((doc: any) => (
               <div key={doc.id} className="flex items-center gap-3 rounded-lg bg-muted/50 px-4 py-2.5 text-sm">
                 <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-                <span>{doc.nombre_archivo} — vence {new Date(doc.fecha_vencimiento).toLocaleDateString("es-AR")}</span>
+                <span>{doc.nombre_archivo} — vence {formatoFecha(doc.fecha_vencimiento)}</span>
               </div>
             ))}
           </div>

@@ -9,12 +9,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Separator } from "@/components/ui/separator";
 import { Download, ChevronDown, ChevronRight } from "lucide-react";
 import { generarReciboPDF } from "@/components/ReciboPDF";
 import { calcularLiquidacion, calcTotales } from "@/lib/liquidacionEngine";
 import type { LineaCalc } from "@/lib/liquidacionEngine";
-import { cn } from "@/lib/utils";
 
 function fmt(n: number) {
   return n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

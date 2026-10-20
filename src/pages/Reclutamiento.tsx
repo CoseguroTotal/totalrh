@@ -11,6 +11,7 @@ import { useEmpresas } from "@/hooks/useEmpleados";
 import { Plus, Briefcase, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatoFecha } from "@/lib/vacacionesCalendario";
 
 const ESTADO_VACANTE_LABEL: Record<string, string> = { abierta: "Abierta", cerrada: "Cerrada", pausada: "Pausada" };
 const ESTADO_VACANTE_BADGE: Record<string, string> = { abierta: "bg-success/15 text-success", cerrada: "bg-muted text-muted-foreground", pausada: "bg-warning/15 text-warning" };
@@ -88,7 +89,7 @@ export default function Reclutamiento() {
                   <div key={v.id} className="flex items-center gap-3 rounded-lg border px-4 py-3 hover:bg-muted/30 transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{v.titulo}</p>
-                      <p className="text-xs text-muted-foreground">{(v.empresa as any)?.nombre} · {new Date(v.fecha_publicacion).toLocaleDateString("es-AR")}</p>
+                      <p className="text-xs text-muted-foreground">{(v.empresa as any)?.nombre} · {formatoFecha(v.fecha_publicacion)}</p>
                     </div>
                     <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", ESTADO_VACANTE_BADGE[v.estado])}>
                       {ESTADO_VACANTE_LABEL[v.estado]}

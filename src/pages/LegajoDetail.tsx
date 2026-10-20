@@ -11,7 +11,7 @@ import { useCanEdit, useCanSancion } from "@/hooks/useCanEdit";
 import { RegistroFacialCard } from "@/components/asistencia/FaceCapture";
 import { useConfigGrupo } from "@/hooks/useConfigGrupo";
 import { sendNotificationEmailIfEnabled } from "@/lib/sendNotificationEmail";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Heart, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, DollarSign, Palmtree, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, Palmtree, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -292,12 +292,12 @@ export default function LegajoDetail() {
             { label: "Legajo", value: emp.legajo },
             { label: "DNI", value: emp.dni },
             { label: "CUIL", value: emp.cuil },
-            { label: "Ingreso", value: new Date(emp.fecha_ingreso).toLocaleDateString("es-AR") },
+            { label: "Ingreso", value: formatoFecha(emp.fecha_ingreso) },
             { label: "CCT", value: emp.cct },
             { label: "Categoría", value: emp.categoria },
             { label: "Sueldo Básico", value: emp.sueldo_basico != null ? `$${Number(emp.sueldo_basico).toLocaleString("es-AR")}` : null },
             { label: "Nacionalidad", value: emp.nacionalidad },
-            { label: "Nacimiento", value: emp.fecha_nacimiento ? new Date(emp.fecha_nacimiento).toLocaleDateString("es-AR") : null },
+            { label: "Nacimiento", value: emp.fecha_nacimiento ? formatoFecha(emp.fecha_nacimiento) : null },
             { label: "Cód. Asistencia", value: (emp as any).codigo_asistencia },
           ].map((d) => (
             <div key={d.label}>
@@ -346,7 +346,7 @@ export default function LegajoDetail() {
                       <div className={cn("absolute -left-6 top-0.5 h-5 w-5 rounded-full flex items-center justify-center", config.color)}>
                         <Icon className="h-3 w-3" />
                       </div>
-                      <p className="text-xs text-muted-foreground">{new Date(ev.fecha).toLocaleDateString("es-AR")}</p>
+                      <p className="text-xs text-muted-foreground">{formatoFecha(ev.fecha)}</p>
                       <p className="text-sm font-medium">{ev.titulo}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{ev.descripcion}</p>
                     </div>
@@ -396,7 +396,7 @@ export default function LegajoDetail() {
                           <span className="ml-2 px-1.5 py-0.5 rounded bg-muted text-xs">{categoriasDocumento.find(c => c.value === (doc as any).categoria)?.label}</span>
                         )}
                         {doc.fecha_vencimiento && (
-                          <span className="ml-2 text-warning">Vence: {new Date(doc.fecha_vencimiento).toLocaleDateString("es-AR")}</span>
+                          <span className="ml-2 text-warning">Vence: {formatoFecha(doc.fecha_vencimiento)}</span>
                         )}
                       </p>
                     </div>
@@ -440,7 +440,7 @@ export default function LegajoDetail() {
                         <td className="px-3 py-2">{f.apellido}, {f.nombre}</td>
                         <td className="px-3 py-2">{parentescoLabel[f.parentesco] || f.parentesco}</td>
                         <td className="px-3 py-2 hidden sm:table-cell">{f.dni || "—"}</td>
-                        <td className="px-3 py-2 hidden sm:table-cell">{f.fecha_nacimiento ? new Date(f.fecha_nacimiento).toLocaleDateString("es-AR") : "—"}</td>
+                        <td className="px-3 py-2 hidden sm:table-cell">{f.fecha_nacimiento ? formatoFecha(f.fecha_nacimiento) : "—"}</td>
                         <td className="px-3 py-2">{f.a_cargo ? "Sí" : "No"}{f.discapacidad ? " · Disc." : ""}</td>
                         {canEdit && (
                           <td className="px-3 py-2">
@@ -638,9 +638,9 @@ export default function LegajoDetail() {
                   <tbody>
                     {fichadas.map((f: any) => (
                       <tr key={f.id} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="px-3 py-2">{new Date(f.fecha).toLocaleDateString("es-AR")}</td>
-                        <td className="px-3 py-2">{f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
-                        <td className="px-3 py-2">{f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                        <td className="px-3 py-2">{formatoFecha(f.fecha)}</td>
+                        <td className="px-3 py-2">{f.hora_entrada ? new Date(f.hora_entrada).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "—"}</td>
+                        <td className="px-3 py-2">{f.hora_salida ? new Date(f.hora_salida).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "—"}</td>
                         <td className="px-3 py-2">
                           <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
                             f.estado === "presente" ? "bg-success/15 text-success" : f.estado === "tardanza" ? "bg-warning/15 text-warning" : "bg-destructive/15 text-destructive"
@@ -745,7 +745,7 @@ export default function LegajoDetail() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">{tipoSancionLabel[s.tipo] || s.tipo}: {s.motivo}</p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(s.fecha).toLocaleDateString("es-AR")}
+                          {formatoFecha(s.fecha)}
                           {s.descripcion && ` · ${s.descripcion}`}
                         </p>
                       </div>

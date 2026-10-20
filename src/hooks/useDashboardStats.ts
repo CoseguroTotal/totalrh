@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { hoyArgentina, sumarDias } from "@/lib/asistencia";
 
 export function useDashboardStats() {
   return useQuery({
@@ -10,12 +11,13 @@ export function useDashboardStats() {
         .select("id, estado, fecha_ingreso, empresa_id, empresa:empresas(nombre)");
       if (error) throw error;
 
+      const hoy = hoyArgentina();
       const { data: docsVencen } = await supabase
         .from("documentos_legajo")
         .select("id, nombre_archivo, fecha_vencimiento, empleado_id")
         .not("fecha_vencimiento", "is", null)
-        .lte("fecha_vencimiento", new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0])
-        .gte("fecha_vencimiento", new Date().toISOString().split("T")[0]);
+        .lte("fecha_vencimiento", sumarDias(hoy, 30))
+        .gte("fecha_vencimiento", hoy);
 
       const total = empleados.length;
       const activos = empleados.filter((e: any) => e.estado === "Activo").length;

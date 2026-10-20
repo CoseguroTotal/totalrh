@@ -10,6 +10,12 @@ export function diaSemanaDeFecha(fecha: string) {
 }
 
 /** Último día del mes "YYYY-MM" como "YYYY-MM-DD" (febrero y meses de 30 días incluidos). */
+/** Suma (o resta) días a una fecha "YYYY-MM-DD" sin pasar por la zona horaria. */
+export function sumarDias(fecha: string, dias: number) {
+  const [y, m, d] = fecha.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + dias)).toISOString().slice(0, 10);
+}
+
 export function ultimoDiaDelMes(mes: string) {
   const [y, m] = mes.split("-").map(Number);
   const d = new Date(y, m, 0).getDate();

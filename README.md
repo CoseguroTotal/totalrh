@@ -1,130 +1,71 @@
-# TotalRH - Gestion de Personal (Demo)
+# TotalRH — Gestión de personal
 
-Desarrollaremos un aplicativo para manejar y gestionar el area de recursos humanos del personal de un grupo empresario con varias empresas:  contara con: 1. Módulo de Legajo Digital Centralizado
+Sistema de recursos humanos para un grupo empresario con varias empresas y sucursales. Funciona como red social interna (muro, chat, grupos), autogestión del empleado y back-office de RR.HH. (legajos, asistencia, liquidación).
 
-Es el corazón del sistema. No es solo una base de datos, es el repositorio legal del empleado.
+- **App publicada**: https://totalrh.lovable.app
+- **Editor Lovable**: https://lovable.dev/projects/dfcc6581-ede3-4496-be7c-bf8701500cfe
+- **Especificación funcional original**: [docs/ESPECIFICACION.md](docs/ESPECIFICACION.md)
 
-Funcionalidades Clave:
+## Módulos
 
-Gestión de Documentación: Carga de DNI, constancia de CUIL, títulos y certificados con alertas de vencimiento (ideal para carnets de conducir en logística o libretas sanitarias).
+| Área | Pantallas | Qué hace |
+| --- | --- | --- |
+| Comunidad | Muro (inicio), Grupos, Mensajes, Encuestas, Eventos, Tareas, Apps | Publicaciones con imágenes, reacciones, comentarios, cumpleaños y lecturas; grupos por área; chat con imágenes, audio y documentos; encuestas; calendario de eventos y feriados; tareas propias y asignadas |
+| Autogestión | Autogestion | Datos personales, recibos, vacaciones, permisos con adjuntos (PDF o foto) y fichada desde el celular |
+| Legajos | Legajos, LegajoDetail, Empresas | Ficha del empleado, documentación con vencimientos, memorándums firmados por quien los emite, empresas y sucursales con geocerca |
+| Asistencia | Asistencia, RegistroAsistencia | Terminal con QR y reconocimiento facial, fichada por geocerca, turnos, tardanzas, novedades y horas extra (art. 201 LCT) |
+| Vacaciones | Vacaciones | Configuración por antigüedad, solicitudes y calendario con superposiciones |
+| Liquidación | Liquidacion | Conceptos, liquidación mensual y liquidación final (LCT) |
+| Gestión | Dashboard, Reportes, Reclutamiento, Configuracion | Indicadores, reportes, pipeline de candidatos y parámetros del grupo |
 
-Histórico de Eventos: Registro de promociones, cambios de puesto, sanciones y licencias en una línea de tiempo auditable.
+## Tecnología
 
-Firma Digital/Electrónica: Integración con validación por OTP (One Time Password) o tokens para que el empleado firme contratos y notificaciones con validez legal (Ley 25.506).
+- React 18 + TypeScript + Vite, Tailwind y shadcn/ui, React Query.
+- PWA instalable (`vite-plugin-pwa`, manifiesto en `public/manifest.json`) con accesos directos.
+- Backend en Lovable Cloud (Supabase): Postgres con RLS, Storage privado con URLs firmadas y Edge Functions en `supabase/functions`.
 
-Interfaz de Usuario (UI):
+## Estructura
 
-Vista de Perfil 360: Una pantalla limpia tipo "LinkedIn interno" donde el gestor de RR.HH. ve la foto, datos de contacto, CCT aplicado y estado actual (Activo/Licencia/Baja).
+```
+src/
+  pages/          una pantalla por ruta
+  components/     componentes por módulo (muro/, chat/, asistencia/, vacaciones/, ui/ = shadcn)
+  hooks/          acceso a datos con React Query (useMuro, useChat, useAsistencia, ...)
+  lib/            lógica pura y testeada (asistencia, horasExtra, liquidacionEngine, liquidacionFinal, vacacionesCalendario, ...)
+  integrations/   cliente y tipos de Supabase (types.ts lo regenera Lovable)
+  test/           tests de Vitest
+supabase/
+  migrations/     migraciones SQL (en orden por fecha)
+  functions/      Edge Functions; _shared/ tiene reglas puras compartidas con los tests
+docs/             documentación funcional
+```
 
-Explorador de Archivos: Interfaz similar a Google Drive para organizar carpetas por empleado con previsualización rápida de PDFs sin descargar.
+## Desarrollo local
 
-2. Motor de Liquidación de Haberes (Payroll Engine)
-
-El módulo más complejo. Debe ser un motor de reglas, no un código estático, para adaptarse a las paritarias constantes de Argentina.
-
-Funcionalidades Clave:
-
-Configurador de Conceptos: Creación de conceptos remunerativos, no remunerativos y descuentos mediante fórmulas lógicas. Ejemplo de lógica interna:
-
-$$\text{Sueldo Neto} = (\text{Básico} + \text{Adicionales CCT}) - (\text{Jubilación} + \text{Ley 19.032} + \text{Obra Social} + \text{Cuota Sindical})$$
-
-Gestión de Ganancias (4ta Categoría): Cálculo automático de retenciones, considerando deducciones generales y cargas de familia informadas vía SIRADIG.
-
-Exportaciones Legales: Generación automática del archivo para el Libro de Sueldos Digital (AFIP), F.931, y archivos de exportación para todos los bancos (ICBC, Galicia, Macro, etc.).
-
-Interfaz de Usuario (UI):
-
-Panel de Control de Novedades: Una grilla interactiva (tipo Excel vitaminado) donde se cargan masivamente horas extras, premios o descuentos del mes.
-
-Simulador de Recibo: Una ventana dividida donde a la izquierda editas novedades y a la derecha ves el recibo de sueldo actualizándose en tiempo real.
-
-3. Portal de Autogestión del Empleado (App Móvil/Web)
-
-Diseñado para eliminar el "papeleo" y las consultas repetitivas a la oficina de RR.HH.
-
-Funcionalidades Clave:
-
-Visualización de Recibos: Acceso histórico a todos los recibos. El sistema notifica: "Tu recibo de marzo está listo para firmar".
-
-Gestión de Licencias: El empleado solicita vacaciones viendo su saldo disponible. El sistema valida automáticamente si se solapa con otros miembros del equipo.
-
-Comunicación Interna: Muro de anuncios, beneficios corporativos y acceso a la credencial digital de la prepaga o ART.
-
-Interfaz de Usuario (UI):
-
-Mobile First: Diseño basado en tarjetas (cards) grandes, fácil de usar para personal de planta o campo que no usa PC.
-
-Dashboard de Saldo: Un gráfico circular simple que muestra "Días de vacaciones: 14 totales, 5 usados, 9 disponibles".
-
-4. Control de Tiempo, Asistencia y Ausentismo
-
-Crucial para grupos con plantas industriales o múltiples sucursales.
-
-Funcionalidades Clave:
-
-Fichada Multimodal: Integración con relojes biométricos, reconocimiento facial o fichada por App con geocerca (geofencing) para asegurar que el empleado está en el lugar de trabajo.
-
-Gestión de Turnos Rotativos: Calendario dinámico para asignar turnos mañana/tarde/noche y guardias.
-
-Cierre de Novedades: El sistema detecta automáticamente llegadas tarde y ausencias, y consulta al supervisor si deben descontarse o justificarse antes de pasar a liquidación.
-
-Interfaz de Usuario (UI):
-
-Monitor de Asistencia en Tiempo Real: Mapa de calor o lista que muestra quién está "In" y quién "Out" en cada sucursal del grupo.
-
-Calendario de Equipo: Vista mensual para gerentes donde ven las licencias programadas de todo su equipo para evitar falta de personal.
-
-5. Módulo de Reclutamiento (ATS) y Onboarding
-
-Para gestionar el crecimiento del grupo empresario de forma organizada.
-
-Funcionalidades Clave:
-
-Multi-posting: Publicar una vacante simultáneamente en el portal interno, LinkedIn y portales de empleo.
-
-Pipeline de Candidatos: Tablero tipo Kanban (como Trello) para mover candidatos desde "Postulado" hasta "Entrevista" y "Contratado".
-
-Kit de Bienvenida Digital: Una vez contratado, el sistema envía automáticamente al nuevo empleado los videos de inducción, códigos de ética y solicitud de datos para el alta.
-
-Interfaz de Usuario (UI):
-
-Kanban de Selección: Tarjetas de candidatos con etiquetas de "Match" según habilidades requeridas.
-
-Scorecard de Entrevista: Formulario rápido para que el entrevistador califique al candidato desde el celular inmediatamente después de la charla.
-
-6. Business Intelligence y Reportes Gerenciales
-
-La herramienta para la toma de decisiones del Directorio (C-Level).
-
-Funcionalidades Clave:
-
-Indicadores de Gestión (KPIs): Tasa de rotación mensual, costo laboral por unidad de negocio y ausentismo por departamento.
-
-Análisis de Brecha Salarial: Reportes que comparan salarios internos vs. mercado o entre géneros y categorías.
-
-Interfaz de Usuario (UI):
-
-Dashboard Ejecutivo: Gráficos interactivos (barras, tortas, líneas de tendencia) con filtros por empresa del grupo, sucursal o CCT.
-
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://totalrh.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/dfcc6581-ede3-4496-be7c-bf8701500cfe).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Requiere Node.js 20 o superior.
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+npm install
+npm run dev        # servidor de desarrollo
+npm test           # tests (Vitest)
+npm run lint       # ESLint
+npm run build      # build de producción
 ```
+
+Antes de subir cambios conviene correr `npx tsc -p tsconfig.app.json --noEmit`, `npm test` y `npm run build`.
+
+## Fechas y horas
+
+Las columnas `date` llegan como `"YYYY-MM-DD"`. `new Date("YYYY-MM-DD")` las interpreta en UTC y en Argentina se ven un día antes, por eso:
+
+- Para mostrar o calcular con una fecha sin hora, usar `formatoFecha` / `fechaLocal` (`src/lib/vacacionesCalendario.ts`).
+- Para "hoy", usar `hoyArgentina()` y para sumar días `sumarDias()` (`src/lib/asistencia.ts`); no usar `new Date().toISOString().slice(0, 10)`.
+- Para fin de mes, `ultimoDiaDelMes("YYYY-MM")`.
+- Las horas se muestran en formato 24 h (`hourCycle: "h23"`).
+
+## Base de datos y despliegue
+
+- Cada cambio de esquema va en un archivo nuevo de `supabase/migrations/` (nunca editar uno ya aplicado).
+- Lovable sincroniza `main` en ambos sentidos: después de subir una migración, se le pide al agente de Lovable que la aplique y regenere `src/integrations/supabase/types.ts`. Las Edge Functions también las despliega Lovable.
+- En SQL para Lovable, usar `chr(10)` en lugar de `E'\n'`.
+- Las tablas nuevas necesitan RLS. Los helpers disponibles son `has_role`, `is_manager`, `is_manager_or_contador`, `muro_es_moderador`, `my_empleado_id`, `es_miembro_grupo` y `es_admin_grupo`.

@@ -12,7 +12,7 @@ interface MembreteConfig {
 
 export async function aplicarMembrete(doc: jsPDF, config: MembreteConfig): Promise<number> {
   const w = doc.internal.pageSize.getWidth();
-  let y = 12;
+  const y = 12;
 
   // Try to load logo
   if (config.logoUrl) {

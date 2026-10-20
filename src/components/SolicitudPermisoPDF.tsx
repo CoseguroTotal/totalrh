@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import { aplicarMembrete, aplicarFooterMembrete } from "./MembretePDF";
+import { formatoFecha } from "@/lib/vacacionesCalendario";
 
 interface MembreteInfo {
   nombre: string;
@@ -83,8 +84,8 @@ export async function generarSolicitudPermisoPDF(data: SolicitudData) {
   });
 
   y += 6;
-  const fDesde = new Date(data.fechaDesde).toLocaleDateString("es-AR");
-  const fHasta = new Date(data.fechaHasta).toLocaleDateString("es-AR");
+  const fDesde = formatoFecha(data.fechaDesde);
+  const fHasta = formatoFecha(data.fechaHasta);
   doc.text(`Desde el día ${fDesde}, hasta el día ${fHasta}${data.horaReintegro ? `, reintegrándose a horas ${data.horaReintegro}` : ""}.`, 20, y, { maxWidth: w - 40 });
 
   y += 16;

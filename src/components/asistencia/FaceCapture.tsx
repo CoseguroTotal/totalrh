@@ -161,7 +161,7 @@ export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
       mostrarResultado({ fase: "resultado", ok: false, titulo: "No se pudo fichar", detalle: mensaje ?? "Error de conexión" });
       return;
     }
-    const hora = new Date(data.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    const hora = new Date(data.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
     const nombre = `${data.empleado.nombre} ${data.empleado.apellido}`;
     if (data.repetida) {
       mostrarResultado({ fase: "resultado", ok: true, tipo: data.tipo, titulo: nombre, detalle: `Ya registraste tu ${data.tipo} a las ${hora}` });

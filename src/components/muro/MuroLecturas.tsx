@@ -26,7 +26,7 @@ export function useVistaAlMostrar(ref: React.RefObject<HTMLElement>, id: string)
   }, [ref, id]);
 }
 
-const fechaHora = (iso: string) => new Date(iso).toLocaleString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const fechaHora = (iso: string) => new Date(iso).toLocaleString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
 /** Comunicado que pide "Leí y entendí". */
 export function BloqueConfirmacion({ pub, lectura, puedeVerDetalle }: { pub: Publicacion; lectura?: ResumenLectura; puedeVerDetalle: boolean }) {

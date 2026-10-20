@@ -123,7 +123,7 @@ function UltimasFichadas({ refresco }: { refresco: number }) {
               <span>{u.apellido}, {u.nombre}</span>
               <span className="text-xs text-muted-foreground tabular-nums">
                 {u.tipo === "entrada" ? "Entrada" : "Salida"}{" "}
-                {u.hora ? new Date(u.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : ""}
+                {u.hora ? new Date(u.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : ""}
               </span>
             </li>
           ))}
@@ -236,7 +236,7 @@ function QrTerminal() {
                 <span>{u.apellido}, {u.nombre}</span>
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {u.tipo === "entrada" ? "Entrada" : "Salida"}{" "}
-                  {u.hora ? new Date(u.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : ""}
+                  {u.hora ? new Date(u.hora).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : ""}
                 </span>
               </li>
             ))}

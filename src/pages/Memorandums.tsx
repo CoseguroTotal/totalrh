@@ -19,6 +19,7 @@ import { nombreCompleto } from "@/components/muro/MuroComponents";
 import { uploadMemoPdfAndGetUrl } from "@/lib/uploadMemoPdf";
 import EnviarEmailDialog from "@/components/EnviarEmailDialog";
 import EnvioMasivoMemoDialog from "@/components/EnvioMasivoMemoDialog";
+import { hoyArgentina } from "@/lib/asistencia";
 
 const estadoBadge: Record<string, string> = {
   borrador: "bg-muted text-muted-foreground",
@@ -54,7 +55,7 @@ export default function Memorandums() {
   const [dialog, setDialog] = useState<{ open: boolean; memo?: any }>({ open: false });
   const [form, setForm] = useState({
     titulo: "", contenido: "", empresa_id: "", destinatario_empleado_id: "",
-    destinatario_nombre: "", fecha: new Date().toISOString().slice(0, 10),
+    destinatario_nombre: "", fecha: hoyArgentina(),
     emisor_nombre: "", emisor_cargo: "", emisor_sector: "Recursos Humanos",
   });
   // Por defecto firma quien lo crea (nombre y puesto de su legajo)
@@ -108,7 +109,7 @@ export default function Memorandums() {
 
   const openNew = () => {
     setForm({
-      titulo: "", contenido: "", empresa_id: "", destinatario_empleado_id: "", destinatario_nombre: "", fecha: new Date().toISOString().slice(0, 10),
+      titulo: "", contenido: "", empresa_id: "", destinatario_empleado_id: "", destinatario_nombre: "", fecha: hoyArgentina(),
       emisor_nombre: miPerfil ? nombreCompleto(miPerfil) : "", emisor_cargo: miPerfil?.puesto ?? "", emisor_sector: "Recursos Humanos",
     });
     setDialog({ open: true });

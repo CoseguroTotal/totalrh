@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
-import { useEmpresas, useEmpleados } from "@/hooks/useEmpleados";
+import { useEmpresas } from "@/hooks/useEmpleados";
 import {
   useVacacionesConfig, useSaveVacacionesConfig, useDeleteVacacionesConfig,
-  useSolicitudesVacaciones, useUpdateSolicitudVacaciones, calcDiasCorrespondientes,
+  useSolicitudesVacaciones, useUpdateSolicitudVacaciones,
 } from "@/hooks/useVacaciones";
 import { useCanEdit } from "@/hooks/useCanEdit";
 import { useConfigGrupo } from "@/hooks/useConfigGrupo";
@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Trash2, Check, X, CalendarDays, FileDown, FileSpreadsheet } from "lucide-react";
+import { Loader2, Plus, Trash2, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";

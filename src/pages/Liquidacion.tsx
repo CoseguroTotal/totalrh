@@ -10,7 +10,6 @@ import { Progress } from "@/components/ui/progress";
 import { Plus, Pencil, Loader2, Zap, Mail } from "lucide-react";
 import { useConceptos, useToggleConcepto, useLiquidaciones, guardarLiquidacion } from "@/hooks/useLiquidacion";
 import { useEmpleados, useEmpresas } from "@/hooks/useEmpleados";
-import { supabase } from "@/integrations/supabase/client";
 import { calcularLiquidacion } from "@/lib/liquidacionEngine";
 import ConceptoFormDialog from "@/components/ConceptoFormDialog";
 import SimuladorRecibo from "@/components/SimuladorRecibo";

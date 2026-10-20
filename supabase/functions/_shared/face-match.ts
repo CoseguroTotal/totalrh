@@ -8,8 +8,6 @@ export const UMBRAL_COINCIDENCIA = 0.45;
 export const MARGEN_AMBIGUEDAD = 0.06;
 /** Por debajo de esta distancia, un rostro nuevo se considera ya registrado por otra persona. */
 export const UMBRAL_DUPLICADO = 0.38;
-/** Segundos sin volver a fichar al mismo empleado (la cámara lo sigue viendo). */
-export const ESPERA_REFICHAR_SEG = 60;
 
 export type Descriptor = number[];
 

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2, Clock, LogIn, LogOut, Upload, FileSpreadsheet } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, LogIn, LogOut, Upload, FileSpreadsheet } from "lucide-react";
 import { useTurnos, useSaveTurno, useDeleteTurno, useFichadas, useRegistrarFichada, useNovedades, useSaveNovedad } from "@/hooks/useAsistencia";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { useCanEdit } from "@/hooks/useCanEdit";
@@ -429,8 +429,6 @@ function PlanillasTab({ canEdit }: { canEdit: boolean }) {
       return data;
     },
   });
-
-  const { data: turnos = [] } = useTurnos();
 
   const [editDialog, setEditDialog] = useState<{ open: boolean; empId?: string }>({ open: false });
   const [editForm, setEditForm] = useState<Record<number, { hora_entrada: string; hora_salida: string }>>({});

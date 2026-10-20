@@ -98,7 +98,7 @@ export default function DemoLeadsTab() {
                 <td className="px-3 py-2">{r.telefono ?? "—"}</td>
                 <td className="px-3 py-2">
                   {r.ultimo_email_estado
-                    ? `${r.ultimo_email_estado}${r.ultimo_email_at ? ` · ${new Date(r.ultimo_email_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}` : ""}`
+                    ? `${r.ultimo_email_estado}${r.ultimo_email_at ? ` · ${new Date(r.ultimo_email_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}` : ""}`
                     : "—"}
                 </td>
                 <td className="px-3 py-2">{r.verificado ? "Sí" : "No"}</td>

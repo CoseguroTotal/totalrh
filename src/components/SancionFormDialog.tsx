@@ -10,6 +10,7 @@ import { useCreateSancion } from "@/hooks/useSanciones";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { hoyArgentina } from "@/lib/asistencia";
 
 const TIPOS_SANCION = [
   { value: "apercibimiento", label: "Apercibimiento" },
@@ -25,7 +26,7 @@ interface Props {
 }
 
 export default function SancionFormDialog({ open, onOpenChange, empleadoId, empleadoNombre }: Props) {
-  const [form, setForm] = useState({ tipo: "apercibimiento", motivo: "", descripcion: "", fecha: new Date().toISOString().slice(0, 10) });
+  const [form, setForm] = useState({ tipo: "apercibimiento", motivo: "", descripcion: "", fecha: hoyArgentina() });
   const createSancion = useCreateSancion();
   const qc = useQueryClient();
 
@@ -52,7 +53,7 @@ export default function SancionFormDialog({ open, onOpenChange, empleadoId, empl
         qc.invalidateQueries({ queryKey: ["eventos_legajo", empleadoId] });
         toast.success("Sanción registrada");
         onOpenChange(false);
-        setForm({ tipo: "apercibimiento", motivo: "", descripcion: "", fecha: new Date().toISOString().slice(0, 10) });
+        setForm({ tipo: "apercibimiento", motivo: "", descripcion: "", fecha: hoyArgentina() });
       },
       onError: (err: Error) => toast.error(err.message),
     });

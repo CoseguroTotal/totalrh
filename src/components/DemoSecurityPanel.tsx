@@ -120,7 +120,7 @@ export default function DemoSecurityPanel() {
           {!(bloqueos.data ?? []).length && <p className="text-sm text-muted-foreground">Sin bloqueos activos.</p>}
           {(bloqueos.data ?? []).map((b) => (
             <div key={b.id} className="flex items-center justify-between text-sm border-t pt-2">
-              <span><strong>{b.clave}</strong> · {b.motivo} · hasta {new Date(b.hasta).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}</span>
+              <span><strong>{b.clave}</strong> · {b.motivo} · hasta {new Date(b.hasta).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}</span>
               <Button size="sm" variant="ghost" onClick={() => run({ action: "desbloquear", clave: b.clave }, "Desbloqueado")}><Unlock className="h-4 w-4 mr-1" /> Desbloquear</Button>
             </div>
           ))}
