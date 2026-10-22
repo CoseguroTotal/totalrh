@@ -1,9 +1,11 @@
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
-import { adminClient } from "../_shared/demo-security.ts";
+import { adminClient, soloEnDemo } from "../_shared/demo-security.ts";
 
 Deno.serve(async (request) => {
   const authFailure = authenticateCronRequest(request);
   if (authFailure) return authFailure;
+  const fueraDeDemo = soloEnDemo();
+  if (fueraDeDemo) return fueraDeDemo;
 
   const admin = adminClient();
   const { data: vencidas } = await admin.from("demo_cuentas").select("*").lt("expira_at", new Date().toISOString()).limit(300);

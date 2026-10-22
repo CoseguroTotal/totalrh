@@ -9,9 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Save, Users, Settings2, Plus, UserPlus, Bell, Clock, QrCode, Mail } from "lucide-react";
+import { Loader2, Save, Users, Settings2, Plus, UserPlus, Bell, Clock, QrCode, Mail, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import DemoLeadsTab, { useIsSuperadmin } from "@/components/DemoLeadsTab";
+import { ES_DEMO } from "@/lib/modo";
 
 
 const ROLES = [
@@ -65,7 +67,9 @@ export default function Configuracion() {
 }
 
 function ConfiguracionContent() {
-  const { data: isSuperadmin } = useIsSuperadmin();
+  const { data: superadmin } = useIsSuperadmin();
+  // Las solicitudes de demo solo existen en la instalación de demo
+  const isSuperadmin = ES_DEMO && superadmin;
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="animate-fade-in">
@@ -324,6 +328,18 @@ function UsuariosTab() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const deleteUser = useMutation({
+    mutationFn: async (user_id: string) => {
+      await callUserAdmin({ action: "delete-user", user_id });
+    },
+    onSuccess: () => {
+      toast.success("Usuario eliminado");
+      qc.invalidateQueries({ queryKey: ["usuarios-roles"] });
+      qc.invalidateQueries({ queryKey: ["empleados"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
   return (
@@ -354,6 +370,29 @@ function UsuariosTab() {
                   ))}
                 </SelectContent>
               </Select>
+              {!ES_DEMO && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Eliminar usuario">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {r.email || r.user_id} perderá el acceso al sistema. Si tiene legajo vinculado, el legajo, sus fichadas y recibos se conservan. Se borran sus publicaciones en el muro y sus mensajes de chat.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteUser.mutate(r.user_id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           ))}
         </div>

@@ -24,3 +24,10 @@ export function cuentaVencida(expiraAt: string | Date, ahora: Date = new Date())
 export function minutosRestantes(hasta: string | Date, ahora: Date = new Date()) {
   return Math.max(1, Math.ceil((new Date(hasta).getTime() - ahora.getTime()) / 60_000));
 }
+
+/** Backend de la demo comercial. Cualquier otra instalación es de un cliente: sin landing, acceso por código ni funciones de demo. */
+export const DEMO_PROJECT_ID = "dzplslzugrlwlrfjetjw";
+
+export function esInstalacionDemo(supabaseUrl: string | null | undefined) {
+  return !!supabaseUrl && supabaseUrl.includes(DEMO_PROJECT_ID);
+}

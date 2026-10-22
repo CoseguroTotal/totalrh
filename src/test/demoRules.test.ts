@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { codigoVencido, expiraCodigo, debeBloquear, expiraCuenta, cuentaVencida } from "../../supabase/functions/_shared/demo-rules";
+import { codigoVencido, expiraCodigo, debeBloquear, expiraCuenta, cuentaVencida, esInstalacionDemo } from "../../supabase/functions/_shared/demo-rules";
 
 const t0 = new Date("2026-10-16T12:00:00Z");
 
@@ -19,5 +19,13 @@ describe("reglas de la demo", () => {
     const exp = expiraCuenta(3, t0);
     expect(cuentaVencida(exp, new Date("2026-10-19T11:00:00Z"))).toBe(false);
     expect(cuentaVencida(exp, new Date("2026-10-19T13:00:00Z"))).toBe(true);
+  });
+});
+
+describe("instalación de demo o de cliente", () => {
+  it("solo el backend de la demo es demo", () => {
+    expect(esInstalacionDemo("https://dzplslzugrlwlrfjetjw.supabase.co")).toBe(true);
+    expect(esInstalacionDemo("https://otroproyectocliente.supabase.co")).toBe(false);
+    expect(esInstalacionDemo(undefined)).toBe(false);
   });
 });

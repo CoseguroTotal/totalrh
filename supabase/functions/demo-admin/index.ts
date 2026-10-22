@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { adminClient, corsHeaders, json, sha256 } from "../_shared/demo-security.ts";
+import { adminClient, corsHeaders, json, sha256, soloEnDemo } from "../_shared/demo-security.ts";
 
 const SUPERADMIN = "mcponce.torres@gmail.com";
 const CONFIG_KEYS = ["demo_codigo_minutos", "demo_max_intentos_codigo", "demo_max_solicitudes_ip_hora", "demo_max_fallos_ip_hora", "demo_bloqueo_minutos", "demo_acceso_dias"];
@@ -11,6 +11,8 @@ function generarCodigo() {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const fueraDeDemo = soloEnDemo();
+  if (fueraDeDemo) return fueraDeDemo;
   try {
     const admin = adminClient();
     const token = req.headers.get("Authorization")?.replace("Bearer ", "");

@@ -13,6 +13,7 @@ import AdminRoute from "@/components/AdminRoute";
 import RoleRoute from "@/components/RoleRoute";
 import AutogestionGuard from "@/components/AutogestionGuard";
 import DemoGate from "@/components/DemoGate";
+import { ES_DEMO } from "@/lib/modo";
 
 // Cada pantalla se descarga recién cuando se abre
 const Landing = lazy(() => import("@/pages/Landing"));
@@ -74,7 +75,7 @@ const App = () => (
       <BrowserRouter>
         <Suspense fallback={<Cargando />}>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={ES_DEMO ? <Landing /> : <Navigate to="/login" replace />} />
             <Route element={<DemoGate />}>
               <Route path="/login" element={<Login />} />
             </Route>

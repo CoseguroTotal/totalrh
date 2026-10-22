@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { debeBloquear, minutosRestantes } from "./demo-rules.ts";
+import { debeBloquear, esInstalacionDemo, minutosRestantes } from "./demo-rules.ts";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -88,4 +88,9 @@ export async function evaluarIp(
     return json({ error: `Demasiados intentos desde tu conexión. Intentá de nuevo en ${cfg.demo_bloqueo_minutos} min.`, retryAt: hasta }, 429);
   }
   return null;
+}
+
+/** Las funciones de demo solo responden en el backend de la demo; en una instalación de cliente devuelven 404. */
+export function soloEnDemo(): Response | null {
+  return esInstalacionDemo(Deno.env.get("SUPABASE_URL")) ? null : json({ error: "No disponible" }, 404);
 }

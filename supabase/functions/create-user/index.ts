@@ -99,6 +99,35 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
+    if (action === "delete-user") {
+      // En la demo las cuentas de cada prospecto conviven en la misma base: no pueden borrar usuarios
+      if ((claimsData.claims.user_metadata as { demo?: boolean } | undefined)?.demo) {
+        return new Response(JSON.stringify({ error: "En la demo no se pueden eliminar usuarios" }), { status: 403, headers: corsHeaders });
+      }
+      const { user_id } = body;
+      if (!user_id || typeof user_id !== "string") {
+        return new Response(JSON.stringify({ error: "Usuario inválido" }), { status: 400, headers: corsHeaders });
+      }
+      if (user_id === callerId) {
+        return new Response(JSON.stringify({ error: "No podés eliminar tu propio usuario" }), { status: 400, headers: corsHeaders });
+      }
+      const { data: targetRoles } = await adminClient.from("user_roles").select("role").eq("user_id", user_id);
+      if (targetRoles?.some((r) => r.role === "admin")) {
+        const { count } = await adminClient.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin");
+        if ((count ?? 0) <= 1) {
+          return new Response(JSON.stringify({ error: "No se puede eliminar el último administrador" }), { status: 400, headers: corsHeaders });
+        }
+      }
+      // El legajo se conserva (fichadas, recibos, historial): solo se desvincula
+      const { error: unlinkErr } = await adminClient.from("empleados").update({ user_id: null }).eq("user_id", user_id);
+      if (unlinkErr) throw unlinkErr;
+      const { error: rolesErr } = await adminClient.from("user_roles").delete().eq("user_id", user_id);
+      if (rolesErr) throw rolesErr;
+      const { error: delErr } = await adminClient.auth.admin.deleteUser(user_id);
+      if (delErr) throw delErr;
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    }
+
     if (action !== "create-user") {
       return new Response(JSON.stringify({ error: "Acción no válida" }), { status: 400, headers: corsHeaders });
     }

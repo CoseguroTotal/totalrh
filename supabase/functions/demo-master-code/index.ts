@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { adminClient, checkBloqueo, corsHeaders, evaluarIp, getConfig, getIp, json, logIntento, sha256 } from "../_shared/demo-security.ts";
+import { adminClient, checkBloqueo, corsHeaders, evaluarIp, getConfig, getIp, json, logIntento, sha256, soloEnDemo } from "../_shared/demo-security.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const fueraDeDemo = soloEnDemo();
+  if (fueraDeDemo) return fueraDeDemo;
   try {
     const admin = adminClient();
     const cfg = await getConfig(admin);
