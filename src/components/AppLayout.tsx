@@ -10,6 +10,8 @@ import { useChatRealtime, useNoLeidosTotal } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
 import GlobalSearch from "@/components/GlobalSearch";
 import UserMenu from "@/components/UserMenu";
+import { MarcaSimbolo } from "@/components/Marca";
+import { CLIENTE, logoTotalRH } from "@/marca";
 
 function BotonMensajes() {
   const noLeidos = useNoLeidosTotal();
@@ -50,8 +52,8 @@ export default function AppLayout() {
             <div className="flex items-center gap-2 min-w-0">
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               <Link to="/muro" className="flex items-center gap-2 sm:hidden min-w-0" aria-label="Ir al inicio">
-                <img src="/logo_total_rh.png" alt="TotalRH" className="h-6 w-6 object-contain" />
-                <span className="text-sm font-semibold truncate">TotalRH</span>
+                <MarcaSimbolo className="h-6 w-6" />
+                <span className="text-sm font-semibold truncate">{CLIENTE?.nombre ?? "TotalRH"}</span>
               </Link>
               <div className="hidden sm:block"><GlobalSearch /></div>
             </div>
@@ -80,7 +82,7 @@ export default function AppLayout() {
                 conBarra && "hidden sm:flex"
               )}
             >
-              <img src="/logo_total_rh.png" alt="TotalRH" className="h-4 w-4 opacity-50" />
+              <img src={logoTotalRH} alt="TotalRH" className="h-4 w-4 opacity-50" />
               <span>TotalRH — Gestión de Personal · Sky Studio 2026 todos los derechos reservados</span>
             </footer>
           )}

@@ -7,6 +7,7 @@ import {
 import { CelebracionesCard, Composer, PostCard, type Celebracion } from "@/components/muro/MuroComponents";
 import { AccesosRapidos, AccesosRapidosMovil, ContactosCard, ProximosEventosCard } from "@/components/muro/MuroLaterales";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
+import { MarcaMuroBanner } from "@/components/Marca";
 import { useMapaGrupos } from "@/hooks/useGrupos";
 
 type Filtro = "todo" | "comunicados";
@@ -79,6 +80,7 @@ export default function Muro() {
         </aside>
 
         <section className="lg:order-2 mx-auto w-full max-w-[680px] space-y-4 min-w-0">
+          <MarcaMuroBanner />
           <AccesosRapidosMovil />
           <InstallPWAPrompt />
           <Composer perfil={userId ? perfiles.get(userId) : null} esModerador={esModerador} inicial={saludo} />

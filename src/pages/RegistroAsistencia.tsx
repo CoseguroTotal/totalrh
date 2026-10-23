@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, XCircle, LogOut, QrCode, ScanFace } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
-import logoTotalRH from "@/assets/logo_total_rh.png";
+import { MarcaSimbolo } from "@/components/Marca";
 import QRCode from "qrcode";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useConfigGrupo } from "@/hooks/useConfigGrupo";
@@ -58,7 +58,7 @@ export default function RegistroAsistencia() {
 
       <div className="w-full max-w-md space-y-6 text-center">
         <div>
-          <img src={logoTotalRH} alt="TotalRH" className="h-16 w-16 mx-auto rounded-xl object-contain" />
+          <MarcaSimbolo className="h-16 w-16 mx-auto rounded-xl" />
           <h1 className="text-xl font-semibold mt-4">Registro de Asistencia</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {modo === "qr" ? "Escaneá el QR con la app del empleado" : "Mirá a la cámara para registrar tu entrada o salida"}

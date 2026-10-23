@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/sidebar";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useEffect, useState } from "react";
-import logoTotalRH from "@/assets/logo_total_rh.png";
+import { MarcaSimbolo } from "@/components/Marca";
+import { CLIENTE } from "@/marca";
 import { ROLE_LABELS, seccionesParaRol } from "@/components/navigation";
 
 export function AppSidebar() {
@@ -38,11 +39,11 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-3">
-          <img src={logoTotalRH} alt="TotalRH" className={collapsed ? "h-8 w-8 shrink-0 rounded-lg object-contain" : "h-12 w-12 shrink-0 rounded-lg object-contain"} />
+          <MarcaSimbolo claro className={collapsed ? "h-8 w-8 shrink-0 rounded-lg" : "h-12 w-12 shrink-0 rounded-lg"} />
           {!collapsed && (
             <div className="animate-fade-in">
-              <p className="text-sm font-semibold text-sidebar-accent-foreground">TotalRH</p>
-              <p className="text-xs text-sidebar-foreground">Gestión de Personal</p>
+              <p className="text-sm font-semibold text-sidebar-accent-foreground">{CLIENTE?.nombre ?? "TotalRH"}</p>
+              <p className="text-xs text-sidebar-foreground">{CLIENTE ? "con TotalRH" : "Gestión de Personal"}</p>
             </div>
           )}
         </div>

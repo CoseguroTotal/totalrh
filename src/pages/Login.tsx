@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import logoTotalRH from "@/assets/logo_total_rh.png";
+import { MarcaLockup } from "@/components/Marca";
+import { CLIENTE } from "@/marca";
 import { Button } from "@/components/ui/button";
 
 async function getTargetPathForUser(userId: string) {
@@ -96,9 +97,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-8 animate-fade-in">
         <div className="flex flex-col items-center gap-3">
-          <img src={logoTotalRH} alt="TotalRH" className="h-40 w-auto" />
+          <MarcaLockup />
           <div className="text-center">
-            <h1 className="text-xl font-semibold">TotalRH</h1>
+            <h1 className="text-xl font-semibold">{CLIENTE?.nombre ?? "TotalRH"}</h1>
             <p className="text-sm text-muted-foreground mt-1">Iniciá sesión para continuar</p>
           </div>
         </div>

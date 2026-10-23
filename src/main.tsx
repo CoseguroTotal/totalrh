@@ -1,6 +1,13 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { CLIENTE, NOMBRE_APP } from "./marca";
+
+// En la instalación de un cliente, el título de la pestaña y de la app instalada lleva su nombre
+if (CLIENTE) {
+  document.title = NOMBRE_APP;
+  document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", CLIENTE.nombre);
+}
 
 const previewHostPattern = /(^id-preview--|^preview--|\.lovableproject\.com$|\.lovableproject-dev\.com$|\.beta\.lovable\.dev$)/;
 const shouldDisableAppShellWorker =
