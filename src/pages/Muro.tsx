@@ -1,28 +1,48 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Megaphone, Newspaper } from "lucide-react";
+import { Globe, Loader2, Megaphone, Newspaper, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  useCelebraciones, useEsModerador, useFeed, useLecturas, usePerfiles, useSessionUserId, type TipoPublicacion,
+  armarInicio, useCelebraciones, useEsModerador, useFeed, useFijadas, useLecturas, usePerfiles, useSessionUserId,
+  type Publicacion, type TipoPublicacion,
 } from "@/hooks/useMuro";
 import { CelebracionesCard, Composer, PostCard, type Celebracion } from "@/components/muro/MuroComponents";
 import { AccesosRapidos, AccesosRapidosMovil, ContactosCard, ProximosEventosCard } from "@/components/muro/MuroLaterales";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
 import { MarcaMuroBanner } from "@/components/Marca";
-import { useMapaGrupos } from "@/hooks/useGrupos";
+import { useGrupos } from "@/hooks/useGrupos";
 
-type Filtro = "todo" | "comunicados";
+type Filtro = "todo" | "generales" | "grupos" | "comunicados";
+
+const FILTROS: { valor: Filtro; label: string; icon: typeof Newspaper; vacio: string }[] = [
+  { valor: "todo", label: "Todo", icon: Newspaper, vacio: "El muro está vacío" },
+  { valor: "generales", label: "Generales", icon: Globe, vacio: "Todavía no hay publicaciones generales" },
+  { valor: "grupos", label: "Mis grupos", icon: Users, vacio: "Todavía no hay publicaciones en tus grupos" },
+  { valor: "comunicados", label: "Comunicados", icon: Megaphone, vacio: "Todavía no hay comunicados" },
+];
+
+function filtrar(publicaciones: Publicacion[], filtro: Filtro) {
+  if (filtro === "generales") return publicaciones.filter((p) => !p.grupo_id);
+  if (filtro === "grupos") return publicaciones.filter((p) => !!p.grupo_id);
+  if (filtro === "comunicados") return publicaciones.filter((p) => p.tipo === "comunicado");
+  return publicaciones;
+}
 
 export default function Muro() {
   const { data: userId } = useSessionUserId();
   const { data: esModerador = false } = useEsModerador();
-  const feed = useFeed();
+  const { data: listaGrupos, isError: errorGrupos } = useGrupos();
+  // En el inicio: lo general y lo de los grupos donde participo (aunque RRHH pueda ver todos)
+  const misGrupos = useMemo(() => listaGrupos?.filter((g) => g.soy_miembro), [listaGrupos]);
+  const feed = useFeed(undefined, useMemo(() => (errorGrupos ? [] : misGrupos?.map((g) => g.id)), [errorGrupos, misGrupos]));
+  const fijadas = useFijadas();
   const celebraciones = useCelebraciones(7);
   const [filtro, setFiltro] = useState<Filtro>("todo");
   const [saludo, setSaludo] = useState<{ contenido: string; tipo: TipoPublicacion; mencion_user_id: string | null; key: number } | null>(null);
   const finRef = useRef<HTMLDivElement>(null);
 
-  const publicaciones = useMemo(() => feed.data?.pages.flat() ?? [], [feed.data]);
-  const visibles = filtro === "comunicados" ? publicaciones.filter((p) => p.tipo === "comunicado") : publicaciones;
+  const publicaciones = useMemo(() => armarInicio(fijadas.data ?? [], feed.data?.pages.flat() ?? []), [fijadas.data, feed.data]);
+  const visibles = filtrar(publicaciones, filtro);
+  const vacio = FILTROS.find((f) => f.valor === filtro)!.vacio;
 
   const idsPerfiles = useMemo(() => {
     const ids: string[] = userId ? [userId] : [];
@@ -35,7 +55,7 @@ export default function Muro() {
   }, [publicaciones, userId]);
   const { data: perfiles = new Map() } = usePerfiles(idsPerfiles);
   const { data: lecturas } = useLecturas(publicaciones.map((p) => p.id));
-  const grupos = useMapaGrupos();
+  const grupos = useMemo(() => new Map((listaGrupos ?? []).map((g) => [g.id, g])), [listaGrupos]);
 
   // Scroll infinito
   useEffect(() => {
@@ -83,18 +103,18 @@ export default function Muro() {
           <MarcaMuroBanner />
           <AccesosRapidosMovil />
           <InstallPWAPrompt />
-          <Composer perfil={userId ? perfiles.get(userId) : null} esModerador={esModerador} inicial={saludo} />
+          <Composer perfil={userId ? perfiles.get(userId) : null} esModerador={esModerador} inicial={saludo} destinos={misGrupos} />
 
-          <div className="flex gap-2" role="tablist" aria-label="Filtrar publicaciones">
-            <Button size="sm" className="rounded-full" variant={filtro === "todo" ? "default" : "secondary"} onClick={() => setFiltro("todo")} role="tab" aria-selected={filtro === "todo"}>
-              <Newspaper className="h-4 w-4 mr-1.5" />Todo
-            </Button>
-            <Button size="sm" className="rounded-full" variant={filtro === "comunicados" ? "default" : "secondary"} onClick={() => setFiltro("comunicados")} role="tab" aria-selected={filtro === "comunicados"}>
-              <Megaphone className="h-4 w-4 mr-1.5" />Comunicados
-            </Button>
+          <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 scrollbar-none sm:mx-0 sm:px-0" role="tablist" aria-label="Filtrar publicaciones">
+            {FILTROS.map((f) => (
+              <Button key={f.valor} size="sm" className="shrink-0 rounded-full" variant={filtro === f.valor ? "default" : "secondary"}
+                onClick={() => setFiltro(f.valor)} role="tab" aria-selected={filtro === f.valor}>
+                <f.icon className="h-4 w-4 mr-1.5" />{f.label}
+              </Button>
+            ))}
           </div>
 
-          {feed.isLoading ? (
+          {feed.isLoading || feed.isPending ? (
             <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : feed.isError ? (
             <div className="rounded-2xl border bg-card p-8 text-center">
@@ -104,8 +124,10 @@ export default function Muro() {
           ) : visibles.length === 0 ? (
             <div className="rounded-2xl border bg-card p-10 text-center">
               <Newspaper className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-              <p className="font-medium">{filtro === "comunicados" ? "Todavía no hay comunicados" : "El muro está vacío"}</p>
-              <p className="text-sm text-muted-foreground mt-1">Sé la primera persona en compartir una novedad.</p>
+              <p className="font-medium">{vacio}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {filtro === "grupos" && !misGrupos?.length ? "Todavía no participás de ningún grupo." : "Sé la primera persona en compartir una novedad."}
+              </p>
             </div>
           ) : (
             visibles.map((p) => (

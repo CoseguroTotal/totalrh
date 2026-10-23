@@ -10,6 +10,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useConceptos } from "@/hooks/useLiquidacion";
 import { useEmpleados } from "@/hooks/useEmpleados";
+import { baseCalculo } from "@/lib/liquidacionEngine";
 
 type Props = {
   open: boolean;
@@ -51,7 +52,7 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
         aplica_a: concepto.aplica_a,
         aplica_valores: concepto.aplica_valores ?? [],
         grupo: concepto.grupo || "General",
-        base_calculo: concepto.base_calculo || "basico",
+        base_calculo: baseCalculo(concepto),
         concepto_base_id: concepto.concepto_base_id || "",
         unidad: concepto.unidad || "porcentaje",
         cantidad_default: concepto.cantidad_default?.toString() ?? "1",
@@ -158,10 +159,16 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
                   <SelectItem value="basico">Sueldo Básico</SelectItem>
                   <SelectItem value="remunerativo_total">Total Remunerativo</SelectItem>
                   <SelectItem value="fijo">Monto Fijo</SelectItem>
+                  <SelectItem value="hora">Valor hora (horas extra)</SelectItem>
                   <SelectItem value="monto_concepto">Otro Concepto</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {form.base_calculo === "hora" && (
+              <p className="text-[11px] text-muted-foreground self-end pb-2">
+                Valor hora = básico ÷ 200. Porcentaje = recargo (50 o 100). Cantidad = horas del mes (dejala en 0 y cargala por empleado).
+              </p>
+            )}
             {form.base_calculo === "monto_concepto" && (
               <div>
                 <Label className="text-xs">Concepto Base</Label>

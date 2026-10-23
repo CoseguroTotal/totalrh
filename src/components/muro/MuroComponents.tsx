@@ -3,13 +3,14 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   Cake, Award, ImagePlus, Loader2, MessageCircle, MoreHorizontal, Pin, PinOff,
-  Megaphone, Send, Trash2, EyeOff, Eye, Pencil, X, Sparkles, ShieldCheck, Vote, CalendarDays,
+  Megaphone, Send, Trash2, EyeOff, Eye, Pencil, X, Sparkles, ShieldCheck, Vote, CalendarDays, Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BloqueConfirmacion, TarjetaEncuesta, TarjetaEventoMuro, VistoPor, useVistaAlMostrar } from "@/components/muro/MuroLecturas";
 import { useIniciarDirecta } from "@/hooks/useChat";
 import {
@@ -52,21 +53,33 @@ function tiempo(fecha: string) {
 
 /* ───────────────────────── Crear publicación ───────────────────────── */
 
+interface DestinoGrupo { id: string; nombre: string; color: string; soy_admin: boolean }
+
 export function Composer({
-  perfil, esModerador, inicial, grupo,
+  perfil, esModerador, inicial, grupo: grupoFijo, destinos,
 }: {
   perfil?: PerfilMuro | null;
+  /** Puede publicar comunicados en el muro general (RRHH, gerencia, administración) */
   esModerador: boolean;
-  /** Si se publica dentro de un grupo */
+  /** Si se publica dentro de un grupo (página del grupo) */
   grupo?: { id: string; nombre: string } | null;
+  /** En el inicio: grupos donde participo, para elegir "Para: Todos" o un grupo */
+  destinos?: DestinoGrupo[];
   inicial?: { contenido: string; tipo: TipoPublicacion; mencion_user_id: string | null; key: number } | null;
 }) {
+  const [destinoId, setDestinoId] = useState("todos");
+  const destino = destinos?.find((d) => d.id === destinoId) ?? null;
+  const grupo = grupoFijo ?? destino;
+  // Comunicados: RRHH en lo general; en un grupo, sus administradores
+  const puedeComunicado = grupoFijo ? esModerador : destino ? destino.soy_admin : esModerador;
   const [texto, setTexto] = useState("");
   const [imagen, setImagen] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [comunicado, setComunicado] = useState(false);
   const [pedirConfirmacion, setPedirConfirmacion] = useState(false);
   const [enfocado, setEnfocado] = useState(false);
+  // Una vez que empezó a escribir, el selector "Para:" queda visible aunque el texto pierda el foco
+  const [tocado, setTocado] = useState(false);
   const [extra, setExtra] = useState<{ tipo: TipoPublicacion; mencion_user_id: string | null } | null>(null);
   const [ultimaClave, setUltimaClave] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -95,6 +108,7 @@ export function Composer({
     setComunicado(false);
     setPedirConfirmacion(false);
     setExtra(null);
+    setTocado(false);
   };
 
   const publicar = () => {
@@ -103,9 +117,9 @@ export function Composer({
       {
         contenido: texto,
         imagen,
-        tipo: comunicado ? "comunicado" : extra?.tipo ?? "post",
+        tipo: comunicado && puedeComunicado ? "comunicado" : extra?.tipo ?? "post",
         mencion_user_id: extra?.mencion_user_id ?? null,
-        requiere_confirmacion: comunicado && pedirConfirmacion,
+        requiere_confirmacion: comunicado && puedeComunicado && pedirConfirmacion,
         grupo_id: grupo?.id ?? null,
       },
       {
@@ -126,7 +140,7 @@ export function Composer({
           id="muro-composer"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          onFocus={() => setEnfocado(true)}
+          onFocus={() => { setEnfocado(true); setTocado(true); }}
           onBlur={() => setEnfocado(false)}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) publicar(); }}
           placeholder={grupo ? `Escribí algo en ${grupo.nombre}…` : `¿Qué estás pensando${perfil?.nombre ? `, ${perfil.nombre}` : ""}?`}
@@ -161,6 +175,26 @@ export function Composer({
         </div>
       )}
 
+      {!grupoFijo && !!destinos?.length && (expandido || tocado) && (
+        <div className="mt-3 ml-[52px] flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Para:</span>
+          <Select value={destinoId} onValueChange={(v) => { setDestinoId(v); setComunicado(false); setPedirConfirmacion(false); }}>
+            <SelectTrigger className="h-8 w-auto min-w-[160px] rounded-full text-xs" aria-label="Quién ve la publicación">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos"><span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" />Todos</span></SelectItem>
+              {destinos.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />{d.nombre}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {destino && <span className="text-xs text-muted-foreground">Sólo lo ven los miembros del grupo</span>}
+        </div>
+      )}
+
       {comunicado && (
         <label className="mt-3 ml-[52px] flex items-center gap-2 text-sm cursor-pointer">
           <Switch checked={pedirConfirmacion} onCheckedChange={setPedirConfirmacion} />
@@ -173,7 +207,7 @@ export function Composer({
         <Button type="button" variant="ghost" onClick={() => fileRef.current?.click()} className="h-10 flex-1 sm:flex-none rounded-lg text-muted-foreground font-medium">
           <ImagePlus className="h-5 w-5 mr-2 text-success" />Foto
         </Button>
-        {esModerador && (
+        {puedeComunicado && (
           <Button
             type="button"
             variant="ghost"

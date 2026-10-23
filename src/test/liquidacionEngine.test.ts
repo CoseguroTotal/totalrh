@@ -132,3 +132,32 @@ describe("conceptos por categoría o convenio", () => {
     expect(lineas.find((l) => l.concepto_id === "rec")!.monto).toBe(0);
   });
 });
+
+describe("bases de cálculo", () => {
+  it('"remunerativo" (nombre viejo) se calcula sobre el total remunerativo', () => {
+    const antiguedad = c({ id: "ant", tipo: "remunerativo", porcentaje: 10 });
+    const jubVieja = c({ id: "jub", tipo: "deduccion", porcentaje: 11, base_calculo: "remunerativo" });
+    const lineas = calcularLiquidacion(1_000_000, [antiguedad, jubVieja]);
+    expect(lineas.find((l) => l.concepto_id === "jub")!.base).toBe(1_100_000);
+  });
+
+  it("horas extra al 50 %: valor hora (básico / 200) × 1,5 × horas", () => {
+    const hx = c({ id: "hx", tipo: "remunerativo", porcentaje: 50, base_calculo: "hora", cantidad_default: 10 });
+    const l = calcularLiquidacion(1_000_000, [hx])[0];
+    expect(l.base).toBe(5_000);
+    expect(l.monto).toBe(75_000);
+  });
+
+  it("horas extra con cantidad 0 no pagan nada", () => {
+    const hx = c({ id: "hx", tipo: "remunerativo", porcentaje: 50, base_calculo: "hora", cantidad_default: 0 });
+    expect(calcularLiquidacion(1_000_000, [hx])[0].monto).toBe(0);
+  });
+});
+
+describe("conceptos vacíos", () => {
+  it("un concepto sin porcentaje ni monto no genera línea", () => {
+    const vacio = c({ id: "sb", tipo: "remunerativo" });
+    const asignacion = c({ id: "nr", tipo: "no_remunerativo", monto_fijo: 0, base_calculo: "fijo" });
+    expect(calcularLiquidacion(1_000_000, [vacio, asignacion]).map((l) => l.concepto_id)).toEqual(["nr"]);
+  });
+});

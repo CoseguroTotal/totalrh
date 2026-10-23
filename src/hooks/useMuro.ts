@@ -73,21 +73,34 @@ export function useEsModerador() {
   });
 }
 
-/** Feed del muro. Con grupoId muestra sólo ese grupo; sin él, todo lo visible (general y mis grupos). */
-export function useFeed(grupoId?: string) {
+const SELECT_PUBLICACION = "*, comentarios:muro_comentarios(*), reacciones:muro_reacciones(user_id, tipo)";
+
+/**
+ * Filtro del muro de inicio, como en Facebook: lo general (para todos) más lo de los grupos donde participo.
+ * RRHH, gerencia y administración pueden ver todos los grupos, pero en su inicio sólo aparecen los suyos.
+ */
+export function filtroInicio(misGrupos: string[]) {
+  return misGrupos.length ? `grupo_id.is.null,grupo_id.in.(${misGrupos.join(",")})` : "grupo_id.is.null";
+}
+
+/**
+ * Feed del muro. Con grupoId muestra sólo ese grupo (las fijadas del grupo arriba).
+ * Sin grupoId es el inicio: lo general y lo de misGrupos, por fecha; las fijadas generales van aparte (useFijadas).
+ * En el inicio espera a conocer misGrupos (undefined = todavía cargando).
+ */
+export function useFeed(grupoId?: string, misGrupos?: string[]) {
   const qc = useQueryClient();
+  const inicio = !grupoId;
 
   const query = useInfiniteQuery({
-    queryKey: [...FEED_KEY, grupoId ?? "todos"],
+    queryKey: [...FEED_KEY, grupoId ?? "inicio", ...(inicio ? [misGrupos ?? []] : [])],
+    enabled: !inicio || !!misGrupos,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const from = pageParam * PAGE_SIZE;
-      let q = supabase
-        .from("muro_publicaciones")
-        .select("*, comentarios:muro_comentarios(*), reacciones:muro_reacciones(user_id, tipo)");
-      if (grupoId) q = q.eq("grupo_id", grupoId);
+      let q = supabase.from("muro_publicaciones").select(SELECT_PUBLICACION);
+      q = grupoId ? q.eq("grupo_id", grupoId).order("fijada", { ascending: false }) : q.or(filtroInicio(misGrupos ?? []));
       const { data, error } = await q
-        .order("fijada", { ascending: false })
         .order("created_at", { ascending: false })
         .order("created_at", { referencedTable: "muro_comentarios", ascending: true })
         .range(from, from + PAGE_SIZE - 1);
@@ -110,6 +123,31 @@ export function useFeed(grupoId?: string) {
   }, [qc]);
 
   return query;
+}
+
+/** Publicaciones generales fijadas por RRHH: encabezan el muro de inicio. Las fijadas de un grupo sólo se fijan en el grupo. */
+export function useFijadas() {
+  return useQuery({
+    queryKey: [...FEED_KEY, "fijadas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("muro_publicaciones")
+        .select(SELECT_PUBLICACION)
+        .eq("fijada", true)
+        .is("grupo_id", null)
+        .order("created_at", { ascending: false })
+        .order("created_at", { referencedTable: "muro_comentarios", ascending: true })
+        .limit(5);
+      if (error) throw error;
+      return (data ?? []) as unknown as Publicacion[];
+    },
+  });
+}
+
+/** Une las fijadas generales (arriba) con el feed, sin repetir publicaciones. */
+export function armarInicio(fijadas: Publicacion[], feed: Publicacion[]) {
+  const ids = new Set(fijadas.map((p) => p.id));
+  return [...fijadas, ...feed.filter((p) => !ids.has(p.id))];
 }
 
 /** Nombre, foto y puesto de los autores visibles en el feed. */

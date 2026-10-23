@@ -54,12 +54,27 @@ const num = (v: unknown) => (v === null || v === undefined || v === "" ? null : 
 /** Cantidad del concepto: vacía = 1, pero 0 es un valor válido (concepto que no se paga este mes). */
 const cantidadDe = (c: ConceptoCalc) => num(c.cantidad_default) ?? 1;
 
+/**
+ * Base de cálculo normalizada. "remunerativo" es el nombre viejo de "remunerativo_total" (datos de ejemplo del Demo):
+ * sin esto, esos conceptos se calculaban sobre el básico.
+ */
+export function baseCalculo(c: Pick<ConceptoCalc, "base_calculo">) {
+  const bc = c.base_calculo || "basico";
+  return bc === "remunerativo" ? "remunerativo_total" : bc;
+}
+
+/** Divisor del valor hora (LCT: sueldo mensual / 200 para jornada completa). */
+export const DIVISOR_HORA = 200;
+
 function montoConcepto(c: ConceptoCalc, base: number) {
   const cant = cantidadDe(c);
   const pct = num(c.porcentaje);
   const fijo = num(c.monto_fijo);
+  const bc = baseCalculo(c);
   let monto = 0;
-  if (pct && c.base_calculo !== "fijo") monto += base * (pct / 100) * cant;
+  // Horas extra: valor hora con su recargo (50 % → 1,5 veces la hora) por la cantidad de horas
+  if (bc === "hora") monto += base * (1 + (pct ?? 0) / 100) * cant;
+  else if (pct && bc !== "fijo") monto += base * (pct / 100) * cant;
   if (fijo) monto += fijo * cant;
   return redondear(monto);
 }
@@ -103,18 +118,21 @@ export function calcularLiquidacion(
   conceptosActivos: ConceptoCalc[],
   calcSAC: boolean | OpcionesSAC = false,
   empleado: EmpleadoCalc = {},
+  divisorHora = DIVISOR_HORA,
 ): LineaCalc[] {
   if (basico <= 0) return [];
 
   const results: LineaCalc[] = [];
   const montos = new Map<string, number>();
-  const aplicables = conceptosActivos.filter((c) => conceptoAplica(c, empleado));
+  // Sin porcentaje ni monto no hay nada que liquidar (p. ej. un concepto "Sueldo básico" vacío, que repetiría el básico en $0)
+  const aplicables = conceptosActivos.filter((c) => conceptoAplica(c, empleado) && (num(c.porcentaje) !== null || num(c.monto_fijo) !== null || baseCalculo(c) === "hora"));
   const haberes = aplicables.filter((c) => c.tipo !== "deduccion");
   const deducciones = aplicables.filter((c) => c.tipo === "deduccion");
 
   const baseDe = (c: ConceptoCalc, totalRem: number) => {
-    const bc = c.base_calculo || "basico";
+    const bc = baseCalculo(c);
     if (bc === "fijo") return 0;
+    if (bc === "hora") return divisorHora > 0 ? basico / divisorHora : 0;
     if (bc === "remunerativo_total") return totalRem;
     if (bc === "monto_concepto") return c.concepto_base_id ? montos.get(c.concepto_base_id) ?? 0 : 0;
     return basico;
@@ -122,7 +140,7 @@ export function calcularLiquidacion(
 
   // 1) Haberes que no dependen del total remunerativo
   let totalRem = basico;
-  for (const c of haberes.filter((c) => c.base_calculo !== "remunerativo_total")) {
+  for (const c of haberes.filter((c) => baseCalculo(c) !== "remunerativo_total")) {
     const base = baseDe(c, totalRem);
     const monto = montoConcepto(c, base);
     montos.set(c.id, monto);
@@ -132,7 +150,7 @@ export function calcularLiquidacion(
 
   // 2) Haberes sobre el total remunerativo (p. ej. presentismo): la base excluye a estos mismos conceptos
   const baseRemParcial = totalRem;
-  for (const c of haberes.filter((c) => c.base_calculo === "remunerativo_total")) {
+  for (const c of haberes.filter((c) => baseCalculo(c) === "remunerativo_total")) {
     const monto = montoConcepto(c, baseRemParcial);
     montos.set(c.id, monto);
     if (c.tipo === "remunerativo") totalRem += monto;

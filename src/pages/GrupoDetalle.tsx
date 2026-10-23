@@ -95,7 +95,7 @@ export default function GrupoDetalle() {
         </div>
       ) : (
         <>
-          {grupo.soy_miembro && (
+          {puedeVer && (
             <Composer perfil={yo ? perfiles.get(yo) : null} esModerador={grupo.soy_admin} grupo={{ id: grupo.id, nombre: grupo.nombre }} />
           )}
           {grupo.soy_admin && (

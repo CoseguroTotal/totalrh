@@ -31,12 +31,6 @@ export function useGrupos() {
   });
 }
 
-/** Nombre y color de cada grupo visible, para etiquetar publicaciones en el muro general. */
-export function useMapaGrupos() {
-  const { data = [] } = useGrupos();
-  return new Map(data.map((g) => [g.id, g]));
-}
-
 export function useMiembros(grupoId: string | undefined) {
   return useQuery({
     queryKey: [...KEY, grupoId, "miembros"],

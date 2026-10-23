@@ -92,6 +92,7 @@ export function AccesosRapidosMovil() {
     { label: "Encuestas", to: "/encuestas", icon: Vote, color: "bg-violet-500/15 text-violet-600 dark:text-violet-400", badge: encuestas },
     { label: "Tareas", to: "/tareas", icon: CheckSquare, color: "bg-teal-500/15 text-teal-600 dark:text-teal-400" },
     { label: "Eventos", to: "/eventos", icon: CalendarDays, color: "bg-sky-500/15 text-sky-600 dark:text-sky-400" },
+    { label: "Grupos", to: "/grupos", icon: Users, color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" },
     ...(role !== "contador" ? [
       { label: "Fichar", to: "/autogestion?tab=token", icon: QrCode, color: "bg-success/15 text-success" },
       { label: "Recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "bg-emerald-500/15 text-emerald-600" },
