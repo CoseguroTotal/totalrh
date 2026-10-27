@@ -46,14 +46,20 @@ function eyeAspectRatio(ojo: Punto[]) {
   return (dist(ojo[1], ojo[5]) + dist(ojo[2], ojo[4])) / (2 * dist(ojo[0], ojo[3]));
 }
 
+// El detector rápido falla según el tamaño de la cara en el cuadro (muy cerca o muy lejos de la
+// cámara), y de forma distinta en cada resolución: si una no encuentra la cara, se prueba la otra.
+const RESOLUCIONES_LIVIANA = [224, 320];
+const RESOLUCIONES_COMPLETA = [320, 224];
+const opciones = (faceapi: FaceApi, inputSize: number) => new faceapi.TinyFaceDetectorOptions({ inputSize, scoreThreshold: 0.5 });
+
 /** Detección liviana (sin descriptor) para la prueba de vida: más fotos por segundo. */
 export async function detectarPuntos(video: HTMLVideoElement): Promise<Deteccion | null> {
   const faceapi = await cargarFaceApi();
-  const r = await faceapi
-    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
-    .withFaceLandmarks();
-  if (!r) return null;
-  return medir(r.landmarks, r.detection.box, video, []);
+  for (const inputSize of RESOLUCIONES_LIVIANA) {
+    const r = await faceapi.detectSingleFace(video, opciones(faceapi, inputSize)).withFaceLandmarks();
+    if (r) return medir(r.landmarks, r.detection.box, video, []);
+  }
+  return null;
 }
 
 type Landmarks = import("@vladmandic/face-api").FaceLandmarks68;
@@ -75,13 +81,11 @@ function medir(lm: Landmarks, box: Deteccion["box"], video: HTMLVideoElement, de
 
 export async function detectarRostro(video: HTMLVideoElement): Promise<Deteccion | null> {
   const faceapi = await cargarFaceApi();
-  const r = await faceapi
-    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
-    .withFaceLandmarks()
-    .withFaceDescriptor();
-  if (!r) return null;
-
-  return medir(r.landmarks, r.detection.box, video, Array.from(r.descriptor));
+  for (const inputSize of RESOLUCIONES_COMPLETA) {
+    const r = await faceapi.detectSingleFace(video, opciones(faceapi, inputSize)).withFaceLandmarks().withFaceDescriptor();
+    if (r) return medir(r.landmarks, r.detection.box, video, Array.from(r.descriptor));
+  }
+  return null;
 }
 
 /* ─────────────── Prueba de vida ─────────────── */
@@ -97,7 +101,20 @@ export function desafioAleatorio(): Desafio {
   return Math.random() < 0.5 ? "parpadear" : "girar";
 }
 
-const EAR_CERRADO = 0.2;
+export const otroDesafio = (d: Desafio): Desafio => (d === "parpadear" ? "girar" : "parpadear");
+
+/** Las detecciones livianas (prueba de vida) no traen descriptor: no sirven para identificar. */
+export const tieneDescriptor = (d: Deteccion) => d.descriptor.length > 0;
+
+/** Si la cara salta de lugar entre dos fotos, probablemente se cruzó otra persona. */
+export function mismaPosicion(a: Deteccion["box"], b: Deteccion["box"]) {
+  const dx = a.x + a.width / 2 - (b.x + b.width / 2);
+  const dy = a.y + a.height / 2 - (b.y + b.height / 2);
+  return Math.hypot(dx, dy) < Math.max(a.width, b.width) * 0.6 && Math.abs(a.width - b.width) < Math.max(a.width, b.width) * 0.4;
+}
+
+/** Por debajo, los ojos están cerrados. Bajo a propósito: con ojos chicos o anteojos el EAR abierto ronda 0.2. */
+const EAR_MINIMO_ABIERTO = 0.15;
 /** Parpadeo relativo a la apertura normal de cada persona (luz, anteojos, forma de ojos). */
 const CIERRE_RELATIVO = 0.75;
 const APERTURA_RELATIVA = 0.9;
@@ -142,5 +159,5 @@ export class PruebaDeVida {
 }
 
 export function mirandoDeFrente(d: Deteccion) {
-  return Math.abs(d.yaw - 0.5) < YAW_FRENTE && d.ear > EAR_CERRADO;
+  return Math.abs(d.yaw - 0.5) < YAW_FRENTE && d.ear > EAR_MINIMO_ABIERTO;
 }

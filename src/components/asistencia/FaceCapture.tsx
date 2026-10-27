@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
   PruebaDeVida, TEXTO_DESAFIO, cargarFaceApi, desafioAleatorio, detectarPuntos, detectarRostro, mirandoDeFrente,
-  type Deteccion,
+  mismaPosicion, otroDesafio, tieneDescriptor, type Desafio, type Deteccion,
 } from "@/lib/faceRecognition";
 import { MUESTRAS_REGISTRO, distancia, muestrasConsistentes } from "../../../supabase/functions/_shared/face-match";
 
@@ -127,19 +127,21 @@ const VistaCamara = forwardRef<HTMLDivElement, {
 
 type EstadoTerminal =
   | { fase: "buscando"; aviso?: string }
-  | { fase: "desafio"; texto: string; progreso: number }
+  // capturando: la prueba de vida ya se cumplió y falta una foto completa para identificar
+  | { fase: "desafio"; texto: string; progreso: number; capturando?: boolean }
   | { fase: "verificando" }
   | { fase: "resultado"; ok: boolean; titulo: string; detalle: string; tipo?: "entrada" | "salida" };
 
 export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
   const { videoRef, lista, error } = useCamara(true);
   const [estado, setEstado] = useState<EstadoTerminal>({ fase: "buscando" });
-  const ref = useRef<{ prueba: PruebaDeVida | null; inicial: number[] | null; desde: number; sinCara: number }>({
-    prueba: null, inicial: null, desde: 0, sinCara: 0,
+  const ref = useRef<{ prueba: PruebaDeVida | null; inicial: number[] | null; caja: Deteccion["box"] | null; desde: number; sinCara: number; proximo: Desafio | null }>({
+    prueba: null, inicial: null, caja: null, desde: 0, sinCara: 0, proximo: null,
   });
 
-  const reiniciar = useCallback((aviso?: string) => {
-    ref.current = { prueba: null, inicial: null, desde: 0, sinCara: 0 };
+  /** `proximo`: si a la persona no le salió un desafío, el siguiente intento le pide el otro. */
+  const reiniciar = useCallback((aviso?: string, proximo: Desafio | null = null) => {
+    ref.current = { prueba: null, inicial: null, caja: null, desde: 0, sinCara: 0, proximo };
     setEstado({ fase: "buscando", aviso });
   }, []);
 
@@ -183,8 +185,10 @@ export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
       if (!d) return;
       if (d.tamano < TAMANO_MINIMO) { setEstado({ fase: "buscando", aviso: "Acercate un poco a la cámara" }); return; }
       if (!mirandoDeFrente(d)) { setEstado({ fase: "buscando", aviso: "Mirá de frente a la cámara" }); return; }
+      if (!tieneDescriptor(d)) return;
       s.inicial = d.descriptor;
-      s.prueba = new PruebaDeVida(desafioAleatorio());
+      s.caja = d.box;
+      s.prueba = new PruebaDeVida(s.proximo ?? desafioAleatorio());
       s.desde = Date.now();
       s.sinCara = 0;
       setEstado({ fase: "desafio", texto: TEXTO_DESAFIO[s.prueba.desafio], progreso: 0 });
@@ -192,28 +196,32 @@ export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
     }
 
     if (estado.fase === "desafio" && s.prueba) {
-      if (Date.now() - s.desde > TIEMPO_DESAFIO_MS) { reiniciar("Se agotó el tiempo, probá de nuevo"); return; }
+      if (Date.now() - s.desde > TIEMPO_DESAFIO_MS) { reiniciar("Se agotó el tiempo, probemos con otro gesto", otroDesafio(s.prueba.desafio)); return; }
       if (!d) {
         if (++s.sinCara > 12) reiniciar("Perdimos tu rostro, volvé a ubicarte");
         return;
       }
       s.sinCara = 0;
-      // Si aparece otra persona en medio del desafío, se empieza de cero. Sólo se compara de
-      // frente: con la cabeza girada el descriptor de la misma persona se aleja bastante.
-      if (s.inicial && mirandoDeFrente(d) && distancia(s.inicial, d.descriptor) > MISMA_PERSONA_SESION) { reiniciar(); return; }
+
+      if (estado.capturando) {
+        // Foto completa final: tiene que ser la misma persona que empezó el desafío
+        if (!tieneDescriptor(d)) return;
+        if (!mirandoDeFrente(d)) { setEstado({ ...estado, texto: "¡Bien! Ahora mirá de frente" }); return; }
+        if (s.inicial && distancia(s.inicial, d.descriptor) > MISMA_PERSONA_SESION) { reiniciar("Empecemos de nuevo, de a una persona"); return; }
+        s.prueba = null;
+        await fichar(d.descriptor);
+        return;
+      }
+
+      // Durante el gesto se usan detecciones livianas (sin descriptor): se controla que la cara no salte de lugar
+      if (s.caja && !mismaPosicion(s.caja, d.box)) { reiniciar("Empecemos de nuevo, de a una persona"); return; }
+      s.caja = d.box;
       const completo = s.prueba.actualizar(d);
-      if (!completo) {
-        setEstado({ fase: "desafio", texto: TEXTO_DESAFIO[s.prueba.desafio], progreso: s.prueba.progreso });
-        return;
-      }
-      if (!mirandoDeFrente(d)) {
-        setEstado({ fase: "desafio", texto: "¡Bien! Ahora mirá de frente", progreso: 0.9 });
-        return;
-      }
-      s.prueba = null;
-      await fichar(d.descriptor);
+      setEstado(completo
+        ? { fase: "desafio", texto: "¡Bien! Ahora mirá de frente", progreso: 0.95, capturando: true }
+        : { fase: "desafio", texto: TEXTO_DESAFIO[s.prueba.desafio], progreso: s.prueba.progreso });
     }
-  });
+  }, estado.fase === "desafio" && !estado.capturando);
 
   if (error) {
     return (
@@ -355,7 +363,7 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
   }, [fase, lista]);
 
   const cambiarDesafio = () => {
-    const otro = prueba.current.desafio === "parpadear" ? "girar" : "parpadear";
+    const otro = otroDesafio(prueba.current.desafio);
     prueba.current = new PruebaDeVida(otro);
     inicioDesafio.current = Date.now();
     setOfrecerCambio(false);
@@ -412,6 +420,8 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
     }
 
     if (fase === "muestras") {
+      // Una detección liviana que quedó en curso al terminar el desafío no sirve como muestra
+      if (!tieneDescriptor(d)) return;
       if (!mirandoDeFrente(d)) { setMensaje("Mirá de frente a la cámara"); return; }
       if (Date.now() - ultimaMuestra.current < 350) return;
       ultimaMuestra.current = Date.now();

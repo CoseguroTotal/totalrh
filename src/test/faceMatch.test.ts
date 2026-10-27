@@ -3,7 +3,7 @@ import {
   DESCRIPTOR_LEN, UMBRAL_COINCIDENCIA, distancia, esDescriptorValido, fechaArgentina,
   mejorCoincidencia, muestrasConsistentes, aprenderMuestra, MUESTRAS_REGISTRO, MUESTRAS_MAX, UMBRAL_APRENDER,
 } from "../../supabase/functions/_shared/face-match";
-import { PruebaDeVida, type Deteccion } from "@/lib/faceRecognition";
+import { PruebaDeVida, mirandoDeFrente, mismaPosicion, otroDesafio, tieneDescriptor, type Deteccion } from "@/lib/faceRecognition";
 
 /** Descriptor sintético: un "rostro" base desplazado `ruido` en cada componente. */
 function rostro(semilla: number, ruido = 0): number[] {
@@ -128,5 +128,39 @@ describe("reconocimiento facial: aprendizaje en la terminal", () => {
     expect(muestras).toHaveLength(MUESTRAS_MAX);
     expect(muestras.slice(0, MUESTRAS_REGISTRO)).toEqual(registro);
     expect(muestras[MUESTRAS_MAX - 1]).toEqual(rostro(1, 0.4));
+  });
+});
+
+describe("prueba de vida: casos difíciles", () => {
+  const det = (ear: number, yaw = 0.5, box = { x: 100, y: 100, width: 200, height: 200 }): Deteccion => ({
+    descriptor: [], ear, yaw, tamano: 0.3, box,
+  });
+
+  it("con ojos chicos o anteojos (EAR ~0.19) igual cuenta como mirando de frente", () => {
+    expect(mirandoDeFrente(det(0.19))).toBe(true);
+    expect(mirandoDeFrente(det(0.1))).toBe(false);
+    expect(mirandoDeFrente(det(0.3, 0.7))).toBe(false);
+  });
+
+  it("si el primer cuadro agarra un parpadeo, la línea base se recupera", () => {
+    const p = new PruebaDeVida("parpadear");
+    p.actualizar(det(0.12));
+    for (let i = 0; i < 10; i++) p.actualizar(det(0.3));
+    let ok = false;
+    for (const ear of [0.15, 0.3, 0.15, 0.3]) ok = p.actualizar(det(ear));
+    expect(ok).toBe(true);
+  });
+
+  it("alterna el desafío y detecta que la cara saltó de lugar", () => {
+    expect(otroDesafio("parpadear")).toBe("girar");
+    expect(otroDesafio("girar")).toBe("parpadear");
+    const a = { x: 100, y: 100, width: 200, height: 200 };
+    expect(mismaPosicion(a, { x: 130, y: 90, width: 210, height: 210 })).toBe(true);
+    expect(mismaPosicion(a, { x: 400, y: 100, width: 200, height: 200 })).toBe(false);
+    expect(mismaPosicion(a, { x: 100, y: 100, width: 90, height: 90 })).toBe(false);
+  });
+
+  it("una detección liviana no sirve para identificar", () => {
+    expect(tieneDescriptor(det(0.3))).toBe(false);
   });
 });
