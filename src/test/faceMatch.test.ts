@@ -80,6 +80,26 @@ describe("prueba de vida", () => {
     for (let i = 0; i < 50; i++) expect(p.actualizar(det(0.3))).toBe(false);
   });
 
+  it("cuenta parpadeos relativos a ojos más chicos (EAR base bajo)", () => {
+    const p = new PruebaDeVida("parpadear");
+    p.actualizar(det(0.22));
+    p.actualizar(det(0.15));
+    expect(p.actualizar(det(0.22))).toBe(false);
+    p.actualizar(det(0.15));
+    expect(p.actualizar(det(0.22))).toBe(true);
+  });
+
+  it("un leve temblor de ojos no cuenta como parpadeo", () => {
+    const p = new PruebaDeVida("parpadear");
+    for (let i = 0; i < 40; i++) expect(p.actualizar(det(i % 2 ? 0.33 : 0.3))).toBe(false);
+  });
+
+  it("tras girar acepta volver casi al centro (desvío 0.1)", () => {
+    const p = new PruebaDeVida("girar");
+    p.actualizar(det(0.3, 0.75));
+    expect(p.actualizar(det(0.3, 0.6))).toBe(true);
+  });
+
   it("girar requiere ir a un costado y volver al centro", () => {
     const p = new PruebaDeVida("girar");
     expect(p.actualizar(det(0.3, 0.5))).toBe(false);

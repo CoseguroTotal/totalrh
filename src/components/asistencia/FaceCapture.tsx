@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { CameraOff, CheckCircle2, Loader2, LogIn, LogOut, ScanFace, ShieldCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
-  PruebaDeVida, TEXTO_DESAFIO, cargarFaceApi, desafioAleatorio, detectarRostro, mirandoDeFrente,
+  PruebaDeVida, TEXTO_DESAFIO, cargarFaceApi, desafioAleatorio, detectarPuntos, detectarRostro, mirandoDeFrente,
   type Deteccion,
 } from "@/lib/faceRecognition";
 import { MUESTRAS_REGISTRO, distancia, muestrasConsistentes } from "../../../supabase/functions/_shared/face-match";
@@ -78,7 +78,10 @@ function useBucleDeteccion(
   videoRef: React.RefObject<HTMLVideoElement>,
   activo: boolean,
   onDeteccion: (d: Deteccion | null) => void | Promise<void>,
+  liviana = false,
 ) {
+  const modo = useRef(liviana);
+  modo.current = liviana;
   const cb = useRef(onDeteccion);
   cb.current = onDeteccion;
 
@@ -89,7 +92,7 @@ function useBucleDeteccion(
     const tick = async () => {
       const v = videoRef.current;
       if (v && v.readyState >= 2 && !document.hidden) {
-        try { await cb.current(await detectarRostro(v)); } catch { /* frame perdido */ }
+        try { await cb.current(await (modo.current ? detectarPuntos(v) : detectarRostro(v))); } catch { /* frame perdido */ }
       }
       if (vivo) timer = setTimeout(tick, INTERVALO_MS);
     };
@@ -98,15 +101,13 @@ function useBucleDeteccion(
   }, [activo, videoRef]);
 }
 
-function VistaCamara({
-  videoRef, estado, children,
-}: {
+const VistaCamara = forwardRef<HTMLDivElement, {
   videoRef: React.RefObject<HTMLVideoElement>;
   estado: "neutro" | "activo" | "ok" | "error";
   children?: React.ReactNode;
-}) {
+}>(function VistaCamara({ videoRef, estado, children }, ref) {
   return (
-    <div className="relative mx-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-2xl bg-black">
+    <div ref={ref} className="relative mx-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-2xl bg-black">
       <video ref={videoRef} playsInline muted className="h-full w-full object-cover -scale-x-100" />
       <div
         className={cn(
@@ -120,7 +121,7 @@ function VistaCamara({
       {children}
     </div>
   );
-}
+});
 
 /* ─────────────── Terminal: fichada por rostro ─────────────── */
 
@@ -341,6 +342,26 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
   const prueba = useRef(new PruebaDeVida(desafioAleatorio()));
   const muestras = useRef<number[][]>([]);
   const ultimaMuestra = useRef(0);
+  const inicioDesafio = useRef(0);
+  const [ofrecerCambio, setOfrecerCambio] = useState(false);
+
+  useEffect(() => {
+    if (fase !== "desafio" || !lista) { setOfrecerCambio(false); return; }
+    inicioDesafio.current = Date.now();
+    const t = setInterval(() => {
+      if (Date.now() - inicioDesafio.current > TIEMPO_DESAFIO_MS) setOfrecerCambio(true);
+    }, 1000);
+    return () => clearInterval(t);
+  }, [fase, lista]);
+
+  const cambiarDesafio = () => {
+    const otro = prueba.current.desafio === "parpadear" ? "girar" : "parpadear";
+    prueba.current = new PruebaDeVida(otro);
+    inicioDesafio.current = Date.now();
+    setOfrecerCambio(false);
+    setProgreso(0);
+    setMensaje(TEXTO_DESAFIO[otro]);
+  };
 
   const guardar = async () => {
     setFase("guardando");
@@ -398,7 +419,7 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
       setProgreso(40 + (muestras.current.length / MUESTRAS) * 60);
       if (muestras.current.length >= MUESTRAS) await guardar();
     }
-  });
+  }, fase === "desafio");
 
   if (error) {
     return (
@@ -423,6 +444,9 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
       <p className={cn("text-center text-sm font-medium", fase === "error" && "text-destructive")}>
         {fase === "guardando" ? <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Guardando…</span> : mensaje}
       </p>
+      {fase === "desafio" && ofrecerCambio && (
+        <div className="flex justify-center"><Button variant="outline" size="sm" onClick={cambiarDesafio}>Probar otro desafío</Button></div>
+      )}
       {fase === "error" && (
         <div className="flex justify-center"><Button variant="outline" onClick={reintentar}>Intentar de nuevo</Button></div>
       )}

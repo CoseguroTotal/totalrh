@@ -196,7 +196,8 @@ Deno.serve(async (req) => {
           no_reconocido: "No te reconocimos. Acercate a la cámara o fichá con QR.",
           ambiguo: "No pudimos identificarte con seguridad. Probá de nuevo o fichá con QR.",
         };
-        return json({ error: mensajes[match.motivo], motivo: match.motivo }, 404);
+        // Resultado esperado (no reconocido / sin registros): 200 para que no se trate como falla del servidor
+        return json({ ok: false, error: mensajes[match.motivo], motivo: match.motivo }, 200);
       }
 
       const reg = (registros ?? []).find((r: { empleado_id: string }) => r.empleado_id === match.id) as
