@@ -294,6 +294,8 @@ export type Database = {
           nombre_grupo: string
           notificaciones_email_activas: boolean | null
           qr_duracion_segundos: number
+          registro_abierto: boolean
+          registro_codigo: string | null
           telefono: string | null
           updated_at: string
         }
@@ -320,6 +322,8 @@ export type Database = {
           nombre_grupo?: string
           notificaciones_email_activas?: boolean | null
           qr_duracion_segundos?: number
+          registro_abierto?: boolean
+          registro_codigo?: string | null
           telefono?: string | null
           updated_at?: string
         }
@@ -346,6 +350,8 @@ export type Database = {
           nombre_grupo?: string
           notificaciones_email_activas?: boolean | null
           qr_duracion_segundos?: number
+          registro_abierto?: boolean
+          registro_codigo?: string | null
           telefono?: string | null
           updated_at?: string
         }
@@ -772,6 +778,47 @@ export type Database = {
             columns: ["sucursal_id"]
             isOneToOne: false
             referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empleados_cambios: {
+        Row: {
+          cambiado_por: string | null
+          campo: string
+          created_at: string
+          empleado_id: string
+          id: string
+          origen: string
+          valor_anterior: string | null
+          valor_nuevo: string | null
+        }
+        Insert: {
+          cambiado_por?: string | null
+          campo: string
+          created_at?: string
+          empleado_id: string
+          id?: string
+          origen: string
+          valor_anterior?: string | null
+          valor_nuevo?: string | null
+        }
+        Update: {
+          cambiado_por?: string | null
+          campo?: string
+          created_at?: string
+          empleado_id?: string
+          id?: string
+          origen?: string
+          valor_anterior?: string | null
+          valor_nuevo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empleados_cambios_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
             referencedColumns: ["id"]
           },
         ]
@@ -1837,6 +1884,8 @@ export type Database = {
           empleado_id: string
           registrado_por: string | null
           updated_at: string
+          verificado_at: string | null
+          verificado_por: string | null
         }
         Insert: {
           consentimiento_at: string
@@ -1846,6 +1895,8 @@ export type Database = {
           empleado_id: string
           registrado_por?: string | null
           updated_at?: string
+          verificado_at?: string | null
+          verificado_por?: string | null
         }
         Update: {
           consentimiento_at?: string
@@ -1855,6 +1906,8 @@ export type Database = {
           empleado_id?: string
           registrado_por?: string | null
           updated_at?: string
+          verificado_at?: string | null
+          verificado_por?: string | null
         }
         Relationships: [
           {
@@ -1915,6 +1968,91 @@ export type Database = {
             columns: ["empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solicitudes_alta: {
+        Row: {
+          apellido: string
+          consentimiento_at: string
+          created_at: string
+          cuil: string
+          dni: string
+          email: string
+          empleado_id: string | null
+          empresa_id: string | null
+          estado: string
+          fecha_nacimiento: string | null
+          id: string
+          motivo_rechazo: string | null
+          nombre: string
+          revisado_at: string | null
+          revisado_por: string | null
+          sucursal_id: string | null
+          telefono: string
+          user_id: string | null
+        }
+        Insert: {
+          apellido: string
+          consentimiento_at?: string
+          created_at?: string
+          cuil: string
+          dni: string
+          email: string
+          empleado_id?: string | null
+          empresa_id?: string | null
+          estado?: string
+          fecha_nacimiento?: string | null
+          id?: string
+          motivo_rechazo?: string | null
+          nombre: string
+          revisado_at?: string | null
+          revisado_por?: string | null
+          sucursal_id?: string | null
+          telefono: string
+          user_id?: string | null
+        }
+        Update: {
+          apellido?: string
+          consentimiento_at?: string
+          created_at?: string
+          cuil?: string
+          dni?: string
+          email?: string
+          empleado_id?: string | null
+          empresa_id?: string | null
+          estado?: string
+          fecha_nacimiento?: string | null
+          id?: string
+          motivo_rechazo?: string | null
+          nombre?: string
+          revisado_at?: string | null
+          revisado_por?: string | null
+          sucursal_id?: string | null
+          telefono?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitudes_alta_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitudes_alta_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitudes_alta_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
             referencedColumns: ["id"]
           },
         ]
@@ -2298,6 +2436,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      actualizar_mis_datos: { Args: { _datos: Json }; Returns: undefined }
       chat_crear_grupo: {
         Args: { _miembros: string[]; _nombre: string }
         Returns: string
@@ -2336,6 +2475,10 @@ export type Database = {
           ultimo_mensaje_at: string
           ultimo_texto: string
         }[]
+      }
+      configurar_registro: {
+        Args: { _abierto: boolean; _regenerar: boolean }
+        Returns: string
       }
       encuesta_publicar: { Args: { _encuesta_id: string }; Returns: string }
       encuesta_responder: {
@@ -2466,6 +2609,7 @@ export type Database = {
       }
       muro_registrar_vistas: { Args: { _ids: string[] }; Returns: undefined }
       my_empleado_id: { Args: never; Returns: string }
+      nuevo_codigo_registro: { Args: never; Returns: string }
       terminal_ultimas_fichadas: {
         Args: never
         Returns: {

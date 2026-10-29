@@ -78,6 +78,13 @@
       "when": 1792420829018,
       "tag": "0010_20261020120000_feriados_horas_extra",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793274605261,
+      "tag": "0011_registro_empleados",
+      "breakpoints": true
     }
   ]
 }
