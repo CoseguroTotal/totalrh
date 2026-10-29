@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { invocarFuncion } from "@/lib/sesion";
 import { cn } from "@/lib/utils";
 import {
   PruebaDeVida, TEXTO_DESAFIO, cargarFaceApi, desafioAleatorio, detectarPuntos, detectarRostro, mirandoDeFrente,
@@ -152,9 +153,7 @@ export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
 
   const fichar = useCallback(async (descriptor: number[]) => {
     setEstado({ fase: "verificando" });
-    const { data, error: fnError } = await supabase.functions.invoke("validate-attendance-token", {
-      body: { action: "face-fichar", descriptor, prueba_vida: true },
-    });
+    const { data, error: fnError } = await invocarFuncion("validate-attendance-token", { action: "face-fichar", descriptor, prueba_vida: true });
     // Los errores 4xx traen el mensaje en el cuerpo de la respuesta
     let mensaje: string | undefined = data?.error;
     if (fnError && !mensaje) {
@@ -400,11 +399,9 @@ function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoI
       setMensaje("Las capturas no coinciden. Probá de nuevo con buena luz.");
       return;
     }
-    const { data, error: fnError } = await supabase.functions.invoke("validate-attendance-token", {
-      body: modo === "verificacion"
+    const { data, error: fnError } = await invocarFuncion("validate-attendance-token", modo === "verificacion"
         ? { action: "face-verificar", empleado_id: empleadoId, descriptor: muestras.current[0], prueba_vida: true }
-        : { action: "face-enroll", empleado_id: empleadoId, descriptores: muestras.current, consentimiento_texto: TEXTO_CONSENTIMIENTO },
-    });
+        : { action: "face-enroll", empleado_id: empleadoId, descriptores: muestras.current, consentimiento_texto: TEXTO_CONSENTIMIENTO });
     let msg: string | undefined = data?.error;
     if (fnError && !msg) {
       try { msg = (await (fnError as { context?: Response }).context?.json())?.error; } catch { /* sin cuerpo */ }

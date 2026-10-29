@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invocarFuncion } from "@/lib/sesion";
 
 /** Llama a una edge function y devuelve el mensaje de error del cuerpo (los 4xx lo traen ahí). */
 export async function invocar<T = Record<string, unknown>>(funcion: string, body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke(funcion, { body });
+  const { data, error } = await invocarFuncion(funcion, body);
   let mensaje: string | undefined = data?.error;
   let cuerpo: Record<string, unknown> | undefined = data ?? undefined;
   if (error && !mensaje) {

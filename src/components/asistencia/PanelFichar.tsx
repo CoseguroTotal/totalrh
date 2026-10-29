@@ -3,6 +3,7 @@ import { Camera, CheckCircle2, Clock, Loader2, MapPin, QrCode, XCircle } from "l
 import { Button } from "@/components/ui/button";
 import QrScanner from "@/components/QrScanner";
 import { supabase } from "@/integrations/supabase/client";
+import { invocarFuncion } from "@/lib/sesion";
 import { useConfigGrupo } from "@/hooks/useConfigGrupo";
 import { cn } from "@/lib/utils";
 import { horaCorta } from "@/lib/asistencia";
@@ -52,7 +53,7 @@ export default function PanelFichar({ variante = "tab" }: { variante?: "hero" | 
       } else {
         ubicacion = await ubicacionSiEsPosible(4000);
       }
-      const { data, error } = await supabase.functions.invoke("validate-attendance-token", { body: { action: "qr-fichar", codigo, ubicacion } });
+      const { data, error } = await invocarFuncion("validate-attendance-token", { action: "qr-fichar", codigo, ubicacion });
       if (error || data?.error) { setResultado({ ok: false, msg: await mensajeDeError(data, error) }); return; }
       setResultado(textoResultado(data));
       setScanning(false);
@@ -66,7 +67,7 @@ export default function PanelFichar({ variante = "tab" }: { variante?: "hero" | 
     setResultado(null);
     try {
       const ubicacion = await obtenerUbicacion();
-      const { data, error } = await supabase.functions.invoke("validate-attendance-token", { body: { action: "geo-fichar", ubicacion } });
+      const { data, error } = await invocarFuncion("validate-attendance-token", { action: "geo-fichar", ubicacion });
       if (error || data?.error) { setResultado({ ok: false, msg: await mensajeDeError(data, error) }); return; }
       setResultado(textoResultado(data));
     } catch (e) {

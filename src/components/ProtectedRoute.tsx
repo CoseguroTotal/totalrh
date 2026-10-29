@@ -3,6 +3,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { Loader2 } from "lucide-react";
+import { asegurarSesion, cerrarSesionVencida } from "@/lib/sesion";
 
 export default function ProtectedRoute() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -16,7 +17,17 @@ export default function ProtectedRoute() {
       setSession(session);
     });
 
-    return () => subscription.unsubscribe();
+    const revisar = async () => {
+      if (document.visibilityState !== "visible") return;
+      if (!(await asegurarSesion())) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) await cerrarSesionVencida();
+      }
+    };
+    revisar();
+    document.addEventListener("visibilitychange", revisar);
+
+    return () => { subscription.unsubscribe(); document.removeEventListener("visibilitychange", revisar); };
   }, []);
 
   if (session === undefined) {

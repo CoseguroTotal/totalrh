@@ -24,7 +24,8 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    new URLSearchParams(window.location.search).get("vencida") ? "Tu sesión venció. Volvé a iniciar sesión." : null);
   const navigate = useNavigate();
 
   useEffect(() => {

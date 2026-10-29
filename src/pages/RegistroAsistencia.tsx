@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { invocarFuncion } from "@/lib/sesion";
 import { Loader2, XCircle, LogOut, QrCode, ScanFace } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { MarcaSimbolo } from "@/components/Marca";
@@ -150,9 +151,7 @@ function QrTerminal() {
 
   const issue = useCallback(async () => {
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("validate-attendance-token", {
-        body: { action: "qr-issue" },
-      });
+      const { data, error: fnError } = await invocarFuncion("validate-attendance-token", { action: "qr-issue" });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
       const dur = data.duracion_segundos ?? 10;
