@@ -1972,42 +1972,6 @@ export type Database = {
           },
         ]
       }
-      soporte_mensajes: {
-        Row: {
-          autor_id: string
-          contenido: string
-          created_at: string
-          id: string
-          leido: boolean
-          pantalla: string | null
-          usuario_email: string | null
-          usuario_id: string
-          usuario_nombre: string | null
-        }
-        Insert: {
-          autor_id: string
-          contenido: string
-          created_at?: string
-          id?: string
-          leido?: boolean
-          pantalla?: string | null
-          usuario_email?: string | null
-          usuario_id: string
-          usuario_nombre?: string | null
-        }
-        Update: {
-          autor_id?: string
-          contenido?: string
-          created_at?: string
-          id?: string
-          leido?: boolean
-          pantalla?: string | null
-          usuario_email?: string | null
-          usuario_id?: string
-          usuario_nombre?: string | null
-        }
-        Relationships: []
-      }
       solicitudes_alta: {
         Row: {
           apellido: string
@@ -2201,6 +2165,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      soporte_mensajes: {
+        Row: {
+          autor_id: string
+          contenido: string
+          created_at: string
+          id: string
+          leido: boolean
+          pantalla: string | null
+          usuario_email: string | null
+          usuario_id: string
+          usuario_nombre: string | null
+        }
+        Insert: {
+          autor_id: string
+          contenido: string
+          created_at?: string
+          id?: string
+          leido?: boolean
+          pantalla?: string | null
+          usuario_email?: string | null
+          usuario_id: string
+          usuario_nombre?: string | null
+        }
+        Update: {
+          autor_id?: string
+          contenido?: string
+          created_at?: string
+          id?: string
+          leido?: boolean
+          pantalla?: string | null
+          usuario_email?: string | null
+          usuario_id?: string
+          usuario_nombre?: string | null
+        }
+        Relationships: []
       }
       sucursales: {
         Row: {
@@ -2522,9 +2522,9 @@ export type Database = {
         Returns: undefined
       }
       encuesta_resultados: { Args: { _encuesta_id: string }; Returns: Json }
-      es_soporte: { Args: never; Returns: boolean }
       es_admin_grupo: { Args: { _grupo_id: string }; Returns: boolean }
       es_miembro_grupo: { Args: { _grupo_id: string }; Returns: boolean }
+      es_soporte: { Args: never; Returns: boolean }
       evento_crear: {
         Args: {
           _anunciar: boolean
@@ -2647,6 +2647,8 @@ export type Database = {
       muro_registrar_vistas: { Args: { _ids: string[] }; Returns: undefined }
       my_empleado_id: { Args: never; Returns: string }
       nuevo_codigo_registro: { Args: never; Returns: string }
+      soporte_email: { Args: never; Returns: string }
+      soporte_user_id: { Args: never; Returns: string }
       terminal_ultimas_fichadas: {
         Args: never
         Returns: {
