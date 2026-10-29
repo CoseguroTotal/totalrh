@@ -92,6 +92,13 @@
       "when": 1793278044804,
       "tag": "0012_notificaciones_tiempo_real",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793278713633,
+      "tag": "0013_soporte",
+      "breakpoints": true
     }
   ]
 }
