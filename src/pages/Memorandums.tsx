@@ -20,6 +20,7 @@ import { uploadMemoPdfAndGetUrl } from "@/lib/uploadMemoPdf";
 import EnviarEmailDialog from "@/components/EnviarEmailDialog";
 import EnvioMasivoMemoDialog from "@/components/EnvioMasivoMemoDialog";
 import { hoyArgentina } from "@/lib/asistencia";
+import { escaparHtml } from "@/lib/sendNotificationEmail";
 
 const estadoBadge: Record<string, string> = {
   borrador: "bg-muted text-muted-foreground",
@@ -89,12 +90,12 @@ export default function Memorandums() {
     return `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
         <h2 style="color:#333;border-bottom:2px solid #2563eb;padding-bottom:10px;">Memorándum #${m.numero}</h2>
-        <p style="color:#666;font-size:14px;"><strong>Empresa:</strong> ${nombreEmpresa}</p>
+        <p style="color:#666;font-size:14px;"><strong>Empresa:</strong> ${escaparHtml(nombreEmpresa)}</p>
         <p style="color:#666;font-size:14px;"><strong>Fecha:</strong> ${formatoFecha(m.fecha)}</p>
-        ${m.emisor_sector || m.emisor_nombre ? `<p style="color:#666;font-size:14px;"><strong>Emite:</strong> ${[m.emisor_sector, m.emisor_nombre, m.emisor_cargo].filter(Boolean).join(" — ")}</p>` : ""}
-        ${m.destinatario_nombre ? `<p style="color:#666;font-size:14px;"><strong>Para:</strong> ${m.destinatario_nombre}</p>` : ""}
-        <h3 style="color:#333;margin-top:20px;">${m.titulo}</h3>
-        <div style="color:#444;font-size:14px;line-height:1.6;white-space:pre-wrap;">${m.contenido}</div>
+        ${m.emisor_sector || m.emisor_nombre ? `<p style="color:#666;font-size:14px;"><strong>Emite:</strong> ${escaparHtml([m.emisor_sector, m.emisor_nombre, m.emisor_cargo].filter(Boolean).join(" — "))}</p>` : ""}
+        ${m.destinatario_nombre ? `<p style="color:#666;font-size:14px;"><strong>Para:</strong> ${escaparHtml(m.destinatario_nombre)}</p>` : ""}
+        <h3 style="color:#333;margin-top:20px;">${escaparHtml(m.titulo)}</h3>
+        <div style="color:#444;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escaparHtml(m.contenido)}</div>
         ${pdfUrl ? `
         <div style="margin-top:25px;text-align:center;">
           <a href="${pdfUrl}" target="_blank" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">
@@ -102,7 +103,7 @@ export default function Memorandums() {
           </a>
         </div>` : ""}
         <hr style="margin-top:30px;border:none;border-top:1px solid #ddd;"/>
-        <p style="color:#999;font-size:12px;">${nombreEmpresa}</p>
+        <p style="color:#999;font-size:12px;">${escaparHtml(nombreEmpresa)}</p>
       </div>
     `;
   };

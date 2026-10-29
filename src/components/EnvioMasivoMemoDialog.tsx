@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Loader2, Send, Users, Building2, UserCheck, FileText } from "lucide-react";
 import { uploadMemoPdfAndGetUrl } from "@/lib/uploadMemoPdf";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
+import { escaparHtml } from "@/lib/sendNotificationEmail";
 
 type Modo = "todos" | "empresa" | "manual";
 
@@ -73,11 +74,11 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
     return `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
         <h2 style="color:#333;border-bottom:2px solid #2563eb;padding-bottom:10px;">Memorándum #${m.numero}</h2>
-        <p style="color:#666;font-size:14px;"><strong>Empresa:</strong> ${nombreEmpresa}</p>
+        <p style="color:#666;font-size:14px;"><strong>Empresa:</strong> ${escaparHtml(nombreEmpresa)}</p>
         <p style="color:#666;font-size:14px;"><strong>Fecha:</strong> ${formatoFecha(m.fecha)}</p>
-        <p style="color:#666;font-size:14px;"><strong>Para:</strong> ${destinatarioNombre}</p>
-        <h3 style="color:#333;margin-top:20px;">${m.titulo}</h3>
-        <div style="color:#444;font-size:14px;line-height:1.6;white-space:pre-wrap;">${m.contenido}</div>
+        <p style="color:#666;font-size:14px;"><strong>Para:</strong> ${escaparHtml(destinatarioNombre)}</p>
+        <h3 style="color:#333;margin-top:20px;">${escaparHtml(m.titulo)}</h3>
+        <div style="color:#444;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escaparHtml(m.contenido)}</div>
         ${pdfUrl ? `
         <div style="margin-top:25px;text-align:center;">
           <a href="${pdfUrl}" target="_blank" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">
@@ -85,7 +86,7 @@ export default function EnvioMasivoMemoDialog({ open, onOpenChange, memos, emple
           </a>
         </div>` : ""}
         <hr style="margin-top:30px;border:none;border-top:1px solid #ddd;"/>
-        <p style="color:#999;font-size:12px;">${nombreEmpresa}</p>
+        <p style="color:#999;font-size:12px;">${escaparHtml(nombreEmpresa)}</p>
       </div>
     `;
   };

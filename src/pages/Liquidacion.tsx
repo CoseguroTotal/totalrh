@@ -17,6 +17,7 @@ import LiquidacionFinalTab from "@/components/LiquidacionFinalTab";
 import EnviarEmailDialog from "@/components/EnviarEmailDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { escaparHtml } from "@/lib/sendNotificationEmail";
 
 const tipoBadge: Record<string, string> = {
   remunerativo: "bg-success/15 text-success",
@@ -40,7 +41,7 @@ export default function Liquidacion() {
   const getReciboHtml = (l: any) => `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
       <h2 style="color:#333;border-bottom:2px solid #2563eb;padding-bottom:10px;">Recibo de Sueldo</h2>
-      <p style="color:#666;font-size:14px;"><strong>Empleado:</strong> ${l.empleado?.apellido}, ${l.empleado?.nombre}</p>
+      <p style="color:#666;font-size:14px;"><strong>Empleado:</strong> ${escaparHtml(l.empleado?.apellido)}, ${escaparHtml(l.empleado?.nombre)}</p>
       <p style="color:#666;font-size:14px;"><strong>Período:</strong> ${l.periodo}</p>
       <p style="color:#666;font-size:14px;"><strong>Fecha:</strong> ${new Date(l.created_at).toLocaleDateString("es-AR")}</p>
       <table style="width:100%;border-collapse:collapse;margin-top:15px;">

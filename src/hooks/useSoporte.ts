@@ -4,9 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { NOMBRE_APP } from "@/marca";
 
 /** Administrador maestro: atiende el soporte en todas las instalaciones y no participa del chat interno. */
-export const SOPORTE_EMAIL = "mcponce.torres@gmail.com";
-
-export const esCuentaSoporte = (email: string | null | undefined) => (email ?? "").trim().toLowerCase() === SOPORTE_EMAIL;
+export { SOPORTE_EMAIL, esEmailSoporte as esCuentaSoporte } from "../../supabase/functions/_shared/soporte";
+import { SOPORTE_EMAIL, esEmailSoporte as esCuentaSoporte } from "../../supabase/functions/_shared/soporte";
 
 export type MensajeSoporte = {
   id: string;

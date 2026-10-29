@@ -1,5 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 
+/** Escapa texto para meterlo en el HTML de un email (nombres y textos que carga la gente). */
+export const escaparHtml = (s: unknown) =>
+  String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
 /**
  * Sends an automatic email notification if notificaciones_email_activas is true.
  * Non-blocking: errors are silently caught.

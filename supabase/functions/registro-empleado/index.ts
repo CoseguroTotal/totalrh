@@ -7,6 +7,7 @@
 // así una persona sin aprobar no puede leer nada del sistema.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { adminClient, bloquear, checkBloqueo, corsHeaders, getIp, json, logIntento } from "../_shared/demo-security.ts";
+import { esEmailSoporte } from "../_shared/soporte.ts";
 import {
   formatoCuil, normalizarCodigo, pareceDni, problemaPassword, puedeAsignarRolAlta, soloDigitos, validarRegistro, type DatosRegistro,
 } from "../_shared/registro-rules.ts";
@@ -14,6 +15,8 @@ import {
 const SUSPENDIDA = "876000h"; // ~100 años: suspendida hasta que se apruebe
 const MAX_FALLOS_HORA = 10;
 const BLOQUEO_MIN = 60;
+/** Altas por conexión y por hora: frena que alguien con el código cree cuentas en masa. */
+const MAX_ALTAS_HORA = 5;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -80,6 +83,15 @@ Deno.serve(async (req) => {
 
       const dni = soloDigitos(d.dni);
       const email = d.email.trim().toLowerCase();
+      // La cuenta de soporte no puede crearse desde el portal
+      if (esEmailSoporte(email)) return json({ error: "Ese email no se puede usar. Usá tu email personal." }, 400);
+
+      const desde = new Date(Date.now() - 3600_000).toISOString();
+      const { count: altasIp } = await admin.from("demo_intentos").select("id", { count: "exact", head: true })
+        .eq("ip", ip).eq("tipo", "registro").eq("resultado", "ok").gte("created_at", desde);
+      if ((altasIp ?? 0) >= MAX_ALTAS_HORA) {
+        return json({ error: "Se crearon muchas cuentas desde esta conexión. Probá de nuevo en una hora o pedile ayuda a RRHH." }, 429);
+      }
 
       const { data: sucursal } = await admin.from("sucursales").select("id").eq("id", d.sucursal_id).eq("empresa_id", d.empresa_id).maybeSingle();
       if (!sucursal) return json({ error: "La sucursal no corresponde a la empresa elegida" }, 400);
@@ -130,18 +142,21 @@ Deno.serve(async (req) => {
       const password = String(body.password ?? "");
       if (!pareceDni(dni) || !password) return json({ error: "Ingresá tu DNI y tu contraseña" }, 400);
 
-      const { data: pend } = await admin.from("solicitudes_alta").select("id").eq("dni", dni).eq("estado", "pendiente").limit(1);
-      if (pend?.length) return json({ pendiente: true, error: "Tu alta todavía está en revisión. RRHH te avisa cuando quede aprobada." }, 403);
-
-      const { data: emps } = await admin.from("empleados").select("user_id").eq("dni", dni).not("user_id", "is", null).limit(2);
       const incorrecto = async () => { await fallo("login-dni", dni); return json({ error: "DNI o contraseña incorrectos" }, 401); };
-      if (!emps?.length || emps.length > 1) return await incorrecto();
+      const { data: emps } = await admin.from("empleados").select("user_id").eq("dni", dni).not("user_id", "is", null).limit(2);
+      const { data: pend } = await admin.from("solicitudes_alta").select("user_id").eq("dni", dni).eq("estado", "pendiente").limit(1);
+      const userId = emps?.length === 1 ? emps[0].user_id : pend?.[0]?.user_id;
+      if (!userId) return await incorrecto();
 
-      const { data: u } = await admin.auth.admin.getUserById(emps[0].user_id);
+      const { data: u } = await admin.auth.admin.getUserById(userId);
       if (!u?.user?.email) return await incorrecto();
 
       const anon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { auth: { persistSession: false } });
       const { data: s, error: errLogin } = await anon.auth.signInWithPassword({ email: u.user.email, password });
+      // La cuenta sin aprobar está suspendida: con la contraseña correcta, se le avisa que está en revisión
+      if (errLogin && /banned/i.test(errLogin.message)) {
+        return json({ pendiente: true, error: "Tu alta todavía está en revisión. RRHH te avisa cuando quede aprobada." }, 403);
+      }
       if (errLogin || !s.session) return await incorrecto();
       return json({ access_token: s.session.access_token, refresh_token: s.session.refresh_token });
     }

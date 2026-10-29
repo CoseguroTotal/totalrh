@@ -12,7 +12,7 @@ import { RegistroFacialCard } from "@/components/asistencia/FaceCapture";
 import HistorialCambios from "@/components/HistorialCambios";
 import BlanquearClave from "@/components/BlanquearClave";
 import { useConfigGrupo } from "@/hooks/useConfigGrupo";
-import { sendNotificationEmailIfEnabled } from "@/lib/sendNotificationEmail";
+import { escaparHtml, sendNotificationEmailIfEnabled } from "@/lib/sendNotificationEmail";
 import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, Palmtree, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -175,7 +175,7 @@ export default function LegajoDetail() {
         await sendNotificationEmailIfEnabled(configGrupo, {
           to: emp.email,
           subject: `Solicitud de permiso ${estado}`,
-          html: `<h2>Solicitud de Permiso ${estadoLabel}</h2><p>Hola ${emp.nombre},</p><p>Tu solicitud de permiso ha sido <strong>${estado}</strong>.</p><p>Saludos,<br/>RRHH</p>`,
+          html: `<h2>Solicitud de Permiso ${estadoLabel}</h2><p>Hola ${escaparHtml(emp.nombre)},</p><p>Tu solicitud de permiso ha sido <strong>${estado}</strong>.</p><p>Saludos,<br/>RRHH</p>`,
         });
       }
     },
@@ -698,7 +698,7 @@ export default function LegajoDetail() {
                                 await sendNotificationEmailIfEnabled(configGrupo, {
                                   to: emp.email,
                                   subject: "Vacaciones aprobadas",
-                                  html: `<h2>Vacaciones Aprobadas ✅</h2><p>Hola ${emp.nombre},</p><p>Tu solicitud de vacaciones del ${formatoFecha(sol.fecha_desde)} al ${formatoFecha(sol.fecha_hasta)} ha sido <strong>aprobada</strong>.</p><p>Saludos,<br/>RRHH</p>`,
+                                  html: `<h2>Vacaciones Aprobadas ✅</h2><p>Hola ${escaparHtml(emp.nombre)},</p><p>Tu solicitud de vacaciones del ${formatoFecha(sol.fecha_desde)} al ${formatoFecha(sol.fecha_hasta)} ha sido <strong>aprobada</strong>.</p><p>Saludos,<br/>RRHH</p>`,
                                 });
                               }
                             }
@@ -712,7 +712,7 @@ export default function LegajoDetail() {
                                 await sendNotificationEmailIfEnabled(configGrupo, {
                                   to: emp.email,
                                   subject: "Vacaciones rechazadas",
-                                  html: `<h2>Vacaciones Rechazadas ❌</h2><p>Hola ${emp.nombre},</p><p>Tu solicitud de vacaciones del ${formatoFecha(sol.fecha_desde)} al ${formatoFecha(sol.fecha_hasta)} ha sido <strong>rechazada</strong>.</p><p>Saludos,<br/>RRHH</p>`,
+                                  html: `<h2>Vacaciones Rechazadas ❌</h2><p>Hola ${escaparHtml(emp.nombre)},</p><p>Tu solicitud de vacaciones del ${formatoFecha(sol.fecha_desde)} al ${formatoFecha(sol.fecha_hasta)} ha sido <strong>rechazada</strong>.</p><p>Saludos,<br/>RRHH</p>`,
                                 });
                               }
                             }

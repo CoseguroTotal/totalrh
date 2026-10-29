@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { destinatariosPermitidos } from "../_shared/soporte.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,6 +43,21 @@ serve(async (req) => {
     }
 
     const { to, subject, html, from } = await req.json();
+
+    // Sin este control cualquier cuenta (incluidas las creadas desde el portal) podía mandar
+    // emails a cualquier dirección en nombre de la empresa.
+    const adminRoles = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: filas } = await adminRoles.from("user_roles").select("role").eq("user_id", user.id);
+    const permiso = destinatariosPermitidos(
+      new Set((filas ?? []).map((r: { role: string }) => r.role)),
+      (Array.isArray(to) ? to : [to]).map((x: unknown) => String(x ?? "").trim()).filter(Boolean),
+    );
+    if (!permiso.ok) {
+      return new Response(JSON.stringify({ error: permiso.error }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!to || !subject || !html) {
       return new Response(

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -19,7 +20,7 @@ import {
   enlaceInstalar, enlaceRegistro, useConfigRegistro, useConfigurarRegistro, useResolverAlta, useSolicitudesAlta, type SolicitudAlta,
 } from "@/hooks/useRegistro";
 import { supabase } from "@/integrations/supabase/client";
-import { sendNotificationEmailIfEnabled } from "@/lib/sendNotificationEmail";
+import { escaparHtml, sendNotificationEmailIfEnabled } from "@/lib/sendNotificationEmail";
 import { hoyArgentina } from "@/lib/asistencia";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
 import { NOMBRE_APP } from "@/marca";
@@ -150,6 +151,8 @@ function TarjetaAlta({ s }: { s: SolicitudAlta }) {
   const resolver = useResolverAlta();
   const [modo, setModo] = useState<null | "vincular" | "nuevo" | "rechazar">(null);
   const [empleadoId, setEmpleadoId] = useState("");
+  // Vincular una cuenta a un legajo existente le da acceso a sus recibos y datos: RRHH confirma que es la persona
+  const [identidadOk, setIdentidadOk] = useState(false);
   const [nuevo, setNuevo] = useState({ legajo: "", puesto: "", fecha_ingreso: hoyArgentina() });
   const [motivo, setMotivo] = useState("");
   const { data: miRol } = useUserRole();
@@ -176,8 +179,8 @@ function TarjetaAlta({ s }: { s: SolicitudAlta }) {
       to: s.email,
       subject: aprobada ? `Tu cuenta de ${NOMBRE_APP} está lista` : `Tu alta en ${NOMBRE_APP}`,
       html: aprobada
-        ? `<p>Hola ${s.nombre}:</p><p>RRHH aprobó tu alta. Ya podés entrar con tu DNI y tu contraseña en <a href="${window.location.origin}/login">${window.location.origin}</a>.</p><p>Para instalar la app en el celular: <a href="${enlaceInstalar()}">${enlaceInstalar()}</a></p>`
-        : `<p>Hola ${s.nombre}:</p><p>No pudimos aprobar tu alta: ${texto}</p><p>Consultá con RRHH.</p>`,
+        ? `<p>Hola ${escaparHtml(s.nombre)}:</p><p>RRHH aprobó tu alta. Ya podés entrar con tu DNI y tu contraseña en <a href="${window.location.origin}/login">${window.location.origin}</a>.</p><p>Para instalar la app en el celular: <a href="${enlaceInstalar()}">${enlaceInstalar()}</a></p>`
+        : `<p>Hola ${escaparHtml(s.nombre)}:</p><p>No pudimos aprobar tu alta: ${escaparHtml(texto)}</p><p>Consultá con RRHH.</p>`,
     });
   };
 
@@ -231,11 +234,11 @@ function TarjetaAlta({ s }: { s: SolicitudAlta }) {
           </Select>
         )}
         {coincidencia && (
-          <Button size="sm" disabled={resolver.isPending} onClick={() => aprobar({ empleado_id: coincidencia.id })}>
+          <Button size="sm" disabled={resolver.isPending} onClick={() => { setEmpleadoId(coincidencia.id); setIdentidadOk(false); setModo("vincular"); }}>
             <CheckCircle2 className="mr-1.5 h-4 w-4" />Aprobar y vincular al legajo {coincidencia.legajo}
           </Button>
         )}
-        <Button size="sm" variant={coincidencia ? "outline" : "default"} onClick={() => setModo("vincular")}>Vincular a otro legajo</Button>
+        <Button size="sm" variant={coincidencia ? "outline" : "default"} onClick={() => { setEmpleadoId(""); setIdentidadOk(false); setModo("vincular"); }}>Vincular a otro legajo</Button>
         <Button size="sm" variant="outline" onClick={() => setModo("nuevo")}><UserPlus className="mr-1.5 h-4 w-4" />Crear legajo nuevo</Button>
         <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setModo("rechazar")}><UserX className="mr-1.5 h-4 w-4" />Rechazar</Button>
       </div>
@@ -258,7 +261,43 @@ function TarjetaAlta({ s }: { s: SolicitudAlta }) {
                   {sinCuenta.map((e) => <SelectItem key={e.id} value={e.id}>{e.apellido}, {e.nombre} · Leg. {e.legajo} · DNI {e.dni}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {(() => {
+                const leg = empleados.find((e) => e.id === empleadoId);
+                if (!leg) return null;
+                const filas: [string, string | null | undefined, string | null | undefined][] = [
+                  ["Nombre", `${s.apellido}, ${s.nombre}`, `${leg.apellido}, ${leg.nombre}`],
+                  ["DNI", s.dni, leg.dni],
+                  ["CUIL", s.cuil, leg.cuil],
+                  ["Nacimiento", s.fecha_nacimiento ? formatoFecha(s.fecha_nacimiento) : null, leg.fecha_nacimiento ? formatoFecha(leg.fecha_nacimiento) : null],
+                  ["Celular", s.telefono, leg.telefono],
+                  ["Email", s.email, leg.email],
+                ];
+                const norm = (v?: string | null) => (v ?? "").toLowerCase().replace(/[^a-z0-9@]/g, "");
+                return (
+                  <div className="mt-3 overflow-hidden rounded-lg border text-xs">
+                    <table className="w-full">
+                      <thead className="bg-muted/60 text-left"><tr><th className="px-2 py-1.5">Dato</th><th className="px-2 py-1.5">Lo que cargó</th><th className="px-2 py-1.5">En el legajo</th></tr></thead>
+                      <tbody>
+                        {filas.map(([dato, cargo, legajo]) => {
+                          const distinto = !!legajo && !!cargo && norm(cargo) !== norm(legajo);
+                          return (
+                            <tr key={dato} className={cn("border-t", distinto && "bg-warning/15")}>
+                              <td className="px-2 py-1.5 font-medium">{dato}</td>
+                              <td className="break-all px-2 py-1.5">{cargo || "—"}</td>
+                              <td className="break-all px-2 py-1.5">{legajo || "—"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
               <p className="mt-2 text-xs text-muted-foreground">El email y el celular del legajo se actualizan con los que cargó el empleado (queda en el historial).</p>
+              <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
+                <Checkbox checked={identidadOk} onCheckedChange={(v) => setIdentidadOk(v === true)} className="mt-0.5" />
+                <span>Confirmé que la cuenta es de esta persona (por ejemplo, la vi en persona o hablé con ella). Va a tener acceso a sus recibos y datos.</span>
+              </label>
             </div>
           )}
 
@@ -284,7 +323,7 @@ function TarjetaAlta({ s }: { s: SolicitudAlta }) {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setModo(null)}>Cancelar</Button>
-            {modo === "vincular" && <Button disabled={!empleadoId || resolver.isPending} onClick={() => aprobar({ empleado_id: empleadoId })}>{resolver.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aprobar y vincular"}</Button>}
+            {modo === "vincular" && <Button disabled={!empleadoId || !identidadOk || resolver.isPending} onClick={() => aprobar({ empleado_id: empleadoId })}>{resolver.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aprobar y vincular"}</Button>}
             {modo === "nuevo" && <Button disabled={!nuevo.legajo.trim() || !nuevo.puesto.trim() || !nuevo.fecha_ingreso || resolver.isPending} onClick={() => aprobar({ nuevo_legajo: nuevo })}>{resolver.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Crear y aprobar"}</Button>}
             {modo === "rechazar" && <Button variant="destructive" disabled={motivo.trim().length < 3 || resolver.isPending} onClick={rechazar}>{resolver.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Rechazar"}</Button>}
           </DialogFooter>
