@@ -272,8 +272,6 @@ export type Database = {
       }
       configuracion_grupo: {
         Row: {
-          registro_abierto: boolean
-          registro_codigo: string | null
           cuit: string | null
           demo_acceso_dias: number
           demo_bloqueo_minutos: number
@@ -300,8 +298,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          registro_abierto?: boolean
-          registro_codigo?: string | null
           cuit?: string | null
           demo_acceso_dias?: number
           demo_bloqueo_minutos?: number
@@ -328,8 +324,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          registro_abierto?: boolean
-          registro_codigo?: string | null
           cuit?: string | null
           demo_acceso_dias?: number
           demo_bloqueo_minutos?: number
@@ -778,47 +772,6 @@ export type Database = {
             columns: ["sucursal_id"]
             isOneToOne: false
             referencedRelation: "sucursales"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      empleados_cambios: {
-        Row: {
-          cambiado_por: string | null
-          campo: string
-          created_at: string
-          empleado_id: string
-          id: string
-          origen: string
-          valor_anterior: string | null
-          valor_nuevo: string | null
-        }
-        Insert: {
-          cambiado_por?: string | null
-          campo: string
-          created_at?: string
-          empleado_id: string
-          id?: string
-          origen: string
-          valor_anterior?: string | null
-          valor_nuevo?: string | null
-        }
-        Update: {
-          cambiado_por?: string | null
-          campo?: string
-          created_at?: string
-          empleado_id?: string
-          id?: string
-          origen?: string
-          valor_anterior?: string | null
-          valor_nuevo?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "empleados_cambios_empleado_id_fkey"
-            columns: ["empleado_id"]
-            isOneToOne: false
-            referencedRelation: "empleados"
             referencedColumns: ["id"]
           },
         ]
@@ -1877,8 +1830,6 @@ export type Database = {
       }
       rostros_empleados: {
         Row: {
-          verificado_at: string | null
-          verificado_por: string | null
           consentimiento_at: string
           consentimiento_texto: string
           created_at: string
@@ -1888,8 +1839,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          verificado_at?: string | null
-          verificado_por?: string | null
           consentimiento_at: string
           consentimiento_texto: string
           created_at?: string
@@ -1899,8 +1848,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          verificado_at?: string | null
-          verificado_por?: string | null
           consentimiento_at?: string
           consentimiento_texto?: string
           created_at?: string
@@ -1971,69 +1918,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      solicitudes_alta: {
-        Row: {
-          apellido: string
-          consentimiento_at: string
-          created_at: string
-          cuil: string
-          dni: string
-          email: string
-          empleado_id: string | null
-          empresa_id: string | null
-          estado: string
-          fecha_nacimiento: string | null
-          id: string
-          motivo_rechazo: string | null
-          nombre: string
-          revisado_at: string | null
-          revisado_por: string | null
-          sucursal_id: string | null
-          telefono: string
-          user_id: string | null
-        }
-        Insert: {
-          apellido: string
-          consentimiento_at?: string
-          created_at?: string
-          cuil: string
-          dni: string
-          email: string
-          empleado_id?: string | null
-          empresa_id?: string | null
-          estado?: string
-          fecha_nacimiento?: string | null
-          id?: string
-          motivo_rechazo?: string | null
-          nombre: string
-          revisado_at?: string | null
-          revisado_por?: string | null
-          sucursal_id?: string | null
-          telefono: string
-          user_id?: string | null
-        }
-        Update: {
-          apellido?: string
-          consentimiento_at?: string
-          created_at?: string
-          cuil?: string
-          dni?: string
-          email?: string
-          empleado_id?: string | null
-          empresa_id?: string | null
-          estado?: string
-          fecha_nacimiento?: string | null
-          id?: string
-          motivo_rechazo?: string | null
-          nombre?: string
-          revisado_at?: string | null
-          revisado_por?: string | null
-          sucursal_id?: string | null
-          telefono?: string
-          user_id?: string | null
-        }
-        Relationships: []
       }
       solicitudes_permiso: {
         Row: {
@@ -2414,10 +2298,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      actualizar_mis_datos: {
-        Args: { _datos: Json }
-        Returns: undefined
-      }
       chat_crear_grupo: {
         Args: { _miembros: string[]; _nombre: string }
         Returns: string
@@ -2458,10 +2338,6 @@ export type Database = {
         }[]
       }
       encuesta_publicar: { Args: { _encuesta_id: string }; Returns: string }
-      configurar_registro: {
-        Args: { _abierto: boolean; _regenerar: boolean }
-        Returns: string
-      }
       encuesta_responder: {
         Args: { _encuesta_id: string; _respuestas: Json }
         Returns: undefined
