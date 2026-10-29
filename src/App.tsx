@@ -44,6 +44,8 @@ const RegistroAsistencia = lazy(() => import("@/pages/RegistroAsistencia"));
 const RegistroEmpleado = lazy(() => import("@/pages/RegistroEmpleado"));
 const Instalar = lazy(() => import("@/pages/Instalar"));
 const AltasPendientes = lazy(() => import("@/pages/AltasPendientes"));
+const Ayuda = lazy(() => import("@/pages/Ayuda"));
+const Soporte = lazy(() => import("@/pages/Soporte"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -102,6 +104,8 @@ const App = () => (
                   <Route path="/grupos" element={<Grupos />} />
                   <Route path="/grupos/:id" element={<GrupoDetalle />} />
                   <Route path="/autogestion" element={<Autogestion />} />
+                  <Route path="/ayuda" element={<Ayuda />} />
+                  <Route path="/soporte" element={<Soporte />} />
                 </Route>
                 <Route element={<EmployeeGuard />}>
                   <Route path="/app" element={<Dashboard />} />

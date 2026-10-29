@@ -4,7 +4,8 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Suspense, useCallback, useEffect } from "react";
 import { useNotificaciones, useNotificacionesRealtime } from "@/hooks/useNotificaciones";
 import { marcarIconoApp, prepararSonidos } from "@/lib/avisos";
-import { Loader2, MessageCircle } from "lucide-react";
+import { LifeBuoy, Loader2, MessageCircle } from "lucide-react";
+import { useSesionSoporte, useSinLeerSoporte, useSoporteRealtime } from "@/hooks/useSoporte";
 import NotificacionesBell from "@/components/NotificacionesBell";
 import EmployeeBottomNav from "@/components/EmployeeBottomNav";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -29,6 +30,28 @@ function BotonMensajes() {
         <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
           {noLeidos > 99 ? "99+" : noLeidos}
         </span>
+      )}
+    </Link>
+  );
+}
+
+/** Ayuda: abre la conversación con el soporte. Para la cuenta de soporte, su bandeja. */
+function BotonAyuda() {
+  const { pathname } = useLocation();
+  const { userId, esSoporte } = useSesionSoporte();
+  const { data: sinLeer = 0 } = useSinLeerSoporte(userId, esSoporte);
+  useSoporteRealtime();
+  const destino = esSoporte ? "/soporte" : `/ayuda?desde=${encodeURIComponent(pathname)}`;
+  return (
+    <Link
+      to={destino}
+      className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      aria-label={esSoporte ? `Soporte${sinLeer ? `, ${sinLeer} sin leer` : ""}` : "Ayuda"}
+      title={esSoporte ? "Bandeja de soporte" : "Ayuda"}
+    >
+      <LifeBuoy className="h-5 w-5" />
+      {sinLeer > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">{sinLeer > 9 ? "9+" : sinLeer}</span>
       )}
     </Link>
   );
@@ -72,6 +95,7 @@ export default function AppLayout() {
             <div className="flex items-center gap-1.5 sm:gap-2.5">
               <div className="sm:hidden"><GlobalSearch /></div>
               {!esTerminal && <BotonMensajes />}
+              <BotonAyuda />
               <NotificacionesBell />
               <UserMenu />
             </div>
