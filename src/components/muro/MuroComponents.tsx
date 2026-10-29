@@ -204,8 +204,8 @@ export function Composer({
 
       <div className="mt-3 flex items-center gap-1 border-t pt-2">
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { elegirImagen(e.target.files?.[0]); e.target.value = ""; }} />
-        <Button type="button" variant="ghost" onClick={() => fileRef.current?.click()} className="h-10 flex-1 sm:flex-none rounded-lg text-muted-foreground font-medium">
-          <ImagePlus className="h-5 w-5 mr-2 text-success" />Foto
+        <Button type="button" variant="ghost" onClick={() => fileRef.current?.click()} className="h-10 min-w-0 flex-1 px-2 sm:flex-none sm:px-4 rounded-lg text-muted-foreground font-medium">
+          <ImagePlus className="h-5 w-5 mr-1.5 sm:mr-2 shrink-0 text-success" />Foto
         </Button>
         {puedeComunicado && (
           <Button
@@ -213,12 +213,12 @@ export function Composer({
             variant="ghost"
             onClick={() => setComunicado((v) => !v)}
             aria-pressed={comunicado}
-            className={cn("h-10 flex-1 sm:flex-none rounded-lg font-medium", comunicado ? "bg-warning/15 text-warning hover:bg-warning/20 hover:text-warning" : "text-muted-foreground")}
+            className={cn("h-10 min-w-0 flex-1 px-2 sm:flex-none sm:px-4 rounded-lg font-medium", comunicado ? "bg-warning/15 text-warning hover:bg-warning/20 hover:text-warning" : "text-muted-foreground")}
           >
-            <Megaphone className="h-5 w-5 mr-2 text-warning" />{comunicado ? "Comunicado ✓" : "Comunicado"}
+            <Megaphone className="h-5 w-5 mr-1.5 sm:mr-2 shrink-0 text-warning" /><span className="truncate">{comunicado ? "Comunicado ✓" : "Comunicado"}</span>
           </Button>
         )}
-        <Button onClick={publicar} disabled={crear.isPending || !hayContenido} className="ml-auto h-10 min-w-[110px] rounded-lg font-semibold">
+        <Button onClick={publicar} disabled={crear.isPending || !hayContenido} className="ml-auto h-10 shrink-0 px-4 sm:min-w-[110px] rounded-lg font-semibold">
           {crear.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publicar"}
         </Button>
       </div>

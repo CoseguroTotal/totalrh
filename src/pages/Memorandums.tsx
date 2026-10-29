@@ -170,7 +170,7 @@ export default function Memorandums() {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="animate-fade-in flex items-center justify-between">
+      <div className="animate-fade-in flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Memorándums</h1>
           <p className="text-sm text-muted-foreground mt-1">Archivo de memorándums numerados</p>
@@ -181,8 +181,8 @@ export default function Memorandums() {
         </div>
       </div>
 
-      <div className="flex gap-3 items-center">
-        <Input placeholder="Buscar por título o número..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
+      <div className="flex flex-wrap gap-3 items-center">
+        <Input placeholder="Buscar por título o número..." value={search} onChange={(e) => setSearch(e.target.value)} className="min-w-0 flex-1 sm:max-w-sm" />
         <Select value={estadoFilter} onValueChange={setEstadoFilter}>
           <SelectTrigger className="w-[160px]">
             <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />

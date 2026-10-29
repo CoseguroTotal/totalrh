@@ -103,14 +103,14 @@ export default function Reportes() {
 
   return (
     <div className="space-y-6">
-      <div className="animate-fade-in flex items-center justify-between">
+      <div className="animate-fade-in flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Reportes BI</h1>
           <p className="text-sm text-muted-foreground mt-1">Indicadores y métricas de gestión de personal</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
-            <SelectTrigger className="w-[180px] h-9 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 min-w-0 flex-1 text-xs sm:w-[180px] sm:flex-none"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas las empresas</SelectItem>
               {(data?.empresas ?? []).map((e: any) => <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>)}
