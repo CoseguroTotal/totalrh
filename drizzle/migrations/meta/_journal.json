@@ -85,6 +85,13 @@
       "when": 1793274605261,
       "tag": "0011_registro_empleados",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793278044804,
+      "tag": "0012_notificaciones_tiempo_real",
+      "breakpoints": true
     }
   ]
 }
