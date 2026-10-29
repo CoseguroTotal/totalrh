@@ -26,6 +26,9 @@ import { NOMBRE_APP } from "@/marca";
 import { cn } from "@/lib/utils";
 import { soloDigitos } from "../../supabase/functions/_shared/registro-rules";
 
+const ROLES_APROBAR = ["empleado", "rrhh", "gerente", "usuario", "contador"];
+const ETIQUETA_ROL: Record<string, string> = { empleado: "Empleado", rrhh: "Recursos Humanos", gerente: "Gerente", usuario: "Usuario", contador: "Contador" };
+
 /** Mensaje listo para pegar en el grupo de WhatsApp del personal. */
 export function mensajeWhatsApp(codigo: string) {
   return `Hola! Para crear tu cuenta en ${NOMBRE_APP} entrá a ${enlaceRegistro(codigo)}\n` +
@@ -149,6 +152,10 @@ function TarjetaAlta({ s }: { s: SolicitudAlta }) {
   const [empleadoId, setEmpleadoId] = useState("");
   const [nuevo, setNuevo] = useState({ legajo: "", puesto: "", fecha_ingreso: hoyArgentina() });
   const [motivo, setMotivo] = useState("");
+  const { data: miRol } = useUserRole();
+  // RRHH aprueba como empleado; un admin puede dar además un rol de gestión (p. ej. alguien de RRHH)
+  const [rol, setRol] = useState<string>("empleado");
+  const rolesPosibles = miRol === "admin" ? ROLES_APROBAR : ROLES_APROBAR.slice(0, 1);
 
   const sinCuenta = useMemo(() => empleados.filter((e) => !e.user_id && e.estado !== "Baja"), [empleados]);
   // Legajo que ya existe con el mismo DNI o CUIL
@@ -175,8 +182,8 @@ function TarjetaAlta({ s }: { s: SolicitudAlta }) {
   };
 
   const aprobar = (body: Record<string, unknown>) =>
-    resolver.mutate({ action: "aprobar", solicitud_id: s.id, ...body }, {
-      onSuccess: async () => { toast.success(`Alta aprobada: ${s.nombre} ya puede entrar`); setModo(null); await avisar(true, ""); },
+    resolver.mutate({ action: "aprobar", solicitud_id: s.id, rol, ...body }, {
+      onSuccess: async () => { toast.success(`Alta aprobada como ${ETIQUETA_ROL[rol]}: ${s.nombre} ya puede entrar`); setModo(null); await avisar(true, ""); },
       onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo aprobar"),
     });
 
@@ -216,7 +223,13 @@ function TarjetaAlta({ s }: { s: SolicitudAlta }) {
         {dato("Sucursal", sucursal)}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        {rolesPosibles.length > 1 && (
+          <Select value={rol} onValueChange={setRol}>
+            <SelectTrigger className="h-9 w-[190px] text-sm" aria-label="Rol al aprobar"><SelectValue /></SelectTrigger>
+            <SelectContent>{rolesPosibles.map((r) => <SelectItem key={r} value={r}>Rol: {ETIQUETA_ROL[r]}</SelectItem>)}</SelectContent>
+          </Select>
+        )}
         {coincidencia && (
           <Button size="sm" disabled={resolver.isPending} onClick={() => aprobar({ empleado_id: coincidencia.id })}>
             <CheckCircle2 className="mr-1.5 h-4 w-4" />Aprobar y vincular al legajo {coincidencia.legajo}

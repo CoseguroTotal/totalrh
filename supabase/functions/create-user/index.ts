@@ -128,6 +128,34 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
+    // Vincular (o desvincular con empleado_id null) un usuario existente a un legajo, con cualquier rol:
+    // un admin o alguien de RRHH también puede tener legajo para fichar y ver sus recibos.
+    if (action === "link-empleado") {
+      const { user_id, empleado_id } = body;
+      if (!user_id || typeof user_id !== "string") {
+        return new Response(JSON.stringify({ error: "Usuario inválido" }), { status: 400, headers: corsHeaders });
+      }
+      if (empleado_id) {
+        const { data: emp, error: empErr } = await adminClient.from("empleados").select("id, user_id").eq("id", empleado_id).maybeSingle();
+        if (empErr) throw empErr;
+        if (!emp) return new Response(JSON.stringify({ error: "Legajo no encontrado" }), { status: 404, headers: corsHeaders });
+        if (emp.user_id && emp.user_id !== user_id) {
+          return new Response(JSON.stringify({ error: "Ese legajo ya tiene otro usuario vinculado" }), { status: 409, headers: corsHeaders });
+        }
+      }
+      // Un usuario tiene un solo legajo
+      const { error: unlinkErr } = await adminClient.from("empleados").update({ user_id: null }).eq("user_id", user_id).neq("id", empleado_id ?? "00000000-0000-0000-0000-000000000000");
+      if (unlinkErr) throw unlinkErr;
+      if (empleado_id) {
+        const { data: u } = await adminClient.auth.admin.getUserById(user_id);
+        const { error: linkErr } = await adminClient.from("empleados")
+          .update({ user_id, ...(u?.user?.email ? { email: u.user.email } : {}) })
+          .eq("id", empleado_id);
+        if (linkErr) throw linkErr;
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+    }
+
     if (action !== "create-user") {
       return new Response(JSON.stringify({ error: "Acción no válida" }), { status: 400, headers: corsHeaders });
     }
@@ -138,10 +166,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Faltan campos requeridos o el rol es inválido" }), { status: 400, headers: corsHeaders });
     }
 
-    if (role === "empleado") {
-      if (!empleado_id) {
-        return new Response(JSON.stringify({ error: "Seleccioná el legajo para vincular al empleado" }), { status: 400, headers: corsHeaders });
-      }
+    if (role === "empleado" && !empleado_id) {
+      return new Response(JSON.stringify({ error: "Seleccioná el legajo para vincular al empleado" }), { status: 400, headers: corsHeaders });
+    }
+    if (empleado_id) {
 
       const { data: empleado, error: empleadoLookupErr } = await adminClient
         .from("empleados")
@@ -181,7 +209,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: roleErr.message }), { status: 400, headers: corsHeaders });
     }
 
-    if (role === "empleado") {
+    if (empleado_id) {
       const { data: updatedEmpleado, error: empleadoErr } = await adminClient
         .from("empleados")
         .update({ user_id: userId, email })

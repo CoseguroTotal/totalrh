@@ -84,3 +84,14 @@ export function validarRegistro(d: Partial<DatosRegistro>, hoy = new Date()) {
 
 /** Sirve para saber si el usuario escribió un DNI o un email en el login. */
 export const pareceDni = (s: string) => /^[\d.\s]+$/.test((s ?? "").trim()) && dniValido(s);
+
+/** Roles que se pueden dar al aprobar un alta del portal. */
+export const ROLES_ALTA = ["empleado", "rrhh", "gerente", "usuario", "contador"] as const;
+export type RolAlta = (typeof ROLES_ALTA)[number];
+
+/** RRHH aprueba como empleado; los roles de gestión los asigna sólo un administrador. */
+export function puedeAsignarRolAlta(rolesQuienAprueba: Set<string>, rol: string) {
+  if (!(ROLES_ALTA as readonly string[]).includes(rol)) return false;
+  if (rol === "empleado") return rolesQuienAprueba.has("admin") || rolesQuienAprueba.has("rrhh");
+  return rolesQuienAprueba.has("admin");
+}

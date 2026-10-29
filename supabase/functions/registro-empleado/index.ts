@@ -8,7 +8,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { adminClient, bloquear, checkBloqueo, corsHeaders, getIp, json, logIntento } from "../_shared/demo-security.ts";
 import {
-  formatoCuil, normalizarCodigo, pareceDni, problemaPassword, soloDigitos, validarRegistro, type DatosRegistro,
+  formatoCuil, normalizarCodigo, pareceDni, problemaPassword, puedeAsignarRolAlta, soloDigitos, validarRegistro, type DatosRegistro,
 } from "../_shared/registro-rules.ts";
 
 const SUSPENDIDA = "876000h"; // ~100 años: suspendida hasta que se apruebe
@@ -152,7 +152,8 @@ Deno.serve(async (req) => {
     const user = quien?.user;
     if (!user) return json({ error: "Debés iniciar sesión" }, 401);
     const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", user.id);
-    const esGestor = (roles ?? []).some((r: { role: string }) => r.role === "admin" || r.role === "rrhh");
+    const rolesQuien = new Set((roles ?? []).map((r: { role: string }) => r.role));
+    const esGestor = rolesQuien.has("admin") || rolesQuien.has("rrhh");
     if (!esGestor) return json({ error: "Sólo RRHH o administración pueden aprobar altas" }, 403);
 
     // ── blanquear: RRHH le pone una contraseña provisoria a un empleado que la olvidó ──
@@ -178,6 +179,11 @@ Deno.serve(async (req) => {
     // ── aprobar: vincula a un legajo existente o crea uno nuevo ──
     if (action === "aprobar") {
       if (!sol.user_id) return json({ error: "La cuenta de esta solicitud ya no existe" }, 409);
+      // Por ejemplo, una empleada que además está a cargo de RRHH
+      const rol = String(body.rol ?? "empleado");
+      if (!puedeAsignarRolAlta(rolesQuien, rol)) {
+        return json({ error: rol === "empleado" ? "No podés aprobar altas" : "Sólo un administrador puede dar roles de gestión al aprobar" }, 403);
+      }
       let empleadoId = body.empleado_id as string | undefined;
 
       if (empleadoId) {
@@ -212,13 +218,16 @@ Deno.serve(async (req) => {
         empleadoId = nuevo.id;
       }
 
-      await admin.from("user_roles").upsert({ user_id: sol.user_id, role: "empleado" }, { onConflict: "user_id,role" });
+      // Un rol por usuario (la app lee uno solo)
+      await admin.from("user_roles").delete().eq("user_id", sol.user_id);
+      const { error: errRol } = await admin.from("user_roles").insert({ user_id: sol.user_id, role: rol });
+      if (errRol) throw errRol;
       const { error: errBan } = await admin.auth.admin.updateUserById(sol.user_id, { ban_duration: "none" });
       if (errBan) throw errBan;
       await admin.from("solicitudes_alta").update({
         estado: "aprobada", empleado_id: empleadoId, revisado_por: user.id, revisado_at: new Date().toISOString(),
       }).eq("id", sol.id);
-      return json({ success: true, empleado_id: empleadoId, email: sol.email, nombre: sol.nombre });
+      return json({ success: true, empleado_id: empleadoId, email: sol.email, nombre: sol.nombre, rol });
     }
 
     // ── rechazar: borra la cuenta y guarda el motivo ──

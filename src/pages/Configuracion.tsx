@@ -328,6 +328,18 @@ function UsuariosTab() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const vincular = useMutation({
+    mutationFn: async ({ user_id, empleado_id }: { user_id: string; empleado_id: string | null }) => {
+      await callUserAdmin({ action: "link-empleado", user_id, empleado_id });
+    },
+    onSuccess: (_d, v) => {
+      toast.success(v.empleado_id ? "Legajo vinculado: ya puede usar Autogestión y fichar" : "Legajo desvinculado");
+      qc.invalidateQueries({ queryKey: ["empleados"] });
+      qc.invalidateQueries({ queryKey: ["mi-empleado"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const deleteUser = useMutation({
     mutationFn: async (user_id: string) => {
       await callUserAdmin({ action: "delete-user", user_id });
@@ -356,10 +368,25 @@ function UsuariosTab() {
       ) : (
         <div className="space-y-2">
           {roles.map((r: any) => (
-            <div key={r.id} className="flex items-center gap-3 rounded-lg border px-4 py-3">
-              <div className="flex-1 min-w-0">
+            <div key={r.id} className="flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3">
+              <div className="min-w-0 basis-full sm:basis-auto sm:flex-1">
                 <p className="text-sm font-medium truncate">{r.email || r.user_id}</p>
               </div>
+              {r.role !== "registro_asistencia" && (() => {
+                const propio = empleados.find((e) => e.user_id === r.user_id);
+                return (
+                  <Select value={propio?.id ?? "ninguno"} disabled={vincular.isPending}
+                    onValueChange={(v) => vincular.mutate({ user_id: r.user_id, empleado_id: v === "ninguno" ? null : v })}>
+                    <SelectTrigger className="w-[200px] h-8 text-xs" aria-label="Legajo vinculado"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ninguno">Sin legajo</SelectItem>
+                      {empleados.filter((e) => !e.user_id || e.user_id === r.user_id).map((e) => (
+                        <SelectItem key={e.id} value={e.id}>Leg. {e.legajo} · {e.apellido}, {e.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                );
+              })()}
               <Select value={r.role} onValueChange={(v) => updateRole.mutate({ id: r.id, role: v })}>
                 <SelectTrigger className="w-[160px] h-8 text-xs">
                   <SelectValue />
@@ -406,7 +433,7 @@ function UsuariosTab() {
             <div><Label className="text-xs">Contraseña</Label><Input type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} minLength={6} /></div>
             <div>
               <Label className="text-xs">Rol</Label>
-              <Select value={newUser.role} onValueChange={(v) => setNewUser({ ...newUser, role: v, empleado_id: v === "empleado" ? newUser.empleado_id : "" })}>
+              <Select value={newUser.role} onValueChange={(v) => setNewUser({ ...newUser, role: v, empleado_id: v === "registro_asistencia" ? "" : newUser.empleado_id })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {ROLES.map((rl) => (
@@ -415,13 +442,14 @@ function UsuariosTab() {
                 </SelectContent>
               </Select>
             </div>
-            {newUser.role === "empleado" && (
+            {newUser.role !== "registro_asistencia" && (
               <div>
-                <Label className="text-xs">Legajo vinculado</Label>
-                <Select value={newUser.empleado_id} onValueChange={(v) => setNewUser({ ...newUser, empleado_id: v })}>
+                <Label className="text-xs">Legajo vinculado{newUser.role === "empleado" ? "" : " (opcional, para fichar y ver sus recibos)"}</Label>
+                <Select value={newUser.empleado_id || "ninguno"} onValueChange={(v) => setNewUser({ ...newUser, empleado_id: v === "ninguno" ? "" : v })}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar empleado..." /></SelectTrigger>
                   <SelectContent>
-                    {empleados.map((emp) => (
+                    {newUser.role !== "empleado" && <SelectItem value="ninguno">Sin legajo</SelectItem>}
+                    {empleados.filter((emp) => !emp.user_id).map((emp) => (
                       <SelectItem key={emp.id} value={emp.id}>
                         {emp.apellido}, {emp.nombre} · Legajo {emp.legajo}
                       </SelectItem>

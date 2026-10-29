@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  cuilCoincideConDni, cuilValido, dniValido, emailValido, formatoCuil, normalizarCodigo, pareceDni, problemaPassword, validarRegistro,
+  cuilCoincideConDni, cuilValido, dniValido, emailValido, formatoCuil, normalizarCodigo, pareceDni, problemaPassword, puedeAsignarRolAlta, validarRegistro,
 } from "../../supabase/functions/_shared/registro-rules";
 
 describe("alta de empleados: identidad", () => {
@@ -59,5 +59,20 @@ describe("alta de empleados: formulario", () => {
     const e = validarRegistro({ ...ok, consentimiento: false, sucursal_id: "" });
     expect(e.consentimiento).toBeDefined();
     expect(e.sucursal_id).toBeDefined();
+  });
+});
+
+describe("alta de empleados: rol al aprobar", () => {
+  const r = (...x: string[]) => new Set(x);
+  it("RRHH aprueba como empleado; admin puede dar roles de gestión", () => {
+    expect(puedeAsignarRolAlta(r("rrhh"), "empleado")).toBe(true);
+    expect(puedeAsignarRolAlta(r("rrhh"), "rrhh")).toBe(false);
+    expect(puedeAsignarRolAlta(r("admin"), "rrhh")).toBe(true);
+    expect(puedeAsignarRolAlta(r("admin"), "gerente")).toBe(true);
+  });
+  it("nunca se da admin ni terminal desde un alta", () => {
+    expect(puedeAsignarRolAlta(r("admin"), "admin")).toBe(false);
+    expect(puedeAsignarRolAlta(r("admin"), "registro_asistencia")).toBe(false);
+    expect(puedeAsignarRolAlta(r("gerente"), "empleado")).toBe(false);
   });
 });
