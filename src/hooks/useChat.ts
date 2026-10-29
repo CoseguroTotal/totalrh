@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { PerfilMuro } from "@/hooks/useMuro";
+import { toast } from "sonner";
+import { avisoSistema, resumenMensaje, sonar } from "@/lib/avisos";
 
 export type TipoAdjunto = "imagen" | "audio" | "documento";
 
@@ -50,16 +52,39 @@ export function formatoTamano(bytes?: number | null) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-/** Tiempo real del chat: un solo canal para toda la app (bandeja, conversación abierta y contador). */
-export function useChatRealtime() {
+/**
+ * Tiempo real del chat: un solo canal para toda la app (bandeja, conversación abierta y contador).
+ * Cuando llega un mensaje de otra persona suena y avisa, salvo que esa conversación esté abierta y a la vista.
+ */
+export function useChatRealtime(abrir?: (link: string) => void) {
   const qc = useQueryClient();
+  const yo = useRef<string | null>(null);
+  const abrirRef = useRef(abrir);
+  abrirRef.current = abrir;
+
   useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => { yo.current = session?.user.id ?? null; });
+    const avisar = async (m: Mensaje) => {
+      const link = `/mensajes/${m.conversacion_id}`;
+      const mirando = document.visibilityState === "visible" && window.location.pathname === link;
+      if (!yo.current || m.autor_id === yo.current || mirando) return;
+      sonar("mensaje");
+      const { data } = await supabase.rpc("muro_perfiles", { _user_ids: [m.autor_id] });
+      const p = (data ?? [])[0] as PerfilMuro | undefined;
+      const titulo = p ? `${p.nombre} ${p.apellido}` : "Mensaje nuevo";
+      const cuerpo = resumenMensaje(m);
+      if (document.visibilityState === "visible") {
+        toast(titulo, { description: cuerpo, action: abrirRef.current ? { label: "Abrir", onClick: () => abrirRef.current?.(link) } : undefined });
+      }
+      void avisoSistema(titulo, cuerpo, link, `chat-${m.conversacion_id}`);
+    };
     const channel = supabase
       .channel("chat-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "chat_mensajes" }, (payload) => {
         const conv = (payload.new as Partial<Mensaje>)?.conversacion_id ?? (payload.old as Partial<Mensaje>)?.conversacion_id;
         if (conv) qc.invalidateQueries({ queryKey: keyMensajes(conv) });
         qc.invalidateQueries({ queryKey: KEY_LISTA });
+        if (payload.eventType === "INSERT") void avisar(payload.new as Mensaje);
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "chat_participantes" }, () => {
         qc.invalidateQueries({ queryKey: KEY_LISTA });

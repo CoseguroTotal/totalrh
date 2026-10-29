@@ -22,6 +22,8 @@ export default defineConfig(({ mode }) => ({
       injectRegister: null,
       registerType: "autoUpdate",
       workbox: {
+        // Al tocar un aviso del sistema se abre la pantalla correspondiente
+        importScripts: ["/sw-avisos.js"],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         // Los modelos de reconocimiento facial (~7 MB) se cachean sólo cuando se usan
         globIgnores: ["models/**", "**/face-api*.js"],

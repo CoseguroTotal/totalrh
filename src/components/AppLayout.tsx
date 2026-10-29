@@ -1,7 +1,9 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { Link, Outlet, useLocation } from "react-router-dom";
-import { Suspense } from "react";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Suspense, useCallback, useEffect } from "react";
+import { useNotificaciones, useNotificacionesRealtime } from "@/hooks/useNotificaciones";
+import { marcarIconoApp, prepararSonidos } from "@/lib/avisos";
 import { Loader2, MessageCircle } from "lucide-react";
 import NotificacionesBell from "@/components/NotificacionesBell";
 import EmployeeBottomNav from "@/components/EmployeeBottomNav";
@@ -41,7 +43,17 @@ export default function AppLayout() {
   const conBarra = !!role && !esTerminal;
   // El chat ocupa toda la pantalla, sin márgenes ni pie
   const modoChat = pathname.startsWith("/mensajes");
-  useChatRealtime();
+  const navigate = useNavigate();
+  const abrir = useCallback((link: string) => navigate(link), [navigate]);
+  useChatRealtime(abrir);
+  useNotificacionesRealtime(abrir);
+  useEffect(() => { prepararSonidos(); }, []);
+
+  // Número en el ícono de la app instalada: mensajes y notificaciones sin leer
+  const chatSinLeer = useNoLeidosTotal();
+  const { data: notifs = [] } = useNotificaciones();
+  const notifSinLeer = notifs.filter((n) => !n.leida).length;
+  useEffect(() => { marcarIconoApp(chatSinLeer + notifSinLeer); }, [chatSinLeer, notifSinLeer]);
 
   return (
     <SidebarProvider>
