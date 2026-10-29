@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   decidirFichada, distanciaMetros, esUbicacionValida, evaluarGeocerca, puedeOperarTerminal, puedeRegistrarRostro,
+  puedeVerificarRostro, registroQuedaVerificado,
 } from "../../supabase/functions/_shared/attendance-rules";
 
 const roles = (...r: string[]) => new Set(r);
@@ -96,5 +97,22 @@ describe("geocerca", () => {
     expect(esUbicacionValida({ latitud: 100, longitud: -65.4, precision: 12 })).toBe(false);
     expect(esUbicacionValida({ latitud: "-24", longitud: -65.4, precision: 12 })).toBe(false);
     expect(esUbicacionValida(null)).toBe(false);
+  });
+});
+
+describe("verificación del rostro", () => {
+  const r = (...x: string[]) => new Set(x);
+  it("sólo RRHH o admin verifican", () => {
+    expect(puedeVerificarRostro(r("rrhh"))).toBe(true);
+    expect(puedeVerificarRostro(r("admin"))).toBe(true);
+    expect(puedeVerificarRostro(r("gerente"))).toBe(false);
+    expect(puedeVerificarRostro(r("empleado"))).toBe(false);
+  });
+
+  it("lo que registra el propio empleado queda pendiente; lo que registra RRHH, verificado", () => {
+    expect(registroQuedaVerificado("u-emp", "u-emp", r("empleado"))).toBe(false);
+    expect(registroQuedaVerificado("u-rrhh", "u-emp", r("rrhh"))).toBe(true);
+    expect(registroQuedaVerificado("u-rrhh", null, r("rrhh"))).toBe(true);
+    expect(registroQuedaVerificado("u-rrhh", "u-rrhh", r("rrhh"))).toBe(false);
   });
 });

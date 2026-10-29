@@ -291,20 +291,38 @@ export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
 const MUESTRAS = MUESTRAS_REGISTRO;
 
 export function FaceEnrollDialog({
-  open, onOpenChange, empleadoId, nombreEmpleado, onRegistrado,
+  open, onOpenChange, empleadoId, nombreEmpleado, onRegistrado, modo = "registro",
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   empleadoId: string;
   nombreEmpleado?: string;
   onRegistrado?: () => void;
+  /** verificacion: RRHH confirma en persona un rostro que el empleado registró desde el celular */
+  modo?: ModoCaptura;
 }) {
   const [acepta, setAcepta] = useState(false);
-  const [paso, setPaso] = useState<"consentimiento" | "captura">("consentimiento");
+  const [paso, setPaso] = useState<"consentimiento" | "captura">(modo === "verificacion" ? "captura" : "consentimiento");
 
   useEffect(() => {
-    if (!open) { setPaso("consentimiento"); setAcepta(false); }
-  }, [open]);
+    if (!open) { setPaso(modo === "verificacion" ? "captura" : "consentimiento"); setAcepta(false); }
+  }, [open, modo]);
+
+  if (modo === "verificacion") {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" />Verificar rostro en persona</DialogTitle>
+            <DialogDescription>
+              Con {nombreEmpleado ?? "el empleado"} frente a vos: que mire a la cámara y haga el gesto. Si coincide con lo que registró, queda habilitado para fichar.
+            </DialogDescription>
+          </DialogHeader>
+          {open && <CapturaRegistro modo="verificacion" empleadoId={empleadoId} onListo={() => { onOpenChange(false); onRegistrado?.(); }} />}
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -342,7 +360,11 @@ export function FaceEnrollDialog({
   );
 }
 
-function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo: () => void }) {
+type ModoCaptura = "registro" | "verificacion";
+
+function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoId: string; onListo: () => void; modo?: ModoCaptura }) {
+  // Para verificar alcanza con una foto completa después de la prueba de vida
+  const cantidad = modo === "verificacion" ? 1 : MUESTRAS;
   const { videoRef, lista, error } = useCamara(true);
   const [fase, setFase] = useState<"desafio" | "muestras" | "guardando" | "error">("desafio");
   const [mensaje, setMensaje] = useState("Ubicá tu rostro dentro del óvalo");
@@ -379,12 +401,9 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
       return;
     }
     const { data, error: fnError } = await supabase.functions.invoke("validate-attendance-token", {
-      body: {
-        action: "face-enroll",
-        empleado_id: empleadoId,
-        descriptores: muestras.current,
-        consentimiento_texto: TEXTO_CONSENTIMIENTO,
-      },
+      body: modo === "verificacion"
+        ? { action: "face-verificar", empleado_id: empleadoId, descriptor: muestras.current[0], prueba_vida: true }
+        : { action: "face-enroll", empleado_id: empleadoId, descriptores: muestras.current, consentimiento_texto: TEXTO_CONSENTIMIENTO },
     });
     let msg: string | undefined = data?.error;
     if (fnError && !msg) {
@@ -395,7 +414,9 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
       setMensaje(msg ?? "No se pudo guardar el registro");
       return;
     }
-    toast.success("Rostro registrado. Ya podés fichar con la cámara.");
+    if (modo === "verificacion") toast.success("Rostro verificado: ya puede fichar con la cámara.");
+    else if (data?.verificado) toast.success("Rostro registrado. Ya puede fichar con la cámara.");
+    else toast.success("Rostro registrado. Antes de fichar, RRHH lo verifica con vos en persona.", { duration: 7000 });
     onListo();
   };
 
@@ -426,8 +447,8 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
       if (Date.now() - ultimaMuestra.current < 350) return;
       ultimaMuestra.current = Date.now();
       muestras.current.push(d.descriptor);
-      setProgreso(40 + (muestras.current.length / MUESTRAS) * 60);
-      if (muestras.current.length >= MUESTRAS) await guardar();
+      setProgreso(40 + (muestras.current.length / cantidad) * 60);
+      if (muestras.current.length >= cantidad) await guardar();
     }
   }, fase === "desafio");
 
@@ -452,7 +473,7 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
       </VistaCamara>
       <Progress value={progreso} className="h-1.5" />
       <p className={cn("text-center text-sm font-medium", fase === "error" && "text-destructive")}>
-        {fase === "guardando" ? <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Guardando…</span> : mensaje}
+        {fase === "guardando" ? <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />{modo === "verificacion" ? "Comparando…" : "Guardando…"}</span> : mensaje}
       </p>
       {fase === "desafio" && ofrecerCambio && (
         <div className="flex justify-center"><Button variant="outline" size="sm" onClick={cambiarDesafio}>Probar otro desafío</Button></div>
@@ -467,14 +488,14 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
 /* ─────────────── Estado del registro facial de un empleado ─────────────── */
 
 export function RegistroFacialCard({ empleadoId, nombreEmpleado, esPropio }: { empleadoId: string; nombreEmpleado?: string; esPropio: boolean }) {
-  const [registro, setRegistro] = useState<{ consentimiento_at: string } | null | undefined>(undefined);
-  const [abierto, setAbierto] = useState(false);
+  const [registro, setRegistro] = useState<{ consentimiento_at: string; verificado_at: string | null } | null | undefined>(undefined);
+  const [abierto, setAbierto] = useState<ModoCaptura | null>(null);
   const [borrando, setBorrando] = useState(false);
 
   const cargar = useCallback(async () => {
     const { data } = await supabase
       .from("rostros_empleados")
-      .select("empleado_id, consentimiento_at")
+      .select("empleado_id, consentimiento_at, verificado_at")
       .eq("empleado_id", empleadoId)
       .maybeSingle();
     setRegistro(data ?? null);
@@ -495,18 +516,24 @@ export function RegistroFacialCard({ empleadoId, nombreEmpleado, esPropio }: { e
   return (
     <div className="rounded-xl border bg-card p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        <div className={cn("rounded-full p-2", registro ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}>
-          {registro ? <CheckCircle2 className="h-5 w-5" /> : <ScanFace className="h-5 w-5" />}
+        <div className={cn("rounded-full p-2", registro?.verificado_at ? "bg-success/15 text-success" : registro ? "bg-warning/20 text-warning-foreground" : "bg-muted text-muted-foreground")}>
+          {registro?.verificado_at ? <CheckCircle2 className="h-5 w-5" /> : registro ? <ShieldCheck className="h-5 w-5" /> : <ScanFace className="h-5 w-5" />}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">Fichada con reconocimiento facial</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {registro === undefined ? "Consultando…"
-              : registro ? `Rostro registrado el ${new Date(registro.consentimiento_at).toLocaleDateString("es-AR")}`
+              : registro?.verificado_at ? `Rostro registrado el ${new Date(registro.consentimiento_at).toLocaleDateString("es-AR")} y verificado.`
+              : registro ? (esPropio
+                ? "Rostro registrado. Falta que RRHH lo verifique con vos en persona; mientras tanto fichá con QR."
+                : "Registrado por el empleado. Falta verificarlo en persona.")
                 : esPropio ? "Registrá tu rostro una vez y fichá mirando la cámara de la terminal." : "Sin rostro registrado."}
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
-            <Button size="sm" variant={registro ? "outline" : "default"} onClick={() => setAbierto(true)}>
+            {registro && !registro.verificado_at && !esPropio && (
+              <Button size="sm" onClick={() => setAbierto("verificacion")}><ShieldCheck className="h-4 w-4 mr-1.5" />Verificar en persona</Button>
+            )}
+            <Button size="sm" variant={registro ? "outline" : "default"} onClick={() => setAbierto("registro")}>
               <ScanFace className="h-4 w-4 mr-1.5" />{registro ? "Volver a registrar" : "Registrar rostro"}
             </Button>
             {registro && (
@@ -517,7 +544,8 @@ export function RegistroFacialCard({ empleadoId, nombreEmpleado, esPropio }: { e
           </div>
         </div>
       </div>
-      <FaceEnrollDialog open={abierto} onOpenChange={setAbierto} empleadoId={empleadoId} nombreEmpleado={esPropio ? undefined : nombreEmpleado} onRegistrado={cargar} />
+      <FaceEnrollDialog open={abierto !== null} onOpenChange={(o) => { if (!o) setAbierto(null); }} modo={abierto ?? "registro"}
+        empleadoId={empleadoId} nombreEmpleado={esPropio ? undefined : nombreEmpleado} onRegistrado={cargar} />
     </div>
   );
 }

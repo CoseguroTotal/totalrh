@@ -6,6 +6,16 @@ export function puedeOperarTerminal(roles: Set<string>) {
   return roles.has("registro_asistencia") || roles.has("admin");
 }
 
+/** Verificar en persona un rostro registrado desde el celular: RRHH o admin. */
+export function puedeVerificarRostro(roles: Set<string>) {
+  return roles.has("admin") || roles.has("rrhh");
+}
+
+/** Si RRHH/admin registra el rostro de otra persona lo hace en persona: queda verificado. */
+export function registroQuedaVerificado(callerId: string, empleadoUserId: string | null, roles: Set<string>) {
+  return puedeVerificarRostro(roles) && empleadoUserId !== callerId;
+}
+
 /** Registrar el rostro: el propio empleado, o RRHH/admin para cualquier legajo. */
 export function puedeRegistrarRostro(callerId: string, empleadoUserId: string | null, roles: Set<string>) {
   if (empleadoUserId && empleadoUserId === callerId) return true;

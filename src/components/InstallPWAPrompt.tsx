@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Download, X, Share } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -56,7 +57,7 @@ export default function InstallPWAPrompt() {
         <Download className="h-5 w-5 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">Instalá TotalRH en tu dispositivo</p>
-          <p className="text-xs text-muted-foreground">Acceso rápido desde tu pantalla de inicio.</p>
+          <p className="text-xs text-muted-foreground">Acceso rápido desde tu pantalla de inicio. <Link to="/instalar" className="text-primary hover:underline">Ver cómo</Link></p>
         </div>
         <Button size="sm" onClick={handleInstall}>Instalar</Button>
         <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground">
@@ -73,7 +74,7 @@ export default function InstallPWAPrompt() {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium">Instalá TotalRH en tu iPhone</p>
           <p className="text-xs text-muted-foreground">
-            Tocá <Share className="inline h-3 w-3" /> y luego <strong>"Agregar a inicio"</strong>.
+            Tocá <Share className="inline h-3 w-3" /> y luego <strong>"Agregar a inicio"</strong>. <Link to="/instalar" className="text-primary hover:underline">Ver pasos</Link>
           </p>
         </div>
         <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground">

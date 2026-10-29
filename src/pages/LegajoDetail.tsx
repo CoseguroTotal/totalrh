@@ -9,6 +9,8 @@ import { useSolicitudesVacacionesEmpleado, useUpdateSolicitudVacaciones, useVaca
 import { useSanciones } from "@/hooks/useSanciones";
 import { useCanEdit, useCanSancion } from "@/hooks/useCanEdit";
 import { RegistroFacialCard } from "@/components/asistencia/FaceCapture";
+import HistorialCambios from "@/components/HistorialCambios";
+import BlanquearClave from "@/components/BlanquearClave";
 import { useConfigGrupo } from "@/hooks/useConfigGrupo";
 import { sendNotificationEmailIfEnabled } from "@/lib/sendNotificationEmail";
 import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, Palmtree, ShieldAlert } from "lucide-react";
@@ -252,6 +254,7 @@ export default function LegajoDetail() {
                   <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
                     <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
                   </Button>
+                  {(role === "admin" || role === "rrhh") && emp.user_id && <BlanquearClave empleadoId={emp.id} nombre={`${emp.nombre} ${emp.apellido}`} />}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
@@ -323,7 +326,7 @@ export default function LegajoDetail() {
         </TabsList>
 
         {/* Historial */}
-        <TabsContent value="historial">
+        <TabsContent value="historial" className="space-y-4">
           <div className="rounded-xl border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium">Historial de Eventos</h3>
@@ -355,6 +358,7 @@ export default function LegajoDetail() {
               </div>
             )}
           </div>
+          {id && <HistorialCambios empleadoId={id} />}
         </TabsContent>
 
         {/* Documentos */}

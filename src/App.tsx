@@ -41,6 +41,9 @@ const Reclutamiento = lazy(() => import("@/pages/Reclutamiento"));
 const Reportes = lazy(() => import("@/pages/Reportes"));
 const Vacaciones = lazy(() => import("@/pages/Vacaciones"));
 const RegistroAsistencia = lazy(() => import("@/pages/RegistroAsistencia"));
+const RegistroEmpleado = lazy(() => import("@/pages/RegistroEmpleado"));
+const Instalar = lazy(() => import("@/pages/Instalar"));
+const AltasPendientes = lazy(() => import("@/pages/AltasPendientes"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -79,6 +82,9 @@ const App = () => (
             <Route element={<DemoGate />}>
               <Route path="/login" element={<Login />} />
             </Route>
+            {/* Públicas: alta del empleado con el código de la empresa y guía para instalar la app */}
+            <Route path="/registro" element={<RegistroEmpleado />} />
+            <Route path="/instalar" element={<Instalar />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/registro-asistencia" element={<RegistroAsistencia />} />
               <Route element={<AppLayout />}>
@@ -101,6 +107,7 @@ const App = () => (
                   <Route path="/app" element={<Dashboard />} />
                   <Route path="/legajos" element={<Legajos />} />
                   <Route path="/legajos/:id" element={<LegajoDetail />} />
+                  <Route path="/altas" element={<AltasPendientes />} />
                   <Route path="/liquidacion" element={<Liquidacion />} />
                   <Route path="/asistencia" element={<Asistencia />} />
                   <Route path="/vacaciones" element={<Vacaciones />} />

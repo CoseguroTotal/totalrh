@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { invocar } from "@/hooks/useRegistro";
+import { pareceDni, soloDigitos } from "../../supabase/functions/_shared/registro-rules";
 import { MarcaLockup } from "@/components/Marca";
 import { CLIENTE } from "@/marca";
 import { Button } from "@/components/ui/button";
@@ -45,16 +47,31 @@ export default function Login() {
     setLoading(true);
     setError(null);
 
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
-      return;
+    // Se puede entrar con el DNI (las cuentas creadas desde el portal) o con el email
+    let userId: string | undefined;
+    if (pareceDni(email)) {
+      const { data, error: errDni } = await invocar<{ access_token: string; refresh_token: string }>("registro-empleado", {
+        action: "login-dni", dni: soloDigitos(email), password,
+      });
+      if (errDni) { setError(errDni); setLoading(false); return; }
+      const { data: sesion, error: errSesion } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token });
+      if (errSesion) { setError("No se pudo iniciar sesión. Probá de nuevo."); setLoading(false); return; }
+      userId = sesion.user?.id;
+    } else {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (authError) {
+        setError(
+          /banned/i.test(authError.message) ? "Tu alta todavía está en revisión. RRHH te avisa cuando quede aprobada."
+            : /invalid login credentials/i.test(authError.message) ? "Email o contraseña incorrectos"
+              : authError.message
+        );
+        setLoading(false);
+        return;
+      }
+      userId = authData.user?.id;
     }
 
     // Check time restrictions for the user's role
-    const userId = authData.user?.id;
     if (userId) {
       const { data: roleData } = await supabase
         .from("user_roles")
@@ -106,15 +123,18 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm font-medium" htmlFor="email">Email</label>
+            <label className="text-sm font-medium" htmlFor="email">DNI o email</label>
             <input
               id="email"
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="username"
+              autoCapitalize="none"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1.5 flex h-10 w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-              placeholder="tu@email.com"
+              placeholder="DNI (sólo números) o tu@email.com"
             />
           </div>
           <div>
@@ -145,9 +165,12 @@ export default function Login() {
           </Button>
         </form>
 
-        <p className="text-center text-xs text-muted-foreground">
-          Los usuarios son creados por un administrador desde el panel de configuración.
-        </p>
+        <div className="space-y-2 text-center text-sm">
+          <p className="text-muted-foreground">¿Sos empleado y todavía no tenés cuenta?</p>
+          <Button asChild variant="outline" className="w-full"><Link to="/registro">Crear mi cuenta</Link></Button>
+          <p className="text-xs text-muted-foreground">¿Olvidaste tu contraseña? Pedile a RRHH que la blanquee.</p>
+          <Link to="/instalar" className="inline-block text-xs text-primary hover:underline">Cómo instalar la app en el celular</Link>
+        </div>
       </div>
     </div>
   );

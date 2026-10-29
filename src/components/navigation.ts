@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FileText, DollarSign, UserCircle, Clock, Briefcase, BarChart3,
-  Settings, FileCheck, Palmtree, Building2, Home, MessageCircle, Vote, CalendarDays, CheckSquare, Users, type LucideIcon,
+  Settings, FileCheck, Palmtree, Building2, Home, MessageCircle, Vote, CalendarDays, CheckSquare, Users, UserPlus, type LucideIcon,
 } from "lucide-react";
 
 export interface ModuloNav {
@@ -39,6 +39,7 @@ export const SECCIONES: SeccionNav[] = [
     label: "Personas",
     items: [
       { title: "Legajos", url: "/legajos", icon: FileText, desc: "Ficha digital de cada empleado", roles: GESTION_Y_CONTADOR },
+      { title: "Altas de empleados", url: "/altas", icon: UserPlus, desc: "Enlace de registro y cuentas por aprobar", roles: ["admin", "rrhh"] },
       { title: "Empresas", url: "/empresas", icon: Building2, desc: "Empresas y sucursales del grupo", roles: GESTION },
       { title: "Reclutamiento", url: "/reclutamiento", icon: Briefcase, desc: "Vacantes y candidatos", roles: GESTION },
     ],

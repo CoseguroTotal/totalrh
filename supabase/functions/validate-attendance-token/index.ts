@@ -1,10 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  UMBRAL_DUPLICADO, aprenderMuestra, distanciaMinima, esDescriptorValido, fechaArgentina,
+  UMBRAL_COINCIDENCIA, UMBRAL_DUPLICADO, aprenderMuestra, distanciaMinima, esDescriptorValido, fechaArgentina,
   MUESTRAS_REGISTRO, mejorCoincidencia, muestrasConsistentes, type Descriptor,
 } from "../_shared/face-match.ts";
 import {
-  decidirFichada, esUbicacionValida, evaluarGeocerca, puedeOperarTerminal, puedeRegistrarRostro,
+  decidirFichada, esUbicacionValida, evaluarGeocerca, puedeOperarTerminal, puedeRegistrarRostro, puedeVerificarRostro,
+  registroQuedaVerificado,
   type ResultadoGeocerca, type Ubicacion,
 } from "../_shared/attendance-rules.ts";
 
@@ -132,7 +133,8 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (!emp) return json({ error: "Empleado no encontrado" }, 404);
 
-      if (!puedeRegistrarRostro(user.id, emp.user_id, await rolesDe(user.id))) {
+      const rolesCaller = await rolesDe(user.id);
+      if (!puedeRegistrarRostro(user.id, emp.user_id, rolesCaller)) {
         return json({ error: "No tenés permiso para registrar el rostro de otro empleado" }, 403);
       }
 
@@ -154,9 +156,38 @@ Deno.serve(async (req) => {
         consentimiento_at: new Date().toISOString(),
         consentimiento_texto,
         registrado_por: user.id,
+        // Registrado por el propio empleado (p. ej. desde el celular): RRHH lo verifica en persona
+        ...(registroQuedaVerificado(user.id, emp.user_id, rolesCaller)
+          ? { verificado_at: new Date().toISOString(), verificado_por: user.id }
+          : { verificado_at: null, verificado_por: null }),
       });
       if (error) throw error;
-      return json({ success: true });
+      return json({ success: true, verificado: registroQuedaVerificado(user.id, emp.user_id, rolesCaller) });
+    }
+
+    // ── Action: face-verificar — RRHH confirma en persona un rostro registrado desde el celular ──
+    if (action === "face-verificar") {
+      const user = await usuarioAutenticado();
+      if (!user) return json({ error: "Debés iniciar sesión" }, 401);
+      if (!puedeVerificarRostro(await rolesDe(user.id))) return json({ error: "Sólo RRHH o administración pueden verificar rostros" }, 403);
+
+      const { descriptor, prueba_vida } = body;
+      if (!empleado_id || typeof empleado_id !== "string") return json({ error: "empleado_id requerido" }, 400);
+      if (!esDescriptorValido(descriptor)) return json({ error: "Rostro no válido" }, 400);
+      if (prueba_vida !== true) return json({ error: "Falta completar la prueba de vida" }, 400);
+
+      const { data: reg } = await supabaseAdmin.from("rostros_empleados").select("descriptores").eq("empleado_id", empleado_id).maybeSingle();
+      if (!reg) return json({ error: "Este empleado no tiene rostro registrado" }, 404);
+
+      const d = distanciaMinima(descriptor, (reg.descriptores as Descriptor[]).filter(esDescriptorValido));
+      if (d > UMBRAL_COINCIDENCIA) {
+        return json({ ok: false, error: "El rostro no coincide con el registrado. Si es la persona correcta, registralo de nuevo desde acá." }, 200);
+      }
+      const { error } = await supabaseAdmin.from("rostros_empleados")
+        .update({ verificado_at: new Date().toISOString(), verificado_por: user.id })
+        .eq("empleado_id", empleado_id);
+      if (error) throw error;
+      return json({ success: true, distancia: d });
     }
 
     // ── Action: face-fichar — la terminal reconoce al empleado por su rostro ──
@@ -182,7 +213,7 @@ Deno.serve(async (req) => {
 
       const { data: registros } = await supabaseAdmin
         .from("rostros_empleados")
-        .select("empleado_id, descriptores, empleado:empleados!inner(id, nombre, apellido, legajo, estado)")
+        .select("empleado_id, descriptores, verificado_at, empleado:empleados!inner(id, nombre, apellido, legajo, estado)")
         .neq("empleado.estado", "Baja");
 
       const candidatos = (registros ?? []).map((r: { empleado_id: string; descriptores: unknown }) => ({
@@ -201,9 +232,16 @@ Deno.serve(async (req) => {
       }
 
       const reg = (registros ?? []).find((r: { empleado_id: string }) => r.empleado_id === match.id) as
-        | { descriptores: unknown; empleado: { id: string; nombre: string; apellido: string; legajo: string } }
+        | { descriptores: unknown; verificado_at: string | null; empleado: { id: string; nombre: string; apellido: string; legajo: string } }
         | undefined;
       const emp = reg!.empleado;
+
+      if (!reg!.verificado_at) {
+        return json({
+          ok: false, motivo: "sin_verificar",
+          error: `${emp.nombre}, tu rostro todavía no fue verificado por RRHH. Acercate a RRHH y mientras tanto fichá con QR.`,
+        }, 200);
+      }
 
       // Adaptar la plantilla a la cámara de la terminal; si falla no impide fichar
       const actualizadas = aprenderMuestra((reg!.descriptores as Descriptor[]).filter(esDescriptorValido), descriptor, match.distancia);

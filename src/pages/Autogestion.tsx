@@ -9,7 +9,7 @@ import { useSolicitudesVacacionesEmpleado, useSaveSolicitudVacaciones, useVacaci
 import { useSanciones, useUpdateDescargo } from "@/hooks/useSanciones";
 import { useFichadasEmpleado } from "@/hooks/useAsistencia";
 import { useLiquidacionesEmpleado } from "@/hooks/useLiquidacion";
-import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, Clock, DollarSign, Lock, QrCode } from "lucide-react";
+import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, Clock, DollarSign, Lock, QrCode, Pencil } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import SolicitudPermisoFormDialog from "@/components/SolicitudPermisoFormDialog";
 import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
+import MisDatosDialog from "@/components/MisDatosDialog";
+import HistorialCambios from "@/components/HistorialCambios";
 import PanelFichar from "@/components/asistencia/PanelFichar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -64,6 +66,7 @@ export default function Autogestion() {
   const updateEstadoMemo = useUpdateEstadoMemorandum();
   const updateDescargo = useUpdateDescargo();
   const [solicitudOpen, setSolicitudOpen] = useState(false);
+  const [editarDatos, setEditarDatos] = useState(false);
   const [vacForm, setVacForm] = useState({ fecha_desde: "", fecha_hasta: "", observaciones: "" });
   const [descargoForm, setDescargoForm] = useState<{ sancionId: string; texto: string } | null>(null);
   const descargoFileRef = useRef<HTMLInputElement>(null);
@@ -203,8 +206,12 @@ export default function Autogestion() {
         </TabsList>
 
         <TabsContent value="datos">
+          <div className="space-y-4">
           <div className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
-            <h3 className="text-sm font-medium mb-4">Datos Personales</h3>
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-medium">Datos Personales</h3>
+              <Button size="sm" variant="outline" onClick={() => setEditarDatos(true)}><Pencil className="mr-1.5 h-3.5 w-3.5" />Actualizar mis datos</Button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {[
                 { label: "Nombre", value: `${emp.apellido}, ${emp.nombre}` },
@@ -225,6 +232,9 @@ export default function Autogestion() {
                 </div>
               ))}
             </div>
+          </div>
+          <HistorialCambios empleadoId={emp.id} titulo="Historial de cambios de mis datos" limite={20} />
+          <MisDatosDialog open={editarDatos} onOpenChange={setEditarDatos} empleado={emp} />
           </div>
         </TabsContent>
 
