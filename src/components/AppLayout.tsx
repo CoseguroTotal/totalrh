@@ -4,6 +4,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Suspense, useCallback, useEffect } from "react";
 import { useNotificaciones, useNotificacionesRealtime } from "@/hooks/useNotificaciones";
 import { marcarIconoApp, prepararSonidos } from "@/lib/avisos";
+import { activarProteccionPantalla } from "@/lib/proteccionPantalla";
 import { LifeBuoy, Loader2, MessageCircle } from "lucide-react";
 import { useSesionSoporte, useSinLeerSoporte, useSoporteRealtime } from "@/hooks/useSoporte";
 import NotificacionesBell from "@/components/NotificacionesBell";
@@ -70,7 +71,7 @@ export default function AppLayout() {
   const abrir = useCallback((link: string) => navigate(link), [navigate]);
   useChatRealtime(abrir);
   useNotificacionesRealtime(abrir);
-  useEffect(() => { prepararSonidos(); }, []);
+  useEffect(() => { prepararSonidos(); activarProteccionPantalla(); }, []);
 
   // Número en el ícono de la app instalada: mensajes y notificaciones sin leer
   const chatSinLeer = useNoLeidosTotal();

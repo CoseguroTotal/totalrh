@@ -18,6 +18,7 @@ import EnviarEmailDialog from "@/components/EnviarEmailDialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { escaparHtml } from "@/lib/sendNotificationEmail";
+import ZonaProtegida from "@/components/ZonaProtegida";
 
 const tipoBadge: Record<string, string> = {
   remunerativo: "bg-success/15 text-success",
@@ -55,7 +56,7 @@ export default function Liquidacion() {
     </div>
   `;
   return (
-    <div className="space-y-6">
+    <ZonaProtegida className="space-y-6">
       <div className="animate-fade-in">
         <h1 className="text-2xl font-semibold">Liquidación de Haberes</h1>
         <p className="text-sm text-muted-foreground mt-1">Configuración de conceptos, simulador de recibo y liquidaciones guardadas</p>
@@ -210,7 +211,7 @@ export default function Liquidacion() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </ZonaProtegida>
   );
 }
 

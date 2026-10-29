@@ -25,6 +25,7 @@ import PanelFichar from "@/components/asistencia/PanelFichar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
+import ZonaProtegida from "@/components/ZonaProtegida";
 
 const estadoBadge: Record<string, string> = {
   pendiente: "bg-warning/15 text-warning",
@@ -169,7 +170,7 @@ export default function Autogestion() {
   const domicilioFull = [domicilio, emp.domicilio_localidad, emp.domicilio_provincia].filter(Boolean).join(", ");
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-4xl animate-fade-in">
+    <ZonaProtegida className="space-y-4 sm:space-y-6 max-w-4xl animate-fade-in">
       <InstallPWAPrompt />
       <div>
         <h1 className="text-lg sm:text-2xl font-semibold">Portal de Autogestión</h1>
@@ -557,7 +558,7 @@ export default function Autogestion() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+    </ZonaProtegida>
   );
 }
 

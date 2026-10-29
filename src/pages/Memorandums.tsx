@@ -21,6 +21,7 @@ import EnviarEmailDialog from "@/components/EnviarEmailDialog";
 import EnvioMasivoMemoDialog from "@/components/EnvioMasivoMemoDialog";
 import { hoyArgentina } from "@/lib/asistencia";
 import { escaparHtml } from "@/lib/sendNotificationEmail";
+import ZonaProtegida from "@/components/ZonaProtegida";
 
 const estadoBadge: Record<string, string> = {
   borrador: "bg-muted text-muted-foreground",
@@ -169,7 +170,7 @@ export default function Memorandums() {
   });
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <ZonaProtegida className="space-y-6 max-w-5xl">
       <div className="animate-fade-in flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Memorándums</h1>
@@ -301,6 +302,6 @@ export default function Memorandums() {
         empresas={empresas}
         config={config}
       />
-    </div>
+    </ZonaProtegida>
   );
 }

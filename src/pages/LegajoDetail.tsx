@@ -31,6 +31,7 @@ import EstudioFormDialog from "@/components/EstudioFormDialog";
 import SancionFormDialog from "@/components/SancionFormDialog";
 import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import ZonaProtegida from "@/components/ZonaProtegida";
 
 const eventIcon: Record<string, { icon: typeof Award; color: string }> = {
   ingreso: { icon: Award, color: "text-success bg-success/15" },
@@ -234,7 +235,7 @@ export default function LegajoDetail() {
   const domicilioFull = [domicilio, emp.domicilio_localidad, emp.domicilio_provincia, emp.domicilio_cp].filter(Boolean).join(", ");
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <ZonaProtegida className="space-y-6 max-w-5xl">
       <Link to="/legajos" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors animate-fade-in">
         <ArrowLeft className="h-4 w-4" />Volver a Legajos
       </Link>
@@ -775,6 +776,6 @@ export default function LegajoDetail() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+    </ZonaProtegida>
   );
 }

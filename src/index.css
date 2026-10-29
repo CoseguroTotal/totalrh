@@ -126,3 +126,29 @@ html {
 body {
   overscroll-behavior-y: contain;
 }
+
+/* ── Protección de datos sensibles (ver ZonaProtegida) ── */
+.zona-protegida {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Los campos de los formularios siguen siendo editables */
+.zona-protegida input,
+.zona-protegida textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* Al salir de la app el contenido se borronea: la vista previa del selector de apps no lo muestra */
+html.app-oculta #root {
+  filter: blur(28px);
+}
+@media print {
+  .zona-protegida > * { visibility: hidden !important; }
+  .zona-protegida::before {
+    content: "Esta información no se puede imprimir desde la pantalla. Descargá el PDF del recibo o pedíselo a RRHH.";
+    display: block;
+    padding: 2rem;
+    font-size: 14pt;
+  }
+}
