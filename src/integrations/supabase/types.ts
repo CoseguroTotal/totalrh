@@ -272,8 +272,6 @@ export type Database = {
       }
       configuracion_grupo: {
         Row: {
-          registro_abierto: boolean
-          registro_codigo: string | null
           cuit: string | null
           demo_acceso_dias: number
           demo_bloqueo_minutos: number
@@ -296,12 +294,12 @@ export type Database = {
           nombre_grupo: string
           notificaciones_email_activas: boolean | null
           qr_duracion_segundos: number
+          registro_abierto: boolean
+          registro_codigo: string | null
           telefono: string | null
           updated_at: string
         }
         Insert: {
-          registro_abierto?: boolean
-          registro_codigo?: string | null
           cuit?: string | null
           demo_acceso_dias?: number
           demo_bloqueo_minutos?: number
@@ -324,12 +322,12 @@ export type Database = {
           nombre_grupo?: string
           notificaciones_email_activas?: boolean | null
           qr_duracion_segundos?: number
+          registro_abierto?: boolean
+          registro_codigo?: string | null
           telefono?: string | null
           updated_at?: string
         }
         Update: {
-          registro_abierto?: boolean
-          registro_codigo?: string | null
           cuit?: string | null
           demo_acceso_dias?: number
           demo_bloqueo_minutos?: number
@@ -352,6 +350,8 @@ export type Database = {
           nombre_grupo?: string
           notificaciones_email_activas?: boolean | null
           qr_duracion_segundos?: number
+          registro_abierto?: boolean
+          registro_codigo?: string | null
           telefono?: string | null
           updated_at?: string
         }
@@ -1877,8 +1877,6 @@ export type Database = {
       }
       rostros_empleados: {
         Row: {
-          verificado_at: string | null
-          verificado_por: string | null
           consentimiento_at: string
           consentimiento_texto: string
           created_at: string
@@ -1886,10 +1884,10 @@ export type Database = {
           empleado_id: string
           registrado_por: string | null
           updated_at: string
+          verificado_at: string | null
+          verificado_por: string | null
         }
         Insert: {
-          verificado_at?: string | null
-          verificado_por?: string | null
           consentimiento_at: string
           consentimiento_texto: string
           created_at?: string
@@ -1897,10 +1895,10 @@ export type Database = {
           empleado_id: string
           registrado_por?: string | null
           updated_at?: string
-        }
-        Update: {
           verificado_at?: string | null
           verificado_por?: string | null
+        }
+        Update: {
           consentimiento_at?: string
           consentimiento_texto?: string
           created_at?: string
@@ -1908,6 +1906,8 @@ export type Database = {
           empleado_id?: string
           registrado_por?: string | null
           updated_at?: string
+          verificado_at?: string | null
+          verificado_por?: string | null
         }
         Relationships: [
           {
@@ -2033,7 +2033,29 @@ export type Database = {
           telefono?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "solicitudes_alta_empleado_id_fkey"
+            columns: ["empleado_id"]
+            isOneToOne: false
+            referencedRelation: "empleados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitudes_alta_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitudes_alta_sucursal_id_fkey"
+            columns: ["sucursal_id"]
+            isOneToOne: false
+            referencedRelation: "sucursales"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       solicitudes_permiso: {
         Row: {
@@ -2414,10 +2436,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      actualizar_mis_datos: {
-        Args: { _datos: Json }
-        Returns: undefined
-      }
+      actualizar_mis_datos: { Args: { _datos: Json }; Returns: undefined }
       chat_crear_grupo: {
         Args: { _miembros: string[]; _nombre: string }
         Returns: string
@@ -2457,11 +2476,11 @@ export type Database = {
           ultimo_texto: string
         }[]
       }
-      encuesta_publicar: { Args: { _encuesta_id: string }; Returns: string }
       configurar_registro: {
         Args: { _abierto: boolean; _regenerar: boolean }
         Returns: string
       }
+      encuesta_publicar: { Args: { _encuesta_id: string }; Returns: string }
       encuesta_responder: {
         Args: { _encuesta_id: string; _respuestas: Json }
         Returns: undefined
@@ -2590,6 +2609,7 @@ export type Database = {
       }
       muro_registrar_vistas: { Args: { _ids: string[] }; Returns: undefined }
       my_empleado_id: { Args: never; Returns: string }
+      nuevo_codigo_registro: { Args: never; Returns: string }
       terminal_ultimas_fichadas: {
         Args: never
         Returns: {
