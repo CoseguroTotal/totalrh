@@ -95,3 +95,24 @@ export function puedeAsignarRolAlta(rolesQuienAprueba: Set<string>, rol: string)
   if (rol === "empleado") return rolesQuienAprueba.has("admin") || rolesQuienAprueba.has("rrhh");
   return rolesQuienAprueba.has("admin");
 }
+
+/**
+ * Con la protección de contraseñas filtradas activa, el servidor rechaza las muy comunes
+ * o las que aparecieron en filtraciones públicas.
+ */
+export const MENSAJE_PASSWORD_DEBIL =
+  "Esa contraseña es muy común o apareció en filtraciones. Elegí otra más difícil (combiná palabras, números y símbolos).";
+
+export function esPasswordDebil(e: { code?: string; message?: string } | null | undefined) {
+  if (!e) return false;
+  return e.code === "weak_password" || /weak|easy to guess|pwned|leaked|compromised/i.test(e.message ?? "");
+}
+
+/** Mensaje en castellano para los errores de contraseña del servidor. */
+export function mensajeErrorPassword(e: { code?: string; message?: string } | null | undefined) {
+  if (!e) return null;
+  if (esPasswordDebil(e)) return MENSAJE_PASSWORD_DEBIL;
+  if (/same.*password|different from the old/i.test(e.message ?? "")) return "La contraseña nueva tiene que ser distinta de la actual.";
+  if (/at least|should be|characters/i.test(e.message ?? "")) return `La contraseña tiene que tener al menos ${PASSWORD_MINIMO} caracteres, con letras y números.`;
+  return e.message ?? "No se pudo guardar la contraseña";
+}

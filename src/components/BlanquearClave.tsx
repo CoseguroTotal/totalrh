@@ -8,11 +8,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { invocar } from "@/hooks/useRegistro";
 import { problemaPassword } from "../../supabase/functions/_shared/registro-rules";
 
-/** Contraseña provisoria fácil de dictar por teléfono: 4 letras + 4 números. */
-function sugerir() {
-  const letras = "abcdefghjkmnpqrstuvwxyz";
+const SILABAS = ["ba", "ce", "di", "fo", "gu", "la", "me", "ni", "po", "ru", "sa", "te", "vi", "zo", "ma", "lu", "ra", "ne", "ti", "co"];
+
+/** Contraseña provisoria fácil de dictar pero difícil de adivinar: p. ej. "Bamenipo-4827". */
+export function sugerirClave() {
   const r = crypto.getRandomValues(new Uint32Array(8));
-  return Array.from(r.slice(0, 4), (n) => letras[n % letras.length]).join("") + Array.from(r.slice(4), (n) => n % 10).join("");
+  const palabra = Array.from(r.slice(0, 4), (n) => SILABAS[n % SILABAS.length]).join("");
+  const numeros = Array.from(r.slice(4), (n) => n % 10).join("");
+  return palabra[0].toUpperCase() + palabra.slice(1) + "-" + numeros;
 }
 
 /** RRHH le pone una contraseña provisoria a un empleado que la olvidó (las cuentas sin email no pueden recuperarla solas). */
@@ -22,7 +25,7 @@ export default function BlanquearClave({ empleadoId, nombre }: { empleadoId: str
   const [guardando, setGuardando] = useState(false);
   const problema = problemaPassword(clave);
 
-  const abrir = () => { setClave(sugerir()); setAbierto(true); };
+  const abrir = () => { setClave(sugerirClave()); setAbierto(true); };
   const guardar = async () => {
     setGuardando(true);
     const { error } = await invocar("registro-empleado", { action: "blanquear", empleado_id: empleadoId, password: clave });

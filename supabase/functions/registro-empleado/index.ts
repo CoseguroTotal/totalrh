@@ -9,7 +9,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { adminClient, bloquear, checkBloqueo, corsHeaders, getIp, json, logIntento } from "../_shared/demo-security.ts";
 import { esEmailSoporte } from "../_shared/soporte.ts";
 import {
-  formatoCuil, normalizarCodigo, pareceDni, problemaPassword, puedeAsignarRolAlta, soloDigitos, validarRegistro, type DatosRegistro,
+  MENSAJE_PASSWORD_DEBIL, esPasswordDebil, formatoCuil, normalizarCodigo, pareceDni, problemaPassword, puedeAsignarRolAlta, soloDigitos, validarRegistro, type DatosRegistro,
 } from "../_shared/registro-rules.ts";
 
 const SUSPENDIDA = "876000h"; // ~100 años: suspendida hasta que se apruebe
@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
         user_metadata: { nombre: d.nombre.trim(), apellido: d.apellido.trim(), alta_portal: true },
       });
       if (errUser || !creado?.user) {
+        if (esPasswordDebil(errUser)) return json({ error: MENSAJE_PASSWORD_DEBIL, errores: { password: MENSAJE_PASSWORD_DEBIL } }, 422);
         const repetido = /already|registered|exists/i.test(errUser?.message ?? "");
         return json({ error: repetido ? "Ese email ya tiene una cuenta. Usá otro o pedile ayuda a RRHH." : "No se pudo crear la cuenta. Probá de nuevo." }, repetido ? 409 : 500);
       }
@@ -183,6 +184,7 @@ Deno.serve(async (req) => {
         return json({ error: "Esta cuenta no es de empleado: la blanquea un administrador desde Configuración" }, 403);
       }
       const { error } = await admin.auth.admin.updateUserById(emp.user_id, { password: String(body.password) });
+      if (esPasswordDebil(error)) return json({ error: MENSAJE_PASSWORD_DEBIL }, 422);
       if (error) throw error;
       return json({ success: true });
     }

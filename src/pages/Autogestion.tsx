@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import ZonaProtegida from "@/components/ZonaProtegida";
+import { mensajeErrorPassword, problemaPassword } from "../../supabase/functions/_shared/registro-rules";
 
 const estadoBadge: Record<string, string> = {
   pendiente: "bg-warning/15 text-warning",
@@ -532,11 +533,12 @@ export default function Autogestion() {
               onSubmit={async (e) => {
                 e.preventDefault();
                 if (passwordForm.new !== passwordForm.confirm) { toast.error("Las contraseñas no coinciden"); return; }
-                if (passwordForm.new.length < 6) { toast.error("Mínimo 6 caracteres"); return; }
+                const debil = problemaPassword(passwordForm.new);
+                if (debil) { toast.error(debil); return; }
                 setPasswordLoading(true);
                 const { error } = await supabase.auth.updateUser({ password: passwordForm.new });
                 setPasswordLoading(false);
-                if (error) { toast.error(error.message); return; }
+                if (error) { toast.error(mensajeErrorPassword(error)); return; }
                 toast.success("Contraseña actualizada");
                 setPasswordForm({ current: "", new: "", confirm: "" });
               }}
@@ -544,11 +546,11 @@ export default function Autogestion() {
             >
               <div>
                 <Label className="text-xs">Nueva Contraseña</Label>
-                <Input type="password" minLength={6} required value={passwordForm.new} onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })} />
+                <Input type="password" minLength={8} required value={passwordForm.new} onChange={(e) => setPasswordForm({ ...passwordForm, new: e.target.value })} />
               </div>
               <div>
                 <Label className="text-xs">Confirmar Contraseña</Label>
-                <Input type="password" minLength={6} required value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} />
+                <Input type="password" minLength={8} required value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} />
               </div>
               <Button type="submit" disabled={passwordLoading} size="sm">
                 {passwordLoading && <Loader2 className="h-4 w-4 animate-spin mr-1" />}

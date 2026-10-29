@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  cuilCoincideConDni, cuilValido, dniValido, emailValido, formatoCuil, normalizarCodigo, pareceDni, problemaPassword, puedeAsignarRolAlta, validarRegistro,
+  MENSAJE_PASSWORD_DEBIL, cuilCoincideConDni, cuilValido, dniValido, emailValido, esPasswordDebil, formatoCuil, mensajeErrorPassword,
+  normalizarCodigo, pareceDni, problemaPassword, puedeAsignarRolAlta, validarRegistro,
 } from "../../supabase/functions/_shared/registro-rules";
 
 describe("alta de empleados: identidad", () => {
@@ -74,5 +75,15 @@ describe("alta de empleados: rol al aprobar", () => {
     expect(puedeAsignarRolAlta(r("admin"), "admin")).toBe(false);
     expect(puedeAsignarRolAlta(r("admin"), "registro_asistencia")).toBe(false);
     expect(puedeAsignarRolAlta(r("gerente"), "empleado")).toBe(false);
+  });
+});
+
+describe("contraseñas rechazadas por el servidor", () => {
+  it("reconoce las contraseñas comunes o filtradas y da un mensaje claro", () => {
+    expect(esPasswordDebil({ code: "weak_password", message: "Password is known to be weak and easy to guess" })).toBe(true);
+    expect(esPasswordDebil({ message: "Password has been pwned" })).toBe(true);
+    expect(esPasswordDebil({ message: "Invalid login credentials" })).toBe(false);
+    expect(mensajeErrorPassword({ code: "weak_password" })).toBe(MENSAJE_PASSWORD_DEBIL);
+    expect(mensajeErrorPassword({ message: "New password should be different from the old password." })).toMatch(/distinta/);
   });
 });

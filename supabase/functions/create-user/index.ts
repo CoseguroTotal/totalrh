@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { MENSAJE_PASSWORD_DEBIL, esPasswordDebil } from "../_shared/registro-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -192,6 +193,9 @@ Deno.serve(async (req) => {
       email_confirm: true,
     });
 
+    if (esPasswordDebil(createErr)) {
+      return new Response(JSON.stringify({ error: MENSAJE_PASSWORD_DEBIL }), { status: 422, headers: corsHeaders });
+    }
     if (createErr) {
       return new Response(JSON.stringify({ error: createErr.message }), { status: 400, headers: corsHeaders });
     }

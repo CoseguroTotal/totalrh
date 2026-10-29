@@ -12,3 +12,14 @@ describe("marca de agua", () => {
     expect(textoMarcaDeAgua({ nombre: "admin@empresa.com", documento: "" }, new Date("2026-10-29T15:04:00-03:00"))).not.toContain("·  ·");
   });
 });
+
+describe("contraseña provisoria", () => {
+  it("cumple las reglas y no se repite", async () => {
+    const { sugerirClave } = await import("@/components/BlanquearClave");
+    const { problemaPassword } = await import("../../supabase/functions/_shared/registro-rules");
+    const a = sugerirClave(), b = sugerirClave();
+    expect(a).toMatch(/^[A-Z][a-z]{7}-\d{4}$/);
+    expect(problemaPassword(a)).toBeNull();
+    expect(a).not.toBe(b);
+  });
+});
