@@ -52,7 +52,7 @@ export default function Vacaciones() {
 
       {empresaId && (
         <Tabs defaultValue="solicitudes" className="animate-slide-up">
-          <TabsList>
+          <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="solicitudes">Solicitudes</TabsTrigger>
             <TabsTrigger value="calendario">Calendario</TabsTrigger>
             <TabsTrigger value="configuracion">Configuración</TabsTrigger>

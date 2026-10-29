@@ -250,7 +250,7 @@ export default function LegajoDetail() {
               <h1 className="text-xl font-semibold">{emp.apellido}, {emp.nombre}</h1>
               <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", estadoBadge[emp.estado])}>{emp.estado}</span>
               {canEdit && (
-                <div className="ml-auto flex gap-1">
+                <div className="ml-auto flex flex-wrap gap-1">
                   <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
                     <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
                   </Button>
@@ -313,7 +313,7 @@ export default function LegajoDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="historial" className="animate-slide-up" style={{ animationDelay: "100ms" }}>
-        <TabsList className="flex-wrap">
+        <TabsList className="w-full sm:w-auto sm:flex-wrap">
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
           <TabsTrigger value="familia">Familia</TabsTrigger>

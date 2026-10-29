@@ -61,7 +61,7 @@ export default function Liquidacion() {
       </div>
 
       <Tabs defaultValue="conceptos" className="animate-slide-up">
-        <TabsList>
+        <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="conceptos">Conceptos</TabsTrigger>
           <TabsTrigger value="simulador">Simulador</TabsTrigger>
           <TabsTrigger value="masiva">Masiva</TabsTrigger>

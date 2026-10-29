@@ -262,7 +262,7 @@ function EmpresaFormDialog({ open, onOpenChange, empresa }: { open: boolean; onO
             <Label className="text-xs">Dirección</Label>
             <Input value={form.domicilio_fiscal} onChange={(e) => updateField("domicilio_fiscal", e.target.value)} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Localidad</Label>
               <Input value={form.localidad} onChange={(e) => updateField("localidad", e.target.value)} />

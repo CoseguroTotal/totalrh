@@ -183,7 +183,7 @@ export default function ConceptoFormDialog({ open, onOpenChange, concepto }: Pro
               </div>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <Label className="text-xs">Porcentaje (%)</Label>
               <Input type="number" value={form.porcentaje} onChange={(e) => setForm({ ...form, porcentaje: e.target.value })} placeholder="Ej: 11" />

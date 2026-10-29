@@ -77,7 +77,7 @@ function ConfiguracionContent() {
         <p className="text-sm text-muted-foreground mt-1">Gestión de usuarios y configuración del grupo empresario</p>
       </div>
       <Tabs defaultValue="general" className="animate-slide-up">
-        <TabsList className="flex-wrap h-auto">
+        <TabsList className="w-full sm:w-auto sm:flex-wrap">
 
           <TabsTrigger value="general"><Settings2 className="h-3.5 w-3.5 mr-1.5" />General</TabsTrigger>
           <TabsTrigger value="notificaciones"><Bell className="h-3.5 w-3.5 mr-1.5" />Notificaciones</TabsTrigger>

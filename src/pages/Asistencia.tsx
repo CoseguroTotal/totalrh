@@ -40,7 +40,7 @@ export default function Asistencia() {
       </div>
 
       <Tabs defaultValue="fichada" className="animate-slide-up">
-        <TabsList className="flex-wrap">
+        <TabsList className="w-full sm:w-auto sm:flex-wrap">
           <TabsTrigger value="fichada">Fichada</TabsTrigger>
           <TabsTrigger value="turnos">Turnos</TabsTrigger>
           <TabsTrigger value="extras">Horas extra</TabsTrigger>

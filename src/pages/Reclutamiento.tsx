@@ -70,7 +70,7 @@ export default function Reclutamiento() {
       </div>
 
       <Tabs defaultValue="vacantes" className="animate-slide-up">
-        <TabsList>
+        <TabsList className="w-full sm:w-auto">
           <TabsTrigger value="vacantes"><Briefcase className="h-3.5 w-3.5 mr-1" />Vacantes</TabsTrigger>
           <TabsTrigger value="pipeline"><Users className="h-3.5 w-3.5 mr-1" />Pipeline</TabsTrigger>
         </TabsList>
