@@ -80,6 +80,8 @@ export async function avisoSistema(titulo: string, cuerpo: string, url: string, 
   try {
     // En Android sólo se puede avisar a través del service worker
     const reg = await navigator.serviceWorker?.getRegistration();
+    // Con los avisos push activos avisa el servidor (llegan aunque la app esté cerrada): así no suena dos veces
+    if (await reg?.pushManager?.getSubscription()) return;
     if (reg) { await reg.showNotification(titulo, opciones); return; }
     const n = new Notification(titulo, opciones);
     n.onclick = () => { window.focus(); window.location.assign(url); n.close(); };
@@ -95,13 +97,4 @@ export function marcarIconoApp(cantidad: number) {
   } catch { /* sin soporte */ }
 }
 
-/** Texto corto para un mensaje de chat (sin contenido, con adjunto o eliminado). */
-export function resumenMensaje(m: { contenido?: string | null; adjunto_tipo?: string | null; eliminado?: boolean | null }) {
-  if (m.eliminado) return "Mensaje eliminado";
-  const texto = (m.contenido ?? "").trim();
-  if (texto) return texto.length > 120 ? `${texto.slice(0, 117)}…` : texto;
-  if (m.adjunto_tipo === "imagen") return "📷 Foto";
-  if (m.adjunto_tipo === "audio") return "🎤 Mensaje de voz";
-  if (m.adjunto_tipo === "documento") return "📎 Documento";
-  return "Nuevo mensaje";
-}
+export { resumenMensaje } from "../../supabase/functions/_shared/push-rules";

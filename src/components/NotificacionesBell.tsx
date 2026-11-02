@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Bell, BellRing, Volume2, VolumeX } from "lucide-react";
+import { Bell, BellRing, Loader2, Send, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { pedirPermisoAvisos, permisoAvisos, setSonidosActivos, sonar, sonidosActivos } from "@/lib/avisos";
+import { activarPush, probarPush, pushSoportado } from "@/lib/push";
 import { useNotificaciones, useMarcarLeida, useMarcarTodasLeidas } from "@/hooks/useNotificaciones";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export default function NotificacionesBell() {
   const noLeidas = notifs.filter((n: any) => !n.leida).length;
   const [conSonido, setConSonido] = useState(sonidosActivos);
   const [permiso, setPermiso] = useState(permisoAvisos);
+  const [probando, setProbando] = useState(false);
 
   const cambiarSonido = (v: boolean) => {
     setSonidosActivos(v);
@@ -26,8 +28,21 @@ export default function NotificacionesBell() {
   const activarAvisos = async () => {
     const r = await pedirPermisoAvisos();
     setPermiso(r);
-    if (r === "granted") toast.success("Listo: te avisamos aunque la app esté en segundo plano.");
+    if (r === "granted") {
+      const ok = await activarPush();
+      toast.success(ok ? "Listo: te avisamos aunque la app esté cerrada." : "Listo: te avisamos mientras la app esté abierta o en segundo plano.");
+    }
     else if (r === "denied") toast.error("Los avisos están bloqueados. Habilitalos desde los ajustes del navegador para este sitio.");
+  };
+  // Prueba real: el aviso sale del servidor, como un mensaje o un memo
+  const probar = async () => {
+    setProbando(true);
+    const ok = await activarPush();
+    const r = ok ? await probarPush() : null;
+    setProbando(false);
+    if (!ok || !r) toast.error(pushSoportado() ? "No se pudo registrar este dispositivo. Abrí la app instalada e intentá de nuevo." : "Este navegador no recibe avisos con la app cerrada.");
+    else if (r.enviados > 0) toast.success("Aviso enviado. Cerrá la app o bloqueá el celular: tiene que llegar en unos segundos.");
+    else toast.error("El servicio de avisos del celular rechazó el envío. Desactivá y volvé a activar las notificaciones del sitio.");
   };
   const esIphone = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const instalada = window.matchMedia?.("(display-mode: standalone)").matches;
@@ -84,12 +99,17 @@ export default function NotificacionesBell() {
             <Switch checked={conSonido} onCheckedChange={cambiarSonido} aria-label="Sonidos" />
           </label>
           {permiso === "granted" ? (
-            <p className="flex items-center gap-1.5 text-muted-foreground"><BellRing className="h-3.5 w-3.5 text-success" />Avisos del sistema activados en este dispositivo</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-1.5 text-muted-foreground"><BellRing className="h-3.5 w-3.5 shrink-0 text-success" />Avisos activados en este dispositivo</p>
+              <Button variant="outline" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={probar} disabled={probando}>
+                {probando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Send className="mr-1 h-3 w-3" />Probar</>}
+              </Button>
+            </div>
           ) : permiso === "no-disponible" ? (
             <p className="text-muted-foreground">{esIphone && !instalada ? "En iPhone, instalá la app (Compartir → Agregar a inicio) para recibir avisos." : "Este navegador no permite avisos del sistema."}</p>
           ) : (
             <Button variant="outline" size="sm" className="h-8 w-full text-xs" onClick={activarAvisos}>
-              <BellRing className="mr-1.5 h-3.5 w-3.5" />{permiso === "denied" ? "Avisos bloqueados: ver cómo habilitarlos" : "Recibir avisos con la app en segundo plano"}
+              <BellRing className="mr-1.5 h-3.5 w-3.5" />{permiso === "denied" ? "Avisos bloqueados: ver cómo habilitarlos" : "Recibir avisos aunque la app esté cerrada"}
             </Button>
           )}
         </div>

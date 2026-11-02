@@ -4,6 +4,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Suspense, useCallback, useEffect } from "react";
 import { useNotificaciones, useNotificacionesRealtime } from "@/hooks/useNotificaciones";
 import { marcarIconoApp, prepararSonidos } from "@/lib/avisos";
+import { activarPush, vigilarCierreSesion } from "@/lib/push";
 import { activarProteccionPantalla } from "@/lib/proteccionPantalla";
 import { LifeBuoy, Loader2, MessageCircle } from "lucide-react";
 import { useSesionSoporte, useSinLeerSoporte, useSoporteRealtime } from "@/hooks/useSoporte";
@@ -71,7 +72,8 @@ export default function AppLayout() {
   const abrir = useCallback((link: string) => navigate(link), [navigate]);
   useChatRealtime(abrir);
   useNotificacionesRealtime(abrir);
-  useEffect(() => { prepararSonidos(); activarProteccionPantalla(); }, []);
+  // Si ya dio permiso para avisos, el dispositivo queda suscripto al push (llegan con la app cerrada)
+  useEffect(() => { prepararSonidos(); activarProteccionPantalla(); vigilarCierreSesion(); void activarPush(); }, []);
 
   // Número en el ícono de la app instalada: mensajes y notificaciones sin leer
   const chatSinLeer = useNoLeidosTotal();
