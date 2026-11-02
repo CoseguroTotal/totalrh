@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS public.push_config (
 );
 ALTER TABLE public.push_config ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.push_config FROM anon, authenticated;
+-- La edge function usa el rol de servicio, que en estos backends no tiene permisos por defecto
+GRANT ALL ON public.push_config TO service_role;
 
 -- Un registro por navegador o celular donde la persona activó los avisos
 CREATE TABLE IF NOT EXISTS public.push_suscripciones (
@@ -41,6 +43,8 @@ CREATE TABLE IF NOT EXISTS public.push_suscripciones (
 CREATE INDEX IF NOT EXISTS push_suscripciones_user_idx ON public.push_suscripciones (user_id);
 ALTER TABLE public.push_suscripciones ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.push_suscripciones FROM anon, authenticated;
+-- La edge function usa el rol de servicio, que en estos backends no tiene permisos por defecto
+GRANT ALL ON public.push_suscripciones TO service_role;
 
 -- Pide el envío del aviso. Nunca frena el guardado: si algo falla, sólo no sale el push.
 CREATE OR REPLACE FUNCTION public.push_disparar()
