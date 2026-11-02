@@ -1804,6 +1804,69 @@ export type Database = {
           },
         ]
       }
+      push_config: {
+        Row: {
+          clave_anon: string | null
+          created_at: string
+          id: number
+          secreto: string
+          url_funcion: string
+          vapid_privada: Json
+          vapid_publica: string
+        }
+        Insert: {
+          clave_anon?: string | null
+          created_at?: string
+          id?: number
+          secreto: string
+          url_funcion: string
+          vapid_privada: Json
+          vapid_publica: string
+        }
+        Update: {
+          clave_anon?: string | null
+          created_at?: string
+          id?: number
+          secreto?: string
+          url_funcion?: string
+          vapid_privada?: Json
+          vapid_publica?: string
+        }
+        Relationships: []
+      }
+      push_suscripciones: {
+        Row: {
+          actualizada_at: string
+          auth: string
+          created_at: string
+          dispositivo: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          actualizada_at?: string
+          auth: string
+          created_at?: string
+          dispositivo?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          actualizada_at?: string
+          auth?: string
+          created_at?: string
+          dispositivo?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       qr_sesiones: {
         Row: {
           codigo: string

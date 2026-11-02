@@ -22,8 +22,8 @@ const unir = (...partes: Uint8Array[]) => {
 };
 
 async function hmac(clave: Uint8Array, datos: Uint8Array) {
-  const k = await crypto.subtle.importKey("raw", clave, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  return new Uint8Array(await crypto.subtle.sign("HMAC", k, datos));
+  const k = await crypto.subtle.importKey("raw", clave as BufferSource, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return new Uint8Array(await crypto.subtle.sign("HMAC", k, datos as BufferSource));
 }
 
 /** HKDF de un solo bloque (alcanza para claves de hasta 32 bytes). */
