@@ -1,0 +1,1 @@
+COMMENT ON COLUMN public.fichadas.cargada_por IS 'Usuario de gestión que cargó la fichada manual/importada';
