@@ -1241,6 +1241,7 @@ export type Database = {
       }
       fichadas: {
         Row: {
+          cargada_por: string | null
           created_at: string
           distancia_m: number | null
           empleado_id: string
@@ -1259,6 +1260,7 @@ export type Database = {
           turno_id: string | null
         }
         Insert: {
+          cargada_por?: string | null
           created_at?: string
           distancia_m?: number | null
           empleado_id: string
@@ -1277,6 +1279,7 @@ export type Database = {
           turno_id?: string | null
         }
         Update: {
+          cargada_por?: string | null
           created_at?: string
           distancia_m?: number | null
           empleado_id?: string
@@ -1945,7 +1948,6 @@ export type Database = {
           created_at: string
           descriptores: Json
           empleado_id: string
-          foto_path: string | null
           registrado_por: string | null
           updated_at: string
           verificado_at: string | null
@@ -1957,7 +1959,6 @@ export type Database = {
           created_at?: string
           descriptores: Json
           empleado_id: string
-          foto_path?: string | null
           registrado_por?: string | null
           updated_at?: string
           verificado_at?: string | null
@@ -1969,7 +1970,6 @@ export type Database = {
           created_at?: string
           descriptores?: Json
           empleado_id?: string
-          foto_path?: string | null
           registrado_por?: string | null
           updated_at?: string
           verificado_at?: string | null
