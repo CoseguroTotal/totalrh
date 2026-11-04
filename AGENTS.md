@@ -1,1 +1,2 @@
 - Demo access security rules live in supabase/functions/_shared/demo-rules.ts (pure, unit-tested from src/test); per-lead demo accounts are provisioned in _shared/demo-accounts.ts — why: one source shared by all demo edge functions and testable without Deno.
+- Only the attendance edge function (service role) records biometric/geo/QR clock-ins; authenticated inserts into fichadas are forced to metodo manual/importada by trigger — why: the terminal account must not bypass face recognition.

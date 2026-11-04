@@ -1,3 +1,4 @@
+import { useUserRole } from "@/hooks/useUserRole";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,7 +68,20 @@ export default function Configuracion() {
 }
 
 function ConfiguracionContent() {
+  const { data: miRol } = useUserRole();
   const { data: superadmin } = useIsSuperadmin();
+  // RRHH entra a Configuración solo para gestionar usuarios
+  if (miRol === "rrhh") {
+    return (
+      <div className="space-y-6 max-w-4xl">
+        <div className="animate-fade-in">
+          <h1 className="text-2xl font-semibold">Usuarios</h1>
+          <p className="text-sm text-muted-foreground mt-1">Creá usuarios y vinculalos a su legajo</p>
+        </div>
+        <UsuariosTab soloRrhh />
+      </div>
+    );
+  }
   // Las solicitudes de demo solo existen en la instalación de demo
   const isSuperadmin = ES_DEMO && superadmin;
   return (
@@ -294,7 +308,8 @@ function HorariosAccesoTab() {
   );
 }
 
-function UsuariosTab() {
+function UsuariosTab({ soloRrhh = false }: { soloRrhh?: boolean }) {
+  const rolesAsignables = soloRrhh ? ROLES.filter((r) => r.value !== "admin") : ROLES;
   const { data: roles = [], isLoading } = useUsuariosConRoles();
   const { data: empleados = [] } = useEmpleados();
   const qc = useQueryClient();
@@ -367,7 +382,9 @@ function UsuariosTab() {
         <p className="text-sm text-muted-foreground">No hay roles asignados.</p>
       ) : (
         <div className="space-y-2">
-          {roles.map((r: any) => (
+          {roles.map((r: any) => {
+            const bloqueado = soloRrhh && roles.some((x: any) => x.user_id === r.user_id && x.role === "admin");
+            return (
             <div key={r.id} className="flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3">
               <div className="min-w-0 basis-full sm:basis-auto sm:flex-1">
                 <p className="text-sm font-medium truncate">{r.email || r.user_id}</p>
@@ -387,12 +404,13 @@ function UsuariosTab() {
                   </Select>
                 );
               })()}
+              {bloqueado ? <span className="text-xs text-muted-foreground">Administrador</span> : <>
               <Select value={r.role} onValueChange={(v) => updateRole.mutate({ id: r.id, role: v })}>
                 <SelectTrigger className="w-[160px] h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLES.map((rl) => (
+                  {rolesAsignables.map((rl) => (
                     <SelectItem key={rl.value} value={rl.value}>{rl.label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -420,8 +438,10 @@ function UsuariosTab() {
                   </AlertDialogContent>
                 </AlertDialog>
               )}
+              </>}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -436,7 +456,7 @@ function UsuariosTab() {
               <Select value={newUser.role} onValueChange={(v) => setNewUser({ ...newUser, role: v, empleado_id: v === "registro_asistencia" ? "" : newUser.empleado_id })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ROLES.map((rl) => (
+                  {rolesAsignables.map((rl) => (
                     <SelectItem key={rl.value} value={rl.value}>{rl.label}</SelectItem>
                   ))}
                 </SelectContent>

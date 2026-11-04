@@ -1,3 +1,4 @@
+import { puestoVisible } from "@/lib/puesto";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
@@ -166,7 +167,7 @@ export function VistaConversacion({
   const otro = conversacion.tipo === "directa" ? perfiles.get(conversacion.participantes[0]) : null;
   const subtitulo = conversacion.tipo === "grupo"
     ? `${conversacion.participantes.length + 1} participantes`
-    : [otro?.puesto, otro?.empresa].filter(Boolean).join(" · ");
+    : [puestoVisible(otro?.puesto), otro?.empresa].filter(Boolean).join(" · ");
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -551,7 +552,7 @@ export function NuevoChatDialog({
                 <UserAvatar perfil={p} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{nombreCompleto(p)}</p>
-                  <p className="truncate text-xs text-muted-foreground">{[p.puesto, p.empresa].filter(Boolean).join(" · ")}</p>
+                  <p className="truncate text-xs text-muted-foreground">{[puestoVisible(p.puesto), p.empresa].filter(Boolean).join(" · ")}</p>
                 </div>
                 {modo === "grupo" && (
                   <span className={cn("flex h-5 w-5 items-center justify-center rounded-full border-2", marcado ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40")}>

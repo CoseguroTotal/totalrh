@@ -553,6 +553,7 @@ function PlanillasTab({ canEdit }: { canEdit: boolean }) {
         hora_salida: horaSalida,
         estado: "presente",
         observaciones: "Importado desde lector biométrico",
+        metodo: "importada",
       });
       imported++;
     }

@@ -116,7 +116,7 @@ const App = () => (
                   <Route path="/asistencia" element={<Asistencia />} />
                   <Route path="/vacaciones" element={<Vacaciones />} />
                   <Route path="/reportes" element={<Reportes />} />
-                  <Route path="/configuracion" element={<AdminRoute><Configuracion /></AdminRoute>} />
+                  <Route path="/configuracion" element={<AdminRoute allow={["admin", "rrhh"]}><Configuracion /></AdminRoute>} />
                   <Route element={<RoleRoute deny={["contador"]} />}>
                     <Route path="/empresas" element={<Empresas />} />
                     <Route path="/memorandums" element={<Memorandums />} />

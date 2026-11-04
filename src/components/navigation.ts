@@ -62,7 +62,7 @@ export const SECCIONES: SeccionNav[] = [
   {
     label: "Administración",
     items: [
-      { title: "Configuración", url: "/configuracion", icon: Settings, desc: "Usuarios, horarios y métodos de fichada", roles: ["admin"] },
+      { title: "Configuración", url: "/configuracion", icon: Settings, desc: "Usuarios, horarios y métodos de fichada", roles: ["admin", "rrhh"] },
     ],
   },
 ];

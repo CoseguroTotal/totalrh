@@ -63,7 +63,7 @@ export default function MisDatosDialog({ open, onOpenChange, empleado }: { open:
           ))}
         </div>
         <p className="flex items-start gap-2 rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
-          <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-primary" />Los cambios se guardan al instante, se le avisan a RRHH y quedan registrados en tu legajo.
+          <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-primary" />Los cambios se guardan al instante, y se le avisan a RRHH.
         </p>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

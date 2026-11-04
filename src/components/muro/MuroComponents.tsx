@@ -1,3 +1,4 @@
+import { puestoVisible } from "@/lib/puesto";
 import { useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -307,8 +308,8 @@ export function PostCard({
             )}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {[autor?.puesto, autor?.empresa].filter(Boolean).join(" · ")}
-            {(autor?.puesto || autor?.empresa) && " · "}
+            {[puestoVisible(autor?.puesto), autor?.empresa].filter(Boolean).join(" · ")}
+            {(puestoVisible(autor?.puesto) || autor?.empresa) && " · "}
             <time dateTime={pub.created_at} title={new Date(pub.created_at).toLocaleString("es-AR")}>{tiempo(pub.created_at)}</time>
             {pub.editada && " · editado"}
           </p>

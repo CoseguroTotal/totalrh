@@ -1,3 +1,4 @@
+import { puestoVisible } from "@/lib/puesto";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCheck, Eye, Loader2, ShieldCheck, Vote } from "lucide-react";
@@ -105,7 +106,7 @@ function DetalleLecturasDialog({ pub, open, onOpenChange, inicial }: { pub: Publ
                   <UserAvatar perfil={d} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{nombreCompleto(d)}</p>
-                    {d.puesto && <p className="truncate text-xs text-muted-foreground">{d.puesto}</p>}
+                    {puestoVisible(d.puesto) && <p className="truncate text-xs text-muted-foreground">{puestoVisible(d.puesto)}</p>}
                   </div>
                   <span className="shrink-0 text-[11px] text-muted-foreground">
                     {pestana === "confirmados" && d.confirmado_at ? fechaHora(d.confirmado_at) : pestana === "vistos" && d.visto_at ? fechaHora(d.visto_at) : ""}

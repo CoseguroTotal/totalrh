@@ -1,3 +1,5 @@
+import { puestoVisible } from "@/lib/puesto";
+import { MOSTRAR_RECIBOS } from "@/marca";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -33,7 +35,7 @@ export function AccesosRapidos({ perfil }: { perfil?: PerfilMuro | null }) {
     { label: "Eventos", to: "/eventos", icon: CalendarDays, color: "bg-sky-500/15 text-sky-600 dark:text-sky-400" },
     ...(role !== "contador" ? [
       { label: "Fichar", to: "/autogestion?tab=token", icon: QrCode, color: "bg-success/15 text-success" },
-      { label: "Mis recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
+      ...(MOSTRAR_RECIBOS ? [{ label: "Mis recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" }] : []),
       { label: "Vacaciones", to: "/autogestion?tab=vacaciones", icon: Palmtree, color: "bg-orange-500/15 text-orange-600 dark:text-orange-400" },
       { label: "Permisos", to: "/autogestion?tab=permisos", icon: ClipboardList, color: "bg-violet-500/15 text-violet-600 dark:text-violet-400" },
     ] : []),
@@ -95,7 +97,7 @@ export function AccesosRapidosMovil() {
     { label: "Grupos", to: "/grupos", icon: Users, color: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" },
     ...(role !== "contador" ? [
       { label: "Fichar", to: "/autogestion?tab=token", icon: QrCode, color: "bg-success/15 text-success" },
-      { label: "Recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "bg-emerald-500/15 text-emerald-600" },
+      ...(MOSTRAR_RECIBOS ? [{ label: "Recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "bg-emerald-500/15 text-emerald-600" }] : []),
       { label: "Vacaciones", to: "/autogestion?tab=vacaciones", icon: Palmtree, color: "bg-orange-500/15 text-orange-600" },
       { label: "Permisos", to: "/autogestion?tab=permisos", icon: ClipboardList, color: "bg-violet-500/15 text-violet-600" },
     ] : []),
@@ -164,7 +166,7 @@ export function ContactosCard() {
                 <UserAvatar perfil={p} size="sm" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{nombreCompleto(p)}</span>
-                  {p.puesto && <span className="block truncate text-[11px] text-muted-foreground">{p.puesto}</span>}
+                  {puestoVisible(p.puesto) && <span className="block truncate text-[11px] text-muted-foreground">{puestoVisible(p.puesto)}</span>}
                 </span>
                 <MessageCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
               </button>

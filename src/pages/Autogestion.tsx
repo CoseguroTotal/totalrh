@@ -20,8 +20,8 @@ import SolicitudPermisoFormDialog from "@/components/SolicitudPermisoFormDialog"
 import { generarSolicitudPermisoPDF } from "@/components/SolicitudPermisoPDF";
 import InstallPWAPrompt from "@/components/InstallPWAPrompt";
 import MisDatosDialog from "@/components/MisDatosDialog";
-import HistorialCambios from "@/components/HistorialCambios";
 import PanelFichar from "@/components/asistencia/PanelFichar";
+import { MOSTRAR_RECIBOS } from "@/marca";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
@@ -191,7 +191,7 @@ export default function Autogestion() {
           <TabsTrigger value="memorandums" className="text-xs sm:text-sm shrink-0"><FileCheck className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Memos</TabsTrigger>
           {MOSTRAR_SANCIONES && <TabsTrigger value="sanciones" className="text-xs sm:text-sm shrink-0"><ShieldAlert className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Sanciones</TabsTrigger>}
           <TabsTrigger value="fichadas" className="text-xs sm:text-sm shrink-0"><Clock className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Fichadas</TabsTrigger>
-          <TabsTrigger value="recibos" className="text-xs sm:text-sm shrink-0"><DollarSign className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Recibos</TabsTrigger>
+          {MOSTRAR_RECIBOS && <TabsTrigger value="recibos" className="text-xs sm:text-sm shrink-0"><DollarSign className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Recibos</TabsTrigger>}
           <TabsTrigger value="token" className="text-xs sm:text-sm shrink-0"><QrCode className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Fichar</TabsTrigger>
           <TabsTrigger value="password" className="text-xs sm:text-sm shrink-0"><Lock className="h-3.5 w-3.5 mr-1 hidden sm:inline-block" />Clave</TabsTrigger>
         </TabsList>
@@ -202,7 +202,7 @@ export default function Autogestion() {
           <TabsTrigger value="documentos" className="text-xs shrink-0 min-h-[38px]">Docs</TabsTrigger>
           <TabsTrigger value="memorandums" className="text-xs shrink-0 min-h-[38px]">Memos</TabsTrigger>
           {MOSTRAR_SANCIONES && <TabsTrigger value="sanciones" className="text-xs shrink-0 min-h-[38px]">Sanciones</TabsTrigger>}
-          <TabsTrigger value="recibos" className="text-xs shrink-0 min-h-[38px]">Recibos</TabsTrigger>
+          {MOSTRAR_RECIBOS && <TabsTrigger value="recibos" className="text-xs shrink-0 min-h-[38px]">Recibos</TabsTrigger>}
           <TabsTrigger value="fichadas" className="text-xs shrink-0 min-h-[38px]">Fichadas</TabsTrigger>
           <TabsTrigger value="password" className="text-xs shrink-0 min-h-[38px]">Clave</TabsTrigger>
         </TabsList>
@@ -227,15 +227,14 @@ export default function Autogestion() {
                 { label: "Email", value: emp.email },
                 { label: "Teléfono", value: emp.telefono },
                 { label: "Domicilio", value: domicilioFull || null },
-              ].map((d) => (
+              ].filter((d) => d.value).map((d) => (
                 <div key={d.label}>
                   <p className="text-xs text-muted-foreground">{d.label}</p>
-                  <p className="text-sm font-medium mt-0.5">{d.value || "—"}</p>
+                  <p className="text-sm font-medium mt-0.5">{d.value}</p>
                 </div>
               ))}
             </div>
           </div>
-          <HistorialCambios empleadoId={emp.id} titulo="Historial de cambios de mis datos" limite={20} />
           <MisDatosDialog open={editarDatos} onOpenChange={setEditarDatos} empleado={emp} />
           </div>
         </TabsContent>
@@ -497,7 +496,7 @@ export default function Autogestion() {
           <FichadasTab empleadoId={emp.id} />
         </TabsContent>
 
-        <TabsContent value="recibos">
+        {MOSTRAR_RECIBOS && <TabsContent value="recibos">
           <div className="rounded-xl border bg-card p-4 sm:p-5 shadow-sm space-y-4">
             <h3 className="text-sm font-medium flex items-center gap-2"><DollarSign className="h-4 w-4" />Mis Recibos de Sueldo</h3>
             {misRecibos.length === 0 ? (
@@ -516,7 +515,7 @@ export default function Autogestion() {
               </div>
             )}
           </div>
-        </TabsContent>
+        </TabsContent>}
 
         <TabsContent value="token">
           <div className="space-y-4">

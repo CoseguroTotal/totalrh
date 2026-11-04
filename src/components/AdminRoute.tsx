@@ -1,9 +1,10 @@
-import { useIsAdmin } from "@/hooks/useUserRole";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
-export default function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAdmin, isLoading } = useIsAdmin();
+export default function AdminRoute({ children, allow = ["admin"] }: { children: React.ReactNode; allow?: string[] }) {
+  const { data: role, isLoading } = useUserRole();
+  const isAdmin = !!role && allow.includes(role);
 
   if (isLoading) {
     return (

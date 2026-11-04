@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { MOSTRAR_RECIBOS } from "@/marca";
 import {
   BarChart3, Briefcase, Building2, Clock, ClipboardList, DollarSign, FileCheck, FileText, Home, LayoutDashboard,
   MessageCircle, Palmtree, QrCode, Settings, UserCircle, Vote, FolderOpen, CalendarDays, CheckSquare, UsersRound, type LucideIcon,
@@ -38,7 +39,7 @@ export default function Apps() {
         { label: "Fichar", to: "/autogestion?tab=token", icon: QrCode, color: "text-green-600 bg-green-500/10", roles: PERSONAL },
         { label: "Vacaciones", to: "/autogestion?tab=vacaciones", icon: Palmtree, color: "text-orange-600 bg-orange-500/10", roles: PERSONAL },
         { label: "Permisos", to: "/autogestion?tab=permisos", icon: ClipboardList, color: "text-indigo-600 bg-indigo-500/10", roles: PERSONAL },
-        { label: "Mis recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "text-emerald-600 bg-emerald-500/10", roles: PERSONAL },
+        ...(MOSTRAR_RECIBOS ? [{ label: "Mis recibos", to: "/autogestion?tab=recibos", icon: DollarSign, color: "text-emerald-600 bg-emerald-500/10", roles: PERSONAL }] : []),
         { label: "Documentos", to: "/autogestion?tab=documentos", icon: FolderOpen, color: "text-amber-600 bg-amber-500/10", roles: PERSONAL },
         { label: "Memorándums", to: "/autogestion?tab=memorandums", icon: FileCheck, color: "text-rose-600 bg-rose-500/10", roles: PERSONAL },
         { label: "Mi perfil", to: "/autogestion?tab=datos", icon: UserCircle, color: "text-teal-600 bg-teal-500/10", roles: PERSONAL },
@@ -56,7 +57,7 @@ export default function Apps() {
         { label: "Reclutamiento", to: "/reclutamiento", icon: Briefcase, color: "text-indigo-600 bg-indigo-500/10", roles: GESTION },
         { label: "Empresas", to: "/empresas", icon: Building2, color: "text-slate-600 bg-slate-500/10", roles: GESTION },
         { label: "Reportes", to: "/reportes", icon: BarChart3, color: "text-fuchsia-600 bg-fuchsia-500/10", roles: CONTADOR },
-        { label: "Configuración", to: "/configuracion", icon: Settings, color: "text-zinc-600 bg-zinc-500/10", roles: ["admin"] },
+        { label: "Configuración", to: "/configuracion", icon: Settings, color: "text-zinc-600 bg-zinc-500/10", roles: ["admin", "rrhh"] },
       ],
     },
   ];

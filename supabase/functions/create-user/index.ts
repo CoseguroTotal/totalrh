@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { puedeAsignarRol, puedeTocarUsuario, rolGestor } from "../_shared/user-admin-rules.ts";
 import { MENSAJE_PASSWORD_DEBIL, esPasswordDebil } from "../_shared/registro-rules.ts";
 
 const corsHeaders = {
@@ -47,21 +48,26 @@ Deno.serve(async (req) => {
     }
 
     const callerId = claimsData.claims.sub;
-    const { data: roleData } = await anonClient
+    const { data: callerRoles } = await anonClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", callerId)
-      .eq("role", "admin")
-      .maybeSingle();
+      .eq("user_id", callerId);
 
-    if (!roleData) {
-      return new Response(JSON.stringify({ error: "Solo administradores pueden gestionar usuarios" }), { status: 403, headers: corsHeaders });
+    const gestor = rolGestor((callerRoles ?? []).map((r) => r.role as string));
+    if (!gestor) {
+      return new Response(JSON.stringify({ error: "Solo administradores o RRHH pueden gestionar usuarios" }), { status: 403, headers: corsHeaders });
     }
+    const prohibido = (msg: string) => new Response(JSON.stringify({ error: msg }), { status: 403, headers: corsHeaders });
 
     const adminClient = createClient(
       requiredEnv("SUPABASE_URL"),
       requiredEnv("SUPABASE_SERVICE_ROLE_KEY")
     );
+
+    const rolesDe = async (uid: string) => {
+      const { data } = await adminClient.from("user_roles").select("role").eq("user_id", uid);
+      return (data ?? []).map((r) => r.role as string);
+    };
 
     const body = await req.json();
     const action = body.action ?? "create-user";
@@ -90,6 +96,10 @@ Deno.serve(async (req) => {
       if (!user_role_id || !role || !allowedRoles.has(role)) {
         return new Response(JSON.stringify({ error: "Datos de rol inválidos" }), { status: 400, headers: corsHeaders });
       }
+      if (!puedeAsignarRol(gestor, role)) return prohibido("RRHH no puede asignar el rol de administrador");
+      const { data: fila } = await adminClient.from("user_roles").select("user_id, role").eq("id", user_role_id).maybeSingle();
+      if (!fila) return new Response(JSON.stringify({ error: "Rol no encontrado" }), { status: 404, headers: corsHeaders });
+      if (!puedeTocarUsuario(gestor, await rolesDe(fila.user_id))) return prohibido("RRHH no puede modificar a un administrador");
 
       const { error } = await adminClient
         .from("user_roles")
@@ -113,6 +123,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "No podés eliminar tu propio usuario" }), { status: 400, headers: corsHeaders });
       }
       const { data: targetRoles } = await adminClient.from("user_roles").select("role").eq("user_id", user_id);
+      if (!puedeTocarUsuario(gestor, (targetRoles ?? []).map((r) => r.role as string))) return prohibido("RRHH no puede eliminar a un administrador");
       if (targetRoles?.some((r) => r.role === "admin")) {
         const { count } = await adminClient.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin");
         if ((count ?? 0) <= 1) {
@@ -136,6 +147,7 @@ Deno.serve(async (req) => {
       if (!user_id || typeof user_id !== "string") {
         return new Response(JSON.stringify({ error: "Usuario inválido" }), { status: 400, headers: corsHeaders });
       }
+      if (!puedeTocarUsuario(gestor, await rolesDe(user_id))) return prohibido("RRHH no puede modificar a un administrador");
       if (empleado_id) {
         const { data: emp, error: empErr } = await adminClient.from("empleados").select("id, user_id").eq("id", empleado_id).maybeSingle();
         if (empErr) throw empErr;
@@ -167,6 +179,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Faltan campos requeridos o el rol es inválido" }), { status: 400, headers: corsHeaders });
     }
 
+    if (!puedeAsignarRol(gestor, role)) return prohibido("RRHH no puede crear administradores");
     if (role === "empleado" && !empleado_id) {
       return new Response(JSON.stringify({ error: "Seleccioná el legajo para vincular al empleado" }), { status: 400, headers: corsHeaders });
     }
