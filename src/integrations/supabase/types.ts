@@ -1241,7 +1241,6 @@ export type Database = {
       }
       fichadas: {
         Row: {
-          cargada_por: string | null
           created_at: string
           distancia_m: number | null
           empleado_id: string
@@ -1260,7 +1259,6 @@ export type Database = {
           turno_id: string | null
         }
         Insert: {
-          cargada_por?: string | null
           created_at?: string
           distancia_m?: number | null
           empleado_id: string
@@ -1279,7 +1277,6 @@ export type Database = {
           turno_id?: string | null
         }
         Update: {
-          cargada_por?: string | null
           created_at?: string
           distancia_m?: number | null
           empleado_id?: string
