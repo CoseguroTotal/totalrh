@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   decidirFichada, distanciaMetros, esUbicacionValida, evaluarGeocerca, puedeOperarTerminal, puedeRegistrarRostro,
-  puedeVerificarRostro, registroQuedaVerificado,
+  FOTO_ROSTRO_MAX_BYTES, decodificarFotoRostro, puedeVerificarRostro, registroQuedaVerificado,
 } from "../../supabase/functions/_shared/attendance-rules";
 
 const roles = (...r: string[]) => new Set(r);
@@ -114,5 +114,22 @@ describe("verificación del rostro", () => {
     expect(registroQuedaVerificado("u-rrhh", "u-emp", r("rrhh"))).toBe(true);
     expect(registroQuedaVerificado("u-rrhh", null, r("rrhh"))).toBe(true);
     expect(registroQuedaVerificado("u-rrhh", "u-rrhh", r("rrhh"))).toBe(false);
+  });
+});
+
+describe("foto de autorización del rostro", () => {
+  const jpeg = (bytes: number) => {
+    const b = new Uint8Array(bytes); b[0] = 0xff; b[1] = 0xd8; b[2] = 0xff;
+    return "data:image/jpeg;base64," + Buffer.from(b).toString("base64");
+  };
+  it("acepta un JPEG chico", () => {
+    expect(decodificarFotoRostro(jpeg(20_000))?.length).toBe(20_000);
+  });
+  it("rechaza lo que no es JPEG, lo vacío y lo demasiado grande", () => {
+    expect(decodificarFotoRostro(undefined)).toBeNull();
+    expect(decodificarFotoRostro("data:image/png;base64,AAAA")).toBeNull();
+    expect(decodificarFotoRostro("data:image/jpeg;base64," + Buffer.from(new Uint8Array(20_000)).toString("base64"))).toBeNull();
+    expect(decodificarFotoRostro(jpeg(FOTO_ROSTRO_MAX_BYTES + 3))).toBeNull();
+    expect(decodificarFotoRostro(jpeg(500))).toBeNull();
   });
 });

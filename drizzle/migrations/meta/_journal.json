@@ -127,6 +127,13 @@
       "when": 1793792924129,
       "tag": "0017_comentario_fichadas_cargada_por",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793798991461,
+      "tag": "0018_foto_autorizacion_rostro",
+      "breakpoints": true
     }
   ]
 }

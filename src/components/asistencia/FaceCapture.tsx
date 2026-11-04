@@ -21,8 +21,9 @@ const TAMANO_MINIMO = 0.18;
 const MISMA_PERSONA_SESION = 0.6;
 
 export const TEXTO_CONSENTIMIENTO =
-  "Autorizo a mi empleador a generar y guardar una plantilla numérica de mi rostro (no se guardan fotos) " +
-  "con el único fin de registrar mi asistencia. Entiendo que es un dato sensible según la Ley 25.326 de " +
+  "Autorizo a mi empleador a generar y guardar una plantilla numérica de mi rostro con el único fin de " +
+  "registrar mi asistencia. Si lo registro desde mi celular, también se guarda una foto que sólo ve RRHH " +
+  "para autorizar el registro y que se borra apenas lo autoriza o lo rechaza. Entiendo que es un dato sensible según la Ley 25.326 de " +
   "Protección de Datos Personales, que puedo seguir fichando con QR y que puedo revocar este consentimiento " +
   "y pedir que se borre en cualquier momento desde Autogestión o a través de RRHH.";
 
@@ -361,6 +362,22 @@ export function FaceEnrollDialog({
 
 type ModoCaptura = "registro" | "verificacion";
 
+/** Foto chica del cuadro actual de la cámara, para que RRHH autorice un registro hecho a distancia. */
+function fotoDeCamara(video: HTMLVideoElement | null): string | null {
+  if (!video?.videoWidth) return null;
+  const ancho = 360;
+  const canvas = document.createElement("canvas");
+  canvas.width = ancho;
+  canvas.height = Math.round((video.videoHeight / video.videoWidth) * ancho);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  // Igual que la vista previa (espejada), para que RRHH vea lo mismo que vio el empleado
+  ctx.translate(ancho, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.8);
+}
+
 function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoId: string; onListo: () => void; modo?: ModoCaptura }) {
   // Para verificar alcanza con una foto completa después de la prueba de vida
   const cantidad = modo === "verificacion" ? 1 : MUESTRAS;
@@ -370,6 +387,7 @@ function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoI
   const [progreso, setProgreso] = useState(0);
   const prueba = useRef(new PruebaDeVida(desafioAleatorio()));
   const muestras = useRef<number[][]>([]);
+  const foto = useRef<string | null>(null);
   const ultimaMuestra = useRef(0);
   const inicioDesafio = useRef(0);
   const [ofrecerCambio, setOfrecerCambio] = useState(false);
@@ -401,7 +419,7 @@ function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoI
     }
     const { data, error: fnError } = await invocarFuncion("validate-attendance-token", modo === "verificacion"
         ? { action: "face-verificar", empleado_id: empleadoId, descriptor: muestras.current[0], prueba_vida: true }
-        : { action: "face-enroll", empleado_id: empleadoId, descriptores: muestras.current, consentimiento_texto: TEXTO_CONSENTIMIENTO });
+        : { action: "face-enroll", empleado_id: empleadoId, descriptores: muestras.current, consentimiento_texto: TEXTO_CONSENTIMIENTO, foto: foto.current });
     let msg: string | undefined = data?.error;
     if (fnError && !msg) {
       try { msg = (await (fnError as { context?: Response }).context?.json())?.error; } catch { /* sin cuerpo */ }
@@ -420,6 +438,7 @@ function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoI
   const reintentar = () => {
     prueba.current = new PruebaDeVida(desafioAleatorio());
     muestras.current = [];
+    foto.current = null;
     setProgreso(0);
     setMensaje("Ubicá tu rostro dentro del óvalo");
     setFase("desafio");
@@ -443,6 +462,8 @@ function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoI
       if (!mirandoDeFrente(d)) { setMensaje("Mirá de frente a la cámara"); return; }
       if (Date.now() - ultimaMuestra.current < 350) return;
       ultimaMuestra.current = Date.now();
+      // La foto se toma con la primera muestra de frente, después de la prueba de vida
+      if (modo === "registro" && !foto.current) foto.current = fotoDeCamara(videoRef.current);
       muestras.current.push(d.descriptor);
       setProgreso(40 + (muestras.current.length / cantidad) * 60);
       if (muestras.current.length >= cantidad) await guardar();
@@ -503,9 +524,10 @@ export function RegistroFacialCard({ empleadoId, nombreEmpleado, esPropio }: { e
   const borrar = async () => {
     if (!confirm(esPropio ? "¿Revocar tu consentimiento y borrar tu registro facial?" : "¿Borrar el registro facial de este empleado?")) return;
     setBorrando(true);
-    const { error } = await supabase.from("rostros_empleados").delete().eq("empleado_id", empleadoId);
+    // Por la función: además de la plantilla borra la foto de autorización, si quedó alguna
+    const { data, error } = await invocarFuncion("validate-attendance-token", { action: "face-borrar", empleado_id: empleadoId });
     setBorrando(false);
-    if (error) return toast.error("No se pudo borrar el registro");
+    if (error || data?.error) return toast.error("No se pudo borrar el registro");
     toast.success("Registro facial eliminado");
     cargar();
   };

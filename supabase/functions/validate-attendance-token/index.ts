@@ -4,8 +4,8 @@ import {
   MUESTRAS_REGISTRO, mejorCoincidencia, muestrasConsistentes, type Descriptor,
 } from "../_shared/face-match.ts";
 import {
-  decidirFichada, esUbicacionValida, evaluarGeocerca, puedeOperarTerminal, puedeRegistrarRostro, puedeVerificarRostro,
-  registroQuedaVerificado,
+  decidirFichada, decodificarFotoRostro, esUbicacionValida, evaluarGeocerca, puedeOperarTerminal, puedeRegistrarRostro,
+  puedeVerificarRostro, registroQuedaVerificado,
   type ResultadoGeocerca, type Ubicacion,
 } from "../_shared/attendance-rules.ts";
 
@@ -41,6 +41,12 @@ Deno.serve(async (req) => {
     const rolesDe = async (userId: string) => {
       const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
       return new Set((data ?? []).map((r: { role: string }) => r.role));
+    };
+
+    /** Borra la foto de autorización (ya no hace falta una vez que RRHH decidió). */
+    const borrarFotoRostro = async (empleadoId: string) => {
+      const { data } = await supabaseAdmin.from("rostros_empleados").select("foto_path").eq("empleado_id", empleadoId).maybeSingle();
+      if (data?.foto_path) await supabaseAdmin.storage.from("rostros").remove([data.foto_path]);
     };
 
     type EmpleadoFichada = { id: string; nombre: string; apellido: string; legajo: string };
@@ -150,19 +156,31 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Registro desde el celular: se guarda una foto chica para que RRHH lo autorice a distancia
+      const verificado = registroQuedaVerificado(user.id, emp.user_id, rolesCaller);
+      await borrarFotoRostro(empleado_id);
+      let foto_path: string | null = null;
+      const foto = verificado ? null : decodificarFotoRostro(body.foto);
+      if (foto) {
+        const ruta = `${empleado_id}/${Date.now()}.jpg`;
+        const { error: fotoErr } = await supabaseAdmin.storage.from("rostros").upload(ruta, foto, { contentType: "image/jpeg", upsert: true });
+        if (!fotoErr) foto_path = ruta;
+      }
+
       const { error } = await supabaseAdmin.from("rostros_empleados").upsert({
         empleado_id,
         descriptores,
+        foto_path,
         consentimiento_at: new Date().toISOString(),
         consentimiento_texto,
         registrado_por: user.id,
         // Registrado por el propio empleado (p. ej. desde el celular): RRHH lo verifica en persona
-        ...(registroQuedaVerificado(user.id, emp.user_id, rolesCaller)
+        ...(verificado
           ? { verificado_at: new Date().toISOString(), verificado_por: user.id }
           : { verificado_at: null, verificado_por: null }),
       });
       if (error) throw error;
-      return json({ success: true, verificado: registroQuedaVerificado(user.id, emp.user_id, rolesCaller) });
+      return json({ success: true, verificado });
     }
 
     // ── Action: face-verificar — RRHH confirma en persona un rostro registrado desde el celular ──
@@ -183,11 +201,52 @@ Deno.serve(async (req) => {
       if (d > UMBRAL_COINCIDENCIA) {
         return json({ ok: false, error: "El rostro no coincide con el registrado. Si es la persona correcta, registralo de nuevo desde acá." }, 200);
       }
+      await borrarFotoRostro(empleado_id);
       const { error } = await supabaseAdmin.from("rostros_empleados")
-        .update({ verificado_at: new Date().toISOString(), verificado_por: user.id })
+        .update({ verificado_at: new Date().toISOString(), verificado_por: user.id, foto_path: null })
         .eq("empleado_id", empleado_id);
       if (error) throw error;
       return json({ success: true, distancia: d });
+    }
+
+    // ── Foto de autorización: RRHH la ve, autoriza o rechaza a distancia. face-borrar también
+    //    lo usa el propio empleado para revocar su consentimiento (borra plantilla y foto) ──
+    if (action === "face-foto" || action === "face-autorizar" || action === "face-borrar") {
+      const user = await usuarioAutenticado();
+      if (!user) return json({ error: "Debés iniciar sesión" }, 401);
+      if (!empleado_id || typeof empleado_id !== "string") return json({ error: "empleado_id requerido" }, 400);
+      if (!puedeVerificarRostro(await rolesDe(user.id))) {
+        const { data: propio } = await supabaseAdmin.from("empleados").select("id").eq("id", empleado_id).eq("user_id", user.id).maybeSingle();
+        if (action !== "face-borrar" || !propio) return json({ error: "Sólo RRHH o administración pueden autorizar rostros" }, 403);
+      }
+
+      const { data: reg } = await supabaseAdmin.from("rostros_empleados").select("foto_path, verificado_at").eq("empleado_id", empleado_id).maybeSingle();
+      if (!reg) return json({ error: "Este empleado no tiene rostro registrado" }, 404);
+
+      if (action === "face-foto") {
+        if (!reg.foto_path) return json({ error: "Este registro no tiene foto. Verificalo en persona." }, 404);
+        // Enlace de un minuto: la foto nunca queda pública
+        const { data: firmada, error } = await supabaseAdmin.storage.from("rostros").createSignedUrl(reg.foto_path, 60);
+        if (error) throw error;
+        return json({ url: firmada.signedUrl });
+      }
+
+      if (action === "face-borrar") {
+        await borrarFotoRostro(empleado_id);
+        const { error } = await supabaseAdmin.from("rostros_empleados").delete().eq("empleado_id", empleado_id);
+        if (error) throw error;
+        return json({ success: true });
+      }
+      if (!reg.foto_path) return json({ error: "Este registro no tiene foto. Verificalo en persona." }, 400);
+      // Nadie autoriza su propio rostro: lo tiene que autorizar otra persona de RRHH
+      const { data: empAut } = await supabaseAdmin.from("empleados").select("user_id").eq("id", empleado_id).maybeSingle();
+      if (empAut?.user_id === user.id) return json({ error: "Tu propio registro lo tiene que autorizar otra persona de RRHH" }, 403);
+      await borrarFotoRostro(empleado_id);
+      const { error } = await supabaseAdmin.from("rostros_empleados")
+        .update({ verificado_at: new Date().toISOString(), verificado_por: user.id, foto_path: null })
+        .eq("empleado_id", empleado_id);
+      if (error) throw error;
+      return json({ success: true });
     }
 
     // ── Action: face-fichar — la terminal reconoce al empleado por su rostro ──

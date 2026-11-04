@@ -22,6 +22,28 @@ export function puedeRegistrarRostro(callerId: string, empleadoUserId: string | 
   return roles.has("admin") || roles.has("rrhh");
 }
 
+/** Tamaño máximo de la foto de autorización (JPEG chico, sólo para que RRHH reconozca a la persona). */
+export const FOTO_ROSTRO_MAX_BYTES = 300_000;
+
+/**
+ * Foto del registro hecho desde el celular, para que RRHH lo autorice sin estar en persona.
+ * Devuelve los bytes del JPEG, o null si no es un JPEG válido en data URL o es demasiado grande.
+ */
+export function decodificarFotoRostro(dataUrl: unknown): Uint8Array | null {
+  if (typeof dataUrl !== "string") return null;
+  const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl);
+  if (!m) return null;
+  // Tamaño real sin decodificar todo: cada 4 caracteres de base64 son 3 bytes
+  const padding = m[1].endsWith("==") ? 2 : m[1].endsWith("=") ? 1 : 0;
+  const bytes = (m[1].length / 4) * 3 - padding;
+  if (bytes < 1_000 || bytes > FOTO_ROSTRO_MAX_BYTES) return null;
+  const bin = atob(m[1]);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  // Firma de JPEG (FF D8 FF)
+  return out[0] === 0xff && out[1] === 0xd8 && out[2] === 0xff ? out : null;
+}
+
 /* ─────────────── Entrada o salida ─────────────── */
 
 /** Una entrada sin salida se cierra si no pasaron más de estas horas (cubre turnos noche). */
