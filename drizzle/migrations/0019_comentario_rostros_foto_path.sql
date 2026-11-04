@@ -1,0 +1,1 @@
+COMMENT ON COLUMN public.rostros_empleados.foto_path IS 'Ruta de la foto de autorizacion en el bucket privado rostros; se borra al resolver';

@@ -1948,6 +1948,7 @@ export type Database = {
           created_at: string
           descriptores: Json
           empleado_id: string
+          foto_path: string | null
           registrado_por: string | null
           updated_at: string
           verificado_at: string | null
@@ -1959,6 +1960,7 @@ export type Database = {
           created_at?: string
           descriptores: Json
           empleado_id: string
+          foto_path?: string | null
           registrado_por?: string | null
           updated_at?: string
           verificado_at?: string | null
@@ -1970,6 +1972,7 @@ export type Database = {
           created_at?: string
           descriptores?: Json
           empleado_id?: string
+          foto_path?: string | null
           registrado_por?: string | null
           updated_at?: string
           verificado_at?: string | null
