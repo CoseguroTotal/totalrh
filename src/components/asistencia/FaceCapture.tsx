@@ -44,17 +44,27 @@ function useCamara(activa: boolean) {
     (async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error("Este navegador no permite usar la cámara.");
-        const [s] = await Promise.all([
-          navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }),
-          cargarFaceApi(),
-        ]);
+        // Los modelos se descargan en paralelo, pero la imagen se muestra apenas hay permiso
+        const modelos = cargarFaceApi();
+        modelos.catch(() => undefined);
+        let s: MediaStream;
+        try {
+          s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+        } catch (e) {
+          // Webcams que no informan cámara frontal o no aceptan la resolución pedida
+          const nombre = e instanceof DOMException ? e.name : "";
+          if (nombre === "NotAllowedError" || nombre === "SecurityError") throw e;
+          s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
         if (cancelado) { s.getTracks().forEach((t) => t.stop()); return; }
         stream = s;
         const v = videoRef.current;
         if (v) {
           v.srcObject = s;
-          await v.play().catch(() => undefined);
+          v.play().catch(() => undefined);
         }
+        await modelos;
+        if (cancelado) return;
         setLista(true);
       } catch (e) {
         const nombre = e instanceof DOMException ? e.name : "";
@@ -110,7 +120,7 @@ const VistaCamara = forwardRef<HTMLDivElement, {
 }>(function VistaCamara({ videoRef, estado, children }, ref) {
   return (
     <div ref={ref} className="relative mx-auto aspect-[4/3] w-full max-w-md overflow-hidden rounded-2xl bg-black">
-      <video ref={videoRef} playsInline muted className="h-full w-full object-cover -scale-x-100" />
+      <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover -scale-x-100" />
       <div
         className={cn(
           "pointer-events-none absolute left-1/2 top-1/2 h-[72%] aspect-[3/4] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-4 transition-colors",
