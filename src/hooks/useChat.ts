@@ -144,7 +144,8 @@ export function useIniciarDirecta() {
   return useMutation({
     mutationFn: async (otro: string) => {
       const { data, error } = await supabase.rpc("chat_iniciar_directa", { _otro: otro });
-      if (error) throw error;
+      // El motivo viene de la base (p. ej. la cuenta de soporte no usa el chat interno)
+      if (error) throw new Error(error.message);
       return data as string;
     },
   });
@@ -155,7 +156,7 @@ export function useCrearGrupo() {
   return useMutation({
     mutationFn: async ({ nombre, miembros }: { nombre: string; miembros: string[] }) => {
       const { data, error } = await supabase.rpc("chat_crear_grupo", { _nombre: nombre, _miembros: miembros });
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       return data as string;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY_LISTA }),

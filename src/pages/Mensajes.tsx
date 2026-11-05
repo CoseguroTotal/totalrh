@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, MessageCircle, MessageSquarePlus } from "lucide-react";
+import { LifeBuoy, Loader2, MessageCircle, MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { usePerfiles, useSessionUserId } from "@/hooks/useMuro";
 import { useConversaciones, type Conversacion } from "@/hooks/useChat";
+import { useSesionSoporte } from "@/hooks/useSoporte";
 import { ListaConversaciones, NuevoChatDialog, VistaConversacion } from "@/components/chat/ChatComponents";
 
 /** Una conversación recién creada todavía no aparece en la bandeja (no tiene mensajes): se lee directo. */
@@ -28,7 +29,29 @@ function useConversacionSuelta(id: string | undefined, yo: string | null | undef
   });
 }
 
+/** La cuenta de soporte de TotalRH no participa del chat interno de la empresa. */
+function AvisoSoporte() {
+  return (
+    <div className="flex h-full items-center justify-center p-6">
+      <div className="max-w-sm rounded-2xl border bg-card p-6 text-center shadow-sm">
+        <LifeBuoy className="mx-auto h-10 w-10 text-primary" />
+        <h1 className="mt-3 text-lg font-semibold">El chat interno es para el personal</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Esta es la cuenta de soporte de TotalRH: no participa de los chats de la empresa. Las consultas del personal llegan a tu bandeja de soporte.
+        </p>
+        <Button asChild className="mt-4"><Link to="/soporte">Ir a la bandeja de soporte</Link></Button>
+      </div>
+    </div>
+  );
+}
+
 export default function Mensajes() {
+  const { esSoporte } = useSesionSoporte();
+  if (esSoporte) return <AvisoSoporte />;
+  return <Chats />;
+}
+
+function Chats() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: yo } = useSessionUserId();

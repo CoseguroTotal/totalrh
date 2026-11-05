@@ -64,6 +64,7 @@ export default function AppLayout() {
   const { pathname } = useLocation();
 
   const esTerminal = role === "registro_asistencia";
+  const { esSoporte } = useSesionSoporte();
   // En el celular todos (menos la terminal) navegan con la barra inferior tipo app
   const conBarra = !!role && !esTerminal;
   // El chat ocupa toda la pantalla, sin márgenes ni pie
@@ -97,7 +98,7 @@ export default function AppLayout() {
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2.5">
               <div className="sm:hidden"><GlobalSearch /></div>
-              {!esTerminal && <BotonMensajes />}
+              {!esTerminal && !esSoporte && <BotonMensajes />}
               <BotonAyuda />
               <NotificacionesBell />
               <UserMenu />

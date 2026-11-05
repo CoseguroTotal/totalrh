@@ -133,7 +133,7 @@ export function ContactosCard() {
 
   const abrir = (userId: string) => iniciar.mutate(userId, {
     onSuccess: (id) => navigate(`/mensajes/${id}`),
-    onError: () => toast.error("No se pudo abrir el chat"),
+    onError: (e) => toast.error(e instanceof Error ? e.message : "No se pudo abrir el chat"),
   });
 
   return (
