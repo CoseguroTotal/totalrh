@@ -2716,6 +2716,10 @@ export type Database = {
       muro_registrar_vistas: { Args: { _ids: string[] }; Returns: undefined }
       my_empleado_id: { Args: never; Returns: string }
       nuevo_codigo_registro: { Args: never; Returns: string }
+      solicitudes_destinatarios_gestion: {
+        Args: { _excluir: string[] }
+        Returns: string[]
+      }
       soporte_email: { Args: never; Returns: string }
       soporte_user_id: { Args: never; Returns: string }
       terminal_ultimas_fichadas: {
