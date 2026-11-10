@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
 import { AvisoPresentacion, ListaAdjuntosPermiso } from "@/components/AdjuntosPermiso";
 import { useState } from "react";
@@ -82,6 +82,8 @@ const tipoSancionLabel: Record<string, string> = {
 
 export default function LegajoDetail() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const pestaniaInicial = searchParams.get("tab") ?? "historial";
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [eventoOpen, setEventoOpen] = useState(false);
@@ -313,7 +315,8 @@ export default function LegajoDetail() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="historial" className="animate-slide-up" style={{ animationDelay: "100ms" }}>
+      {/* Los avisos abren la pestaña que corresponde (p. ej. ?tab=permisos) */}
+      <Tabs defaultValue={pestaniaInicial} className="animate-slide-up" style={{ animationDelay: "100ms" }}>
         <TabsList className="w-full sm:w-auto sm:flex-wrap">
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>

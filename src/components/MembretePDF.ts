@@ -10,6 +10,15 @@ interface MembreteConfig {
   logoUrl?: string | null;
 }
 
+const LOGO_MM = 30;
+
+/** Medida del logo dentro de un cuadro sin cambiar su proporción. */
+export function medidaLogo(ancho: number, alto: number, caja: number) {
+  if (!ancho || !alto) return { ancho: caja, alto: caja };
+  const escala = Math.min(caja / ancho, caja / alto);
+  return { ancho: ancho * escala, alto: alto * escala };
+}
+
 export async function aplicarMembrete(doc: jsPDF, config: MembreteConfig): Promise<number> {
   const w = doc.internal.pageSize.getWidth();
   const y = 12;
@@ -18,7 +27,9 @@ export async function aplicarMembrete(doc: jsPDF, config: MembreteConfig): Promi
   if (config.logoUrl) {
     try {
       const img = await loadImage(config.logoUrl);
-      doc.addImage(img, "PNG", 14, y, 30, 30);
+      // Sin deformarlo: entra entero en el cuadro de 30 × 30 mm, centrado
+      const m = medidaLogo(img.ancho, img.alto, LOGO_MM);
+      doc.addImage(img.datos, "PNG", 14 + (LOGO_MM - m.ancho) / 2, y + (LOGO_MM - m.alto) / 2, m.ancho, m.alto);
     } catch {
       // Skip logo if can't load
     }
@@ -63,16 +74,16 @@ export function aplicarFooterMembrete(doc: jsPDF, config: MembreteConfig) {
   doc.setTextColor(0);
 }
 
-function loadImage(url: string): Promise<string> {
+function loadImage(url: string): Promise<{ datos: string; ancho: number; alto: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
       canvas.getContext("2d")!.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
+      resolve({ datos: canvas.toDataURL("image/png"), ancho: img.naturalWidth, alto: img.naturalHeight });
     };
     img.onerror = reject;
     img.src = url;
