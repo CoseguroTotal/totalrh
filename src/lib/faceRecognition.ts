@@ -90,18 +90,8 @@ export async function detectarRostro(video: HTMLVideoElement): Promise<Deteccion
 
 /* ─────────────── Prueba de vida ─────────────── */
 
-export type Desafio = "parpadear" | "girar";
-
-export const TEXTO_DESAFIO: Record<Desafio, string> = {
-  parpadear: "Parpadeá dos veces",
-  girar: "Girá la cabeza hacia un costado y volvé al centro",
-};
-
-export function desafioAleatorio(): Desafio {
-  return Math.random() < 0.5 ? "parpadear" : "girar";
-}
-
-export const otroDesafio = (d: Desafio): Desafio => (d === "parpadear" ? "girar" : "parpadear");
+/** El único gesto: girar la cabeza (una foto no puede hacerlo). El parpadeo se quitó porque fallaba demasiado. */
+export const TEXTO_DESAFIO = "Girá la cabeza hacia un costado y volvé al centro";
 
 /** Las detecciones livianas (prueba de vida) no traen descriptor: no sirven para identificar. */
 export const tieneDescriptor = (d: Deteccion) => d.descriptor.length > 0;
@@ -115,43 +105,22 @@ export function mismaPosicion(a: Deteccion["box"], b: Deteccion["box"]) {
 
 /** Por debajo, los ojos están cerrados. Bajo a propósito: con ojos chicos o anteojos el EAR abierto ronda 0.2. */
 const EAR_MINIMO_ABIERTO = 0.15;
-/** Parpadeo relativo a la apertura normal de cada persona (luz, anteojos, forma de ojos). */
-const CIERRE_RELATIVO = 0.75;
-const APERTURA_RELATIVA = 0.9;
 const YAW_GIRO = 0.17; // desvío respecto del centro (0.5)
 const YAW_FRENTE = 0.08;
 const YAW_RETORNO = 0.12;
 
 /**
- * Máquina de estados de la prueba de vida. Se alimenta con cada detección y
- * devuelve true cuando la persona completó el desafío.
+ * Prueba de vida: se alimenta con cada detección y devuelve true cuando la persona
+ * giró la cabeza hacia un costado y volvió al centro.
  */
 export class PruebaDeVida {
-  private parpadeos = 0;
-  private ojosCerrados = false;
   private giro = false;
-  private base = 0;
-
-  constructor(public readonly desafio: Desafio) {}
 
   get progreso() {
-    if (this.desafio === "parpadear") return Math.min(this.parpadeos / 2, 1);
     return this.giro ? 0.5 : 0;
   }
 
   actualizar(d: Deteccion): boolean {
-    if (this.desafio === "parpadear") {
-      if (!this.ojosCerrados && d.ear >= this.base * 0.85) {
-        this.base = this.base ? this.base * 0.8 + d.ear * 0.2 : d.ear;
-      }
-      if (!this.base) return false;
-      if (!this.ojosCerrados && d.ear < this.base * CIERRE_RELATIVO) this.ojosCerrados = true;
-      else if (this.ojosCerrados && d.ear > this.base * APERTURA_RELATIVA) {
-        this.ojosCerrados = false;
-        this.parpadeos++;
-      }
-      return this.parpadeos >= 2;
-    }
     const desvio = Math.abs(d.yaw - 0.5);
     if (!this.giro && desvio > YAW_GIRO) this.giro = true;
     return this.giro && desvio < YAW_RETORNO;

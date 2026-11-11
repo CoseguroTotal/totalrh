@@ -156,16 +156,21 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Registro desde el celular: se guarda una foto chica para que RRHH lo autorice a distancia
+      // Registro desde el celular: se guarda una foto chica para que RRHH lo autorice mirándola.
+      // Sin foto no se acepta, porque RRHH no tendría cómo habilitarlo.
       const verificado = registroQuedaVerificado(user.id, emp.user_id, rolesCaller);
-      await borrarFotoRostro(empleado_id);
       let foto_path: string | null = null;
-      const foto = verificado ? null : decodificarFotoRostro(body.foto);
-      if (foto) {
+      if (!verificado) {
+        const foto = decodificarFotoRostro(body.foto);
+        if (!foto) return json({ error: "No se pudo tomar la foto del registro. Probá de nuevo con buena luz." }, 400);
         const ruta = `${empleado_id}/${Date.now()}.jpg`;
         const { error: fotoErr } = await supabaseAdmin.storage.from("rostros").upload(ruta, foto, { contentType: "image/jpeg", upsert: true });
-        if (!fotoErr) foto_path = ruta;
+        if (fotoErr) return json({ error: "No se pudo guardar la foto del registro. Probá de nuevo." }, 500);
+        foto_path = ruta;
       }
+      // La foto anterior se borra recién ahora (la nueva va a otra ruta)
+      const { data: previo } = await supabaseAdmin.from("rostros_empleados").select("foto_path").eq("empleado_id", empleado_id).maybeSingle();
+      if (previo?.foto_path && previo.foto_path !== foto_path) await supabaseAdmin.storage.from("rostros").remove([previo.foto_path]);
 
       const { error } = await supabaseAdmin.from("rostros_empleados").upsert({
         empleado_id,
@@ -174,7 +179,7 @@ Deno.serve(async (req) => {
         consentimiento_at: new Date().toISOString(),
         consentimiento_texto,
         registrado_por: user.id,
-        // Registrado por el propio empleado (p. ej. desde el celular): RRHH lo verifica en persona
+        // Registrado por el propio empleado (p. ej. desde el celular): RRHH lo autoriza con la foto
         ...(verificado
           ? { verificado_at: new Date().toISOString(), verificado_por: user.id }
           : { verificado_at: null, verificado_por: null }),
@@ -224,7 +229,7 @@ Deno.serve(async (req) => {
       if (!reg) return json({ error: "Este empleado no tiene rostro registrado" }, 404);
 
       if (action === "face-foto") {
-        if (!reg.foto_path) return json({ error: "Este registro no tiene foto. Verificalo en persona." }, 404);
+        if (!reg.foto_path) return json({ error: "Este registro no tiene foto: que lo registre de nuevo desde su celular." }, 404);
         // Enlace de un minuto: la foto nunca queda pública
         const { data: firmada, error } = await supabaseAdmin.storage.from("rostros").createSignedUrl(reg.foto_path, 60);
         if (error) throw error;
@@ -237,7 +242,7 @@ Deno.serve(async (req) => {
         if (error) throw error;
         return json({ success: true });
       }
-      if (!reg.foto_path) return json({ error: "Este registro no tiene foto. Verificalo en persona." }, 400);
+      if (!reg.foto_path) return json({ error: "Este registro no tiene foto: que lo registre de nuevo desde su celular." }, 400);
       // Nadie autoriza su propio rostro: lo tiene que autorizar otra persona de RRHH
       const { data: empAut } = await supabaseAdmin.from("empleados").select("user_id").eq("id", empleado_id).maybeSingle();
       if (empAut?.user_id === user.id) return json({ error: "Tu propio registro lo tiene que autorizar otra persona de RRHH" }, 403);

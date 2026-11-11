@@ -111,7 +111,7 @@ export default function RegistroEmpleado() {
               <ul className="mt-3 list-disc space-y-1 pl-5 text-muted-foreground">
                 <li>Cuando la aprueben vas a poder entrar con tu <b>DNI</b> (o tu email) y la contraseña que elegiste.</li>
                 <li>Mientras tanto, instalá la app en tu celular con los pasos de abajo.</li>
-                <li>Después, desde <b>Autogestión → Fichar</b>, podés registrar tu rostro para fichar con la cámara. RRHH lo verifica con vos en persona.</li>
+                <li>Después, desde <b>Autogestión → Fichar</b>, podés registrar tu rostro para fichar con la cámara. RRHH revisa la foto y te habilita.</li>
               </ul>
             </div>
             <GuiaInstalacion />

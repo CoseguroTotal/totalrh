@@ -3,7 +3,7 @@ import {
   DESCRIPTOR_LEN, UMBRAL_COINCIDENCIA, distancia, esDescriptorValido, fechaArgentina,
   mejorCoincidencia, muestrasConsistentes, aprenderMuestra, MUESTRAS_REGISTRO, MUESTRAS_MAX, UMBRAL_APRENDER,
 } from "../../supabase/functions/_shared/face-match";
-import { PruebaDeVida, mirandoDeFrente, mismaPosicion, otroDesafio, tieneDescriptor, type Deteccion } from "@/lib/faceRecognition";
+import { PruebaDeVida, mirandoDeFrente, mismaPosicion, tieneDescriptor, type Deteccion } from "@/lib/faceRecognition";
 
 /** Descriptor sintético: un "rostro" base desplazado `ruido` en cada componente. */
 function rostro(semilla: number, ruido = 0): number[] {
@@ -66,42 +66,19 @@ describe("prueba de vida", () => {
     descriptor: [], ear, yaw, tamano: 0.3, box: { x: 0, y: 0, width: 0, height: 0 },
   });
 
-  it("se completa con dos parpadeos", () => {
-    const p = new PruebaDeVida("parpadear");
-    expect(p.actualizar(det(0.3))).toBe(false);
-    p.actualizar(det(0.15));
-    expect(p.actualizar(det(0.3))).toBe(false); // 1 parpadeo
-    p.actualizar(det(0.15));
-    expect(p.actualizar(det(0.3))).toBe(true);
-  });
-
-  it("una foto fija (ojos siempre abiertos) no la supera", () => {
-    const p = new PruebaDeVida("parpadear");
-    for (let i = 0; i < 50; i++) expect(p.actualizar(det(0.3))).toBe(false);
-  });
-
-  it("cuenta parpadeos relativos a ojos más chicos (EAR base bajo)", () => {
-    const p = new PruebaDeVida("parpadear");
-    p.actualizar(det(0.22));
-    p.actualizar(det(0.15));
-    expect(p.actualizar(det(0.22))).toBe(false);
-    p.actualizar(det(0.15));
-    expect(p.actualizar(det(0.22))).toBe(true);
-  });
-
-  it("un leve temblor de ojos no cuenta como parpadeo", () => {
-    const p = new PruebaDeVida("parpadear");
-    for (let i = 0; i < 40; i++) expect(p.actualizar(det(i % 2 ? 0.33 : 0.3))).toBe(false);
+  it("una foto fija (siempre de frente) no la supera, aunque parpadee", () => {
+    const p = new PruebaDeVida();
+    for (let i = 0; i < 50; i++) expect(p.actualizar(det(i % 2 ? 0.15 : 0.3))).toBe(false);
   });
 
   it("tras girar acepta volver casi al centro (desvío 0.1)", () => {
-    const p = new PruebaDeVida("girar");
+    const p = new PruebaDeVida();
     p.actualizar(det(0.3, 0.75));
     expect(p.actualizar(det(0.3, 0.6))).toBe(true);
   });
 
   it("girar requiere ir a un costado y volver al centro", () => {
-    const p = new PruebaDeVida("girar");
+    const p = new PruebaDeVida();
     expect(p.actualizar(det(0.3, 0.5))).toBe(false);
     expect(p.actualizar(det(0.3, 0.75))).toBe(false);
     expect(p.actualizar(det(0.3, 0.52))).toBe(true);
@@ -142,18 +119,7 @@ describe("prueba de vida: casos difíciles", () => {
     expect(mirandoDeFrente(det(0.3, 0.7))).toBe(false);
   });
 
-  it("si el primer cuadro agarra un parpadeo, la línea base se recupera", () => {
-    const p = new PruebaDeVida("parpadear");
-    p.actualizar(det(0.12));
-    for (let i = 0; i < 10; i++) p.actualizar(det(0.3));
-    let ok = false;
-    for (const ear of [0.15, 0.3, 0.15, 0.3]) ok = p.actualizar(det(ear));
-    expect(ok).toBe(true);
-  });
-
-  it("alterna el desafío y detecta que la cara saltó de lugar", () => {
-    expect(otroDesafio("parpadear")).toBe("girar");
-    expect(otroDesafio("girar")).toBe("parpadear");
+  it("detecta que la cara saltó de lugar", () => {
     const a = { x: 100, y: 100, width: 200, height: 200 };
     expect(mismaPosicion(a, { x: 130, y: 90, width: 210, height: 210 })).toBe(true);
     expect(mismaPosicion(a, { x: 400, y: 100, width: 200, height: 200 })).toBe(false);

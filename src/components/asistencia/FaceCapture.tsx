@@ -9,10 +9,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { invocarFuncion } from "@/lib/sesion";
 import { cn } from "@/lib/utils";
 import {
-  PruebaDeVida, TEXTO_DESAFIO, cargarFaceApi, desafioAleatorio, detectarPuntos, detectarRostro, mirandoDeFrente,
-  mismaPosicion, otroDesafio, tieneDescriptor, type Desafio, type Deteccion,
+  PruebaDeVida, TEXTO_DESAFIO, cargarFaceApi, detectarPuntos, detectarRostro, mirandoDeFrente,
+  mismaPosicion, tieneDescriptor, type Deteccion,
 } from "@/lib/faceRecognition";
 import { MUESTRAS_REGISTRO, distancia, muestrasConsistentes } from "../../../supabase/functions/_shared/face-match";
+import { AutorizarRostroDialog } from "@/components/asistencia/AutorizarRostroDialog";
 
 const INTERVALO_MS = 120;
 const TIEMPO_DESAFIO_MS = 10_000;
@@ -147,13 +148,12 @@ type EstadoTerminal =
 export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
   const { videoRef, lista, error } = useCamara(true);
   const [estado, setEstado] = useState<EstadoTerminal>({ fase: "buscando" });
-  const ref = useRef<{ prueba: PruebaDeVida | null; inicial: number[] | null; caja: Deteccion["box"] | null; desde: number; sinCara: number; proximo: Desafio | null }>({
-    prueba: null, inicial: null, caja: null, desde: 0, sinCara: 0, proximo: null,
+  const ref = useRef<{ prueba: PruebaDeVida | null; inicial: number[] | null; caja: Deteccion["box"] | null; desde: number; sinCara: number }>({
+    prueba: null, inicial: null, caja: null, desde: 0, sinCara: 0,
   });
 
-  /** `proximo`: si a la persona no le salió un desafío, el siguiente intento le pide el otro. */
-  const reiniciar = useCallback((aviso?: string, proximo: Desafio | null = null) => {
-    ref.current = { prueba: null, inicial: null, caja: null, desde: 0, sinCara: 0, proximo };
+  const reiniciar = useCallback((aviso?: string) => {
+    ref.current = { prueba: null, inicial: null, caja: null, desde: 0, sinCara: 0 };
     setEstado({ fase: "buscando", aviso });
   }, []);
 
@@ -198,15 +198,15 @@ export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
       if (!tieneDescriptor(d)) return;
       s.inicial = d.descriptor;
       s.caja = d.box;
-      s.prueba = new PruebaDeVida(s.proximo ?? desafioAleatorio());
+      s.prueba = new PruebaDeVida();
       s.desde = Date.now();
       s.sinCara = 0;
-      setEstado({ fase: "desafio", texto: TEXTO_DESAFIO[s.prueba.desafio], progreso: 0 });
+      setEstado({ fase: "desafio", texto: TEXTO_DESAFIO, progreso: 0 });
       return;
     }
 
     if (estado.fase === "desafio" && s.prueba) {
-      if (Date.now() - s.desde > TIEMPO_DESAFIO_MS) { reiniciar("Se agotó el tiempo, probemos con otro gesto", otroDesafio(s.prueba.desafio)); return; }
+      if (Date.now() - s.desde > TIEMPO_DESAFIO_MS) { reiniciar("Se agotó el tiempo. Girá la cabeza despacio hacia un costado y volvé al centro"); return; }
       if (!d) {
         if (++s.sinCara > 12) reiniciar("Perdimos tu rostro, volvé a ubicarte");
         return;
@@ -229,7 +229,7 @@ export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
       const completo = s.prueba.actualizar(d);
       setEstado(completo
         ? { fase: "desafio", texto: "¡Bien! Ahora mirá de frente", progreso: 0.95, capturando: true }
-        : { fase: "desafio", texto: TEXTO_DESAFIO[s.prueba.desafio], progreso: s.prueba.progreso });
+        : { fase: "desafio", texto: TEXTO_DESAFIO, progreso: s.prueba.progreso });
     }
   }, estado.fase === "desafio" && !estado.capturando);
 
@@ -301,38 +301,20 @@ export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
 const MUESTRAS = MUESTRAS_REGISTRO;
 
 export function FaceEnrollDialog({
-  open, onOpenChange, empleadoId, nombreEmpleado, onRegistrado, modo = "registro",
+  open, onOpenChange, empleadoId, nombreEmpleado, onRegistrado,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   empleadoId: string;
   nombreEmpleado?: string;
   onRegistrado?: () => void;
-  /** verificacion: RRHH confirma en persona un rostro que el empleado registró desde el celular */
-  modo?: ModoCaptura;
 }) {
   const [acepta, setAcepta] = useState(false);
-  const [paso, setPaso] = useState<"consentimiento" | "captura">(modo === "verificacion" ? "captura" : "consentimiento");
+  const [paso, setPaso] = useState<"consentimiento" | "captura">("consentimiento");
 
   useEffect(() => {
-    if (!open) { setPaso(modo === "verificacion" ? "captura" : "consentimiento"); setAcepta(false); }
-  }, [open, modo]);
-
-  if (modo === "verificacion") {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" />Verificar rostro en persona</DialogTitle>
-            <DialogDescription>
-              Con {nombreEmpleado ?? "el empleado"} frente a vos: que mire a la cámara y haga el gesto. Si coincide con lo que registró, queda habilitado para fichar.
-            </DialogDescription>
-          </DialogHeader>
-          {open && <CapturaRegistro modo="verificacion" empleadoId={empleadoId} onListo={() => { onOpenChange(false); onRegistrado?.(); }} />}
-        </DialogContent>
-      </Dialog>
-    );
-  }
+    if (!open) { setPaso("consentimiento"); setAcepta(false); }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -370,8 +352,6 @@ export function FaceEnrollDialog({
   );
 }
 
-type ModoCaptura = "registro" | "verificacion";
-
 /** Foto chica del cuadro actual de la cámara, para que RRHH autorice un registro hecho a distancia. */
 function fotoDeCamara(video: HTMLVideoElement | null): string | null {
   if (!video?.videoWidth) return null;
@@ -388,37 +368,16 @@ function fotoDeCamara(video: HTMLVideoElement | null): string | null {
   return canvas.toDataURL("image/jpeg", 0.8);
 }
 
-function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoId: string; onListo: () => void; modo?: ModoCaptura }) {
-  // Para verificar alcanza con una foto completa después de la prueba de vida
-  const cantidad = modo === "verificacion" ? 1 : MUESTRAS;
+function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo: () => void }) {
+  const cantidad = MUESTRAS;
   const { videoRef, lista, error } = useCamara(true);
   const [fase, setFase] = useState<"desafio" | "muestras" | "guardando" | "error">("desafio");
   const [mensaje, setMensaje] = useState("Ubicá tu rostro dentro del óvalo");
   const [progreso, setProgreso] = useState(0);
-  const prueba = useRef(new PruebaDeVida(desafioAleatorio()));
+  const prueba = useRef(new PruebaDeVida());
   const muestras = useRef<number[][]>([]);
   const foto = useRef<string | null>(null);
   const ultimaMuestra = useRef(0);
-  const inicioDesafio = useRef(0);
-  const [ofrecerCambio, setOfrecerCambio] = useState(false);
-
-  useEffect(() => {
-    if (fase !== "desafio" || !lista) { setOfrecerCambio(false); return; }
-    inicioDesafio.current = Date.now();
-    const t = setInterval(() => {
-      if (Date.now() - inicioDesafio.current > TIEMPO_DESAFIO_MS) setOfrecerCambio(true);
-    }, 1000);
-    return () => clearInterval(t);
-  }, [fase, lista]);
-
-  const cambiarDesafio = () => {
-    const otro = otroDesafio(prueba.current.desafio);
-    prueba.current = new PruebaDeVida(otro);
-    inicioDesafio.current = Date.now();
-    setOfrecerCambio(false);
-    setProgreso(0);
-    setMensaje(TEXTO_DESAFIO[otro]);
-  };
 
   const guardar = async () => {
     setFase("guardando");
@@ -427,9 +386,8 @@ function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoI
       setMensaje("Las capturas no coinciden. Probá de nuevo con buena luz.");
       return;
     }
-    const { data, error: fnError } = await invocarFuncion("validate-attendance-token", modo === "verificacion"
-        ? { action: "face-verificar", empleado_id: empleadoId, descriptor: muestras.current[0], prueba_vida: true }
-        : { action: "face-enroll", empleado_id: empleadoId, descriptores: muestras.current, consentimiento_texto: TEXTO_CONSENTIMIENTO, foto: foto.current });
+    const { data, error: fnError } = await invocarFuncion("validate-attendance-token",
+      { action: "face-enroll", empleado_id: empleadoId, descriptores: muestras.current, consentimiento_texto: TEXTO_CONSENTIMIENTO, foto: foto.current });
     let msg: string | undefined = data?.error;
     if (fnError && !msg) {
       try { msg = (await (fnError as { context?: Response }).context?.json())?.error; } catch { /* sin cuerpo */ }
@@ -439,14 +397,13 @@ function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoI
       setMensaje(msg ?? "No se pudo guardar el registro");
       return;
     }
-    if (modo === "verificacion") toast.success("Rostro verificado: ya puede fichar con la cámara.");
-    else if (data?.verificado) toast.success("Rostro registrado. Ya puede fichar con la cámara.");
-    else toast.success("Rostro registrado. Antes de fichar, RRHH lo verifica con vos en persona.", { duration: 7000 });
+    if (data?.verificado) toast.success("Rostro registrado. Ya puede fichar con la cámara.");
+    else toast.success("Rostro registrado. RRHH revisa tu foto y te habilita para fichar con la cámara.", { duration: 7000 });
     onListo();
   };
 
   const reintentar = () => {
-    prueba.current = new PruebaDeVida(desafioAleatorio());
+    prueba.current = new PruebaDeVida();
     muestras.current = [];
     foto.current = null;
     setProgreso(0);
@@ -461,7 +418,7 @@ function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoI
     if (fase === "desafio") {
       const p = prueba.current;
       if (p.actualizar(d)) { setFase("muestras"); setMensaje("¡Perfecto! Mirá de frente y quedate quieto"); return; }
-      setMensaje(TEXTO_DESAFIO[p.desafio]);
+      setMensaje(TEXTO_DESAFIO);
       setProgreso(p.progreso * 40);
       return;
     }
@@ -473,7 +430,7 @@ function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoI
       if (Date.now() - ultimaMuestra.current < 350) return;
       ultimaMuestra.current = Date.now();
       // La foto se toma con la primera muestra de frente, después de la prueba de vida
-      if (modo === "registro" && !foto.current) foto.current = fotoDeCamara(videoRef.current);
+      if (!foto.current) foto.current = fotoDeCamara(videoRef.current);
       muestras.current.push(d.descriptor);
       setProgreso(40 + (muestras.current.length / cantidad) * 60);
       if (muestras.current.length >= cantidad) await guardar();
@@ -501,11 +458,8 @@ function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoI
       </VistaCamara>
       <Progress value={progreso} className="h-1.5" />
       <p className={cn("text-center text-sm font-medium", fase === "error" && "text-destructive")}>
-        {fase === "guardando" ? <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />{modo === "verificacion" ? "Comparando…" : "Guardando…"}</span> : mensaje}
+        {fase === "guardando" ? <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Guardando…</span> : mensaje}
       </p>
-      {fase === "desafio" && ofrecerCambio && (
-        <div className="flex justify-center"><Button variant="outline" size="sm" onClick={cambiarDesafio}>Probar otro desafío</Button></div>
-      )}
       {fase === "error" && (
         <div className="flex justify-center"><Button variant="outline" onClick={reintentar}>Intentar de nuevo</Button></div>
       )}
@@ -516,14 +470,15 @@ function CapturaRegistro({ empleadoId, onListo, modo = "registro" }: { empleadoI
 /* ─────────────── Estado del registro facial de un empleado ─────────────── */
 
 export function RegistroFacialCard({ empleadoId, nombreEmpleado, esPropio }: { empleadoId: string; nombreEmpleado?: string; esPropio: boolean }) {
-  const [registro, setRegistro] = useState<{ consentimiento_at: string; verificado_at: string | null } | null | undefined>(undefined);
-  const [abierto, setAbierto] = useState<ModoCaptura | null>(null);
+  const [registro, setRegistro] = useState<{ consentimiento_at: string; verificado_at: string | null; foto_path: string | null } | null | undefined>(undefined);
+  const [abierto, setAbierto] = useState(false);
+  const [autorizando, setAutorizando] = useState(false);
   const [borrando, setBorrando] = useState(false);
 
   const cargar = useCallback(async () => {
     const { data } = await supabase
       .from("rostros_empleados")
-      .select("empleado_id, consentimiento_at, verificado_at")
+      .select("empleado_id, consentimiento_at, verificado_at, foto_path")
       .eq("empleado_id", empleadoId)
       .maybeSingle();
     setRegistro(data ?? null);
@@ -554,15 +509,16 @@ export function RegistroFacialCard({ empleadoId, nombreEmpleado, esPropio }: { e
             {registro === undefined ? "Consultando…"
               : registro?.verificado_at ? `Rostro registrado el ${new Date(registro.consentimiento_at).toLocaleDateString("es-AR")} y verificado.`
               : registro ? (esPropio
-                ? "Rostro registrado. Falta que RRHH lo verifique con vos en persona; mientras tanto fichá con QR."
-                : "Registrado por el empleado. Falta verificarlo en persona.")
+                ? "Rostro registrado. RRHH revisa tu foto y te habilita; mientras tanto fichá con QR."
+                : registro.foto_path ? "Registrado por el empleado. Falta autorizarlo mirando la foto."
+                : "Registrado sin foto: que lo registre de nuevo desde su celular.")
                 : esPropio ? "Registrá tu rostro una vez y fichá mirando la cámara de la terminal." : "Sin rostro registrado."}
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
-            {registro && !registro.verificado_at && !esPropio && (
-              <Button size="sm" onClick={() => setAbierto("verificacion")}><ShieldCheck className="h-4 w-4 mr-1.5" />Verificar en persona</Button>
+            {registro && !registro.verificado_at && !esPropio && registro.foto_path && (
+              <Button size="sm" onClick={() => setAutorizando(true)}><ShieldCheck className="h-4 w-4 mr-1.5" />Ver foto y autorizar</Button>
             )}
-            <Button size="sm" variant={registro ? "outline" : "default"} onClick={() => setAbierto("registro")}>
+            <Button size="sm" variant={registro ? "outline" : "default"} onClick={() => setAbierto(true)}>
               <ScanFace className="h-4 w-4 mr-1.5" />{registro ? "Volver a registrar" : "Registrar rostro"}
             </Button>
             {registro && (
@@ -573,8 +529,12 @@ export function RegistroFacialCard({ empleadoId, nombreEmpleado, esPropio }: { e
           </div>
         </div>
       </div>
-      <FaceEnrollDialog open={abierto !== null} onOpenChange={(o) => { if (!o) setAbierto(null); }} modo={abierto ?? "registro"}
+      <FaceEnrollDialog open={abierto} onOpenChange={setAbierto}
         empleadoId={empleadoId} nombreEmpleado={esPropio ? undefined : nombreEmpleado} onRegistrado={cargar} />
+      {autorizando && (
+        <AutorizarRostroDialog empleadoId={empleadoId} nombre={nombreEmpleado ?? "el empleado"}
+          onCerrar={() => setAutorizando(false)} onListo={cargar} />
+      )}
     </div>
   );
 }

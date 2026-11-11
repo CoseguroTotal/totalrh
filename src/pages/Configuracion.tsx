@@ -569,7 +569,7 @@ function AsistenciaConfigTab() {
         <div>
           <p className="text-sm font-medium">Fichado por reconocimiento facial</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            La terminal reconoce al empleado con la cámara web y le pide un gesto (parpadear o girar la cabeza) para evitar fotos.
+            La terminal reconoce al empleado con la cámara web y le pide girar la cabeza para evitar fotos.
             Cada empleado registra su rostro una vez, con consentimiento, desde Autogestión o su legajo.
           </p>
         </div>
