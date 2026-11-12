@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
-import { CameraOff, CheckCircle2, Loader2, LogIn, LogOut, ScanFace, ShieldCheck, XCircle } from "lucide-react";
+import { CameraOff, CheckCircle2, Loader2, LogIn, LogOut, RotateCcw, ScanFace, ShieldCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,12 +14,19 @@ import {
 } from "@/lib/faceRecognition";
 import { MUESTRAS_REGISTRO, distancia, muestrasConsistentes } from "../../../supabase/functions/_shared/face-match";
 import { AutorizarRostroDialog } from "@/components/asistencia/AutorizarRostroDialog";
+import { errorDeCamara, errorDeModelos, type ErrorCamara } from "@/lib/errorCamara";
 
 const INTERVALO_MS = 120;
 const TIEMPO_DESAFIO_MS = 10_000;
 const TAMANO_MINIMO = 0.18;
 /** Tolerancia para confirmar que sigue la misma persona durante la prueba de vida (no identifica a nadie). */
 const MISMA_PERSONA_SESION = 0.6;
+/** Si el reconocimiento no terminó de descargarse en este tiempo, se avisa (conexión lenta). */
+const ESPERA_MODELOS_MS = 60_000;
+/** Pasado este tiempo sin imagen o sin reconocimiento se explica qué está esperando. */
+const AVISO_DEMORA_MS = 5_000;
+
+type Espera = "permiso" | "descarga" | null;
 
 export const TEXTO_CONSENTIMIENTO =
   "Autorizo a mi empleador a generar y guardar una plantilla numérica de mi rostro con el único fin de " +
@@ -33,22 +40,34 @@ export const TEXTO_CONSENTIMIENTO =
 function useCamara(activa: boolean) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [lista, setLista] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorCamara | null>(null);
+  const [intento, setIntento] = useState(0);
+  const [espera, setEspera] = useState<Espera>(null);
+  const reintentar = useCallback(() => setIntento((n) => n + 1), []);
 
   useEffect(() => {
     if (!activa) return;
     let stream: MediaStream | null = null;
     let cancelado = false;
+    const detener = () => { stream?.getTracks().forEach((t) => t.stop()); stream = null; };
+    let aviso: ReturnType<typeof setTimeout> | undefined;
+    const avisarSiTarda = (e: Espera) => {
+      clearTimeout(aviso);
+      setEspera(null);
+      if (e) aviso = setTimeout(() => { if (!cancelado) setEspera(e); }, AVISO_DEMORA_MS);
+    };
     setError(null);
     setLista(false);
+    avisarSiTarda("permiso");
 
     (async () => {
+      const ua = navigator.userAgent;
+      // Los modelos se descargan en paralelo, pero la imagen se muestra apenas hay permiso
+      const modelos = cargarFaceApi();
+      modelos.catch(() => undefined);
+      let s: MediaStream;
       try {
-        if (!navigator.mediaDevices?.getUserMedia) throw new Error("Este navegador no permite usar la cámara.");
-        // Los modelos se descargan en paralelo, pero la imagen se muestra apenas hay permiso
-        const modelos = cargarFaceApi();
-        modelos.catch(() => undefined);
-        let s: MediaStream;
+        if (!navigator.mediaDevices?.getUserMedia) throw Object.assign(new Error("Sin soporte de cámara"), { name: "SinSoporte" });
         try {
           s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
         } catch (e) {
@@ -57,33 +76,72 @@ function useCamara(activa: boolean) {
           if (nombre === "NotAllowedError" || nombre === "SecurityError") throw e;
           s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         }
-        if (cancelado) { s.getTracks().forEach((t) => t.stop()); return; }
-        stream = s;
-        const v = videoRef.current;
-        if (v) {
-          v.srcObject = s;
-          v.play().catch(() => undefined);
-        }
-        await modelos;
-        if (cancelado) return;
-        setLista(true);
       } catch (e) {
-        const nombre = e instanceof DOMException ? e.name : "";
-        setError(
-          nombre === "NotAllowedError" ? "Permití el acceso a la cámara en el navegador para continuar."
-            : nombre === "NotFoundError" ? "No se encontró ninguna cámara conectada."
-              : e instanceof Error ? e.message : "No se pudo iniciar la cámara."
-        );
+        console.warn("Cámara:", e);
+        avisarSiTarda(null);
+        if (!cancelado) setError(errorDeCamara(e, ua));
+        return;
       }
+      if (cancelado) { s.getTracks().forEach((t) => t.stop()); return; }
+      stream = s;
+      avisarSiTarda("descarga");
+      const v = videoRef.current;
+      if (v) {
+        v.srcObject = s;
+        v.play().catch(() => undefined);
+      }
+      try {
+        await Promise.race([
+          modelos,
+          new Promise((_, rechazar) => setTimeout(() => rechazar(new Error("timeout")), ESPERA_MODELOS_MS)),
+        ]);
+      } catch (e) {
+        console.warn("Reconocimiento facial:", e);
+        avisarSiTarda(null);
+        if (!cancelado) { detener(); setError(errorDeModelos(e)); }
+        return;
+      }
+      if (cancelado) return;
+      avisarSiTarda(null);
+      setLista(true);
     })();
 
     return () => {
       cancelado = true;
-      stream?.getTracks().forEach((t) => t.stop());
+      clearTimeout(aviso);
+      detener();
     };
-  }, [activa]);
+  }, [activa, intento]);
 
-  return { videoRef, lista, error };
+  return { videoRef, lista, error, reintentar, espera };
+}
+
+/** Texto bajo el "cargando" cuando la cámara tarda. */
+function TextoEspera({ espera }: { espera: Espera }) {
+  if (!espera) return null;
+  return (
+    <p className="px-6 text-center text-xs text-white/80">
+      {espera === "permiso"
+        ? "Si el celular te pregunta, tocá «Permitir» para usar la cámara."
+        : "Descargando el reconocimiento facial (unos 7 MB). Con conexión lenta puede tardar un poco."}
+    </p>
+  );
+}
+
+/** Por qué no arrancó la cámara, qué hacer, el código para pasarle a RRHH y Reintentar. */
+function AvisoErrorCamara({ error, onReintentar, nota, className }: {
+  error: ErrorCamara; onReintentar: () => void; nota?: string; className?: string;
+}) {
+  return (
+    <div className={cn("text-center space-y-2", className)}>
+      <CameraOff className="h-8 w-8 mx-auto text-destructive" />
+      <p className="text-sm font-medium text-destructive">{error.mensaje}</p>
+      {error.ayuda && <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error.ayuda}</p>}
+      <Button variant="outline" size="sm" onClick={onReintentar}><RotateCcw className="h-4 w-4 mr-1.5" />Reintentar</Button>
+      {nota && <p className="text-xs text-muted-foreground">{nota}</p>}
+      <p className="text-[10px] text-muted-foreground/70">Código: {error.codigo}</p>
+    </div>
+  );
 }
 
 /** Ejecuta la detección en bucle mientras `activo` sea true. */
@@ -146,7 +204,7 @@ type EstadoTerminal =
   | { fase: "resultado"; ok: boolean; titulo: string; detalle: string; tipo?: "entrada" | "salida" };
 
 export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
-  const { videoRef, lista, error } = useCamara(true);
+  const { videoRef, lista, error, reintentar, espera } = useCamara(true);
   const [estado, setEstado] = useState<EstadoTerminal>({ fase: "buscando" });
   const ref = useRef<{ prueba: PruebaDeVida | null; inicial: number[] | null; caja: Deteccion["box"] | null; desde: number; sinCara: number }>({
     prueba: null, inicial: null, caja: null, desde: 0, sinCara: 0,
@@ -235,11 +293,8 @@ export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
 
   if (error) {
     return (
-      <div className="rounded-2xl border bg-card p-8 text-center">
-        <CameraOff className="h-8 w-8 mx-auto text-destructive mb-3" />
-        <p className="text-sm text-destructive">{error}</p>
-        <p className="text-xs text-muted-foreground mt-2">Mientras tanto, los empleados pueden fichar con el código QR.</p>
-      </div>
+      <AvisoErrorCamara error={error} onReintentar={reintentar} className="rounded-2xl border bg-card p-8"
+        nota="Mientras tanto, los empleados pueden fichar con el código QR." />
     );
   }
 
@@ -252,6 +307,7 @@ export function FaceTerminal({ onFichada }: { onFichada?: () => void }) {
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-white">
             <Loader2 className="h-6 w-6 animate-spin" />
             <p className="text-sm">Preparando reconocimiento facial…</p>
+            <TextoEspera espera={espera} />
           </div>
         )}
         {estado.fase === "resultado" && (
@@ -370,7 +426,7 @@ function fotoDeCamara(video: HTMLVideoElement | null): string | null {
 
 function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo: () => void }) {
   const cantidad = MUESTRAS;
-  const { videoRef, lista, error } = useCamara(true);
+  const { videoRef, lista, error, reintentar: reintentarCamara, espera } = useCamara(true);
   const [fase, setFase] = useState<"desafio" | "muestras" | "guardando" | "error">("desafio");
   const [mensaje, setMensaje] = useState("Ubicá tu rostro dentro del óvalo");
   const [progreso, setProgreso] = useState(0);
@@ -438,12 +494,7 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
   }, fase === "desafio");
 
   if (error) {
-    return (
-      <div className="py-6 text-center">
-        <CameraOff className="h-8 w-8 mx-auto text-destructive mb-3" />
-        <p className="text-sm text-destructive">{error}</p>
-      </div>
-    );
+    return <AvisoErrorCamara error={error} onReintentar={reintentarCamara} className="py-6" nota="Mientras tanto podés fichar con QR." />;
   }
 
   return (
@@ -453,6 +504,7 @@ function CapturaRegistro({ empleadoId, onListo }: { empleadoId: string; onListo:
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-white">
             <Loader2 className="h-6 w-6 animate-spin" />
             <p className="text-sm">Iniciando cámara…</p>
+            <TextoEspera espera={espera} />
           </div>
         )}
       </VistaCamara>
