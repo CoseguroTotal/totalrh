@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
 import { AvisoPresentacion, ListaAdjuntosPermiso } from "@/components/AdjuntosPermiso";
+import { DetallePermisoDialog, ResolucionPermiso } from "@/components/DetallePermiso";
 import { useMiEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
 import { RegistroFacialCard } from "@/components/asistencia/FaceCapture";
 import { useDocumentosLegajo } from "@/hooks/useEmpleados";
@@ -9,7 +10,7 @@ import { useSolicitudesVacacionesEmpleado, useSaveSolicitudVacaciones, useVacaci
 import { useSanciones, useUpdateDescargo } from "@/hooks/useSanciones";
 import { useFichadasEmpleado } from "@/hooks/useAsistencia";
 import { useLiquidacionesEmpleado } from "@/hooks/useLiquidacion";
-import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, Clock, DollarSign, Lock, QrCode, Pencil } from "lucide-react";
+import { Loader2, User, FileText, ClipboardList, Download, Plus, FileCheck, Palmtree, ShieldAlert, Upload, Clock, DollarSign, Lock, QrCode, Pencil, Eye } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,7 @@ export default function Autogestion() {
   const updateEstadoMemo = useUpdateEstadoMemorandum();
   const updateDescargo = useUpdateDescargo();
   const [solicitudOpen, setSolicitudOpen] = useState(false);
+  const [permisoVisto, setPermisoVisto] = useState<any | null>(null);
   const [editarDatos, setEditarDatos] = useState(false);
   const [vacForm, setVacForm] = useState({ fecha_desde: "", fecha_hasta: "", observaciones: "" });
   const [descargoForm, setDescargoForm] = useState<{ sancionId: string; texto: string } | null>(null);
@@ -115,6 +117,7 @@ export default function Autogestion() {
       sujetoDescuento: sol.sujeto_descuento,
       fechaSolicitud: sol.fecha_solicitud,
       empresa: empresaData,
+      resolucion: sol,
     });
   };
 
@@ -248,6 +251,13 @@ export default function Autogestion() {
               </Button>
             </div>
             <SolicitudPermisoFormDialog open={solicitudOpen} onOpenChange={setSolicitudOpen} empleadoId={emp.id} />
+            <DetallePermisoDialog
+              sol={permisoVisto}
+              open={!!permisoVisto}
+              onOpenChange={(o) => { if (!o) setPermisoVisto(null); }}
+              empleado={{ nombre: `${emp.apellido}, ${emp.nombre}`, puesto: emp.puesto }}
+              onDescargarPDF={permisoVisto ? () => handleDownloadPDF(permisoVisto) : undefined}
+            />
             {solicitudes.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin solicitudes registradas.</p>
             ) : (
@@ -262,11 +272,15 @@ export default function Autogestion() {
                       </p>
                       <ListaAdjuntosPermiso adjuntos={sol.adjuntos} />
                       {sol.estado === "pendiente" && Array.isArray(sol.adjuntos) && sol.adjuntos.length > 0 && <AvisoPresentacion creadaAt={sol.created_at} />}
+                      <ResolucionPermiso sol={sol} />
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoBadge[sol.estado])}>
                         {sol.estado}
                       </span>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setPermisoVisto(sol)} title="Ver solicitud">
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadPDF(sol)} title="Descargar PDF">
                         <Download className="h-3.5 w-3.5" />
                       </Button>

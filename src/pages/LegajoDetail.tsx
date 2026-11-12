@@ -1,7 +1,9 @@
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
-import { AvisoPresentacion, ListaAdjuntosPermiso } from "@/components/AdjuntosPermiso";
-import { useState } from "react";
+import { DetallePermisoDialog, ESTADO_PERMISO_BADGE, ResolucionPermiso, type Resolucion } from "@/components/DetallePermiso";
+import { usePerfiles, useSessionUserId } from "@/hooks/useMuro";
+import { nombreCompleto } from "@/components/muro/MuroComponents";
+import { useEffect, useState } from "react";
 import { useEmpleado, useEventosLegajo, useDocumentosLegajo, useGrupoFamiliar, useDatosMedicos } from "@/hooks/useEmpleados";
 import { useEstudiosEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
 import { useFichadasEmpleado } from "@/hooks/useAsistencia";
@@ -13,7 +15,7 @@ import HistorialCambios from "@/components/HistorialCambios";
 import BlanquearClave from "@/components/BlanquearClave";
 import { useConfigGrupo } from "@/hooks/useConfigGrupo";
 import { escaparHtml, sendNotificationEmailIfEnabled } from "@/lib/sendNotificationEmail";
-import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, Palmtree, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, Palmtree, ShieldAlert, Eye, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -163,31 +165,71 @@ export default function LegajoDetail() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  // Firma de quien resuelve: por defecto nombre y puesto de su legajo
+  const { data: yo } = useSessionUserId();
+  const { data: perfiles } = usePerfiles(yo ? [yo] : []);
+  const miPerfil = yo ? perfiles?.get(yo) : null;
+  const firmaInicial = miPerfil ? { nombre: nombreCompleto(miPerfil), cargo: miPerfil.puesto ?? "" } : undefined;
+  const [solDetalleId, setSolDetalleId] = useState<string | null>(() => searchParams.get("solicitud"));
+  useEffect(() => {
+    const s = searchParams.get("solicitud");
+    if (s) setSolDetalleId(s);
+  }, [searchParams]);
+  const solDetalle = solicitudes.find((s: any) => s.id === solDetalleId) ?? null;
+
   const updateSolicitudMutation = useMutation({
-    mutationFn: async ({ solId, estado }: { solId: string; estado: string }) => {
-      const { data: { user } } = await supabase.auth.getUser();
+    mutationFn: async ({ solId, estado, observaciones, nombre, cargo }: { solId: string } & Resolucion) => {
+      // La fecha y quién firma los sella la base; acá van el nombre, el cargo y las observaciones
       const { error } = await supabase.from("solicitudes_permiso").update({
-        estado: estado as any,
-        aprobado_por: user?.id || null,
+        estado,
+        observaciones: observaciones || null,
+        aprobado_nombre: nombre,
+        aprobado_cargo: cargo || null,
       }).eq("id", solId);
       if (error) throw error;
 
       // Send email notification if enabled
       if (emp?.email) {
         const estadoLabel = estado === "aprobada" ? "aprobada ✅" : "rechazada ❌";
+        const firma = `${escaparHtml(nombre)}${cargo ? ` (${escaparHtml(cargo)})` : ""}`;
+        const obsHtml = observaciones ? `<p><strong>Observaciones:</strong> ${escaparHtml(observaciones)}</p>` : "";
         await sendNotificationEmailIfEnabled(configGrupo, {
           to: emp.email,
           subject: `Solicitud de permiso ${estado}`,
-          html: `<h2>Solicitud de Permiso ${estadoLabel}</h2><p>Hola ${escaparHtml(emp.nombre)},</p><p>Tu solicitud de permiso ha sido <strong>${estado}</strong>.</p><p>Saludos,<br/>RRHH</p>`,
+          html: `<h2>Solicitud de Permiso ${estadoLabel}</h2><p>Hola ${escaparHtml(emp.nombre)},</p><p>Tu solicitud de permiso ha sido <strong>${estado}</strong> por ${firma}.</p>${obsHtml}<p>Saludos,<br/>RRHH</p>`,
         });
       }
     },
     onSuccess: (_, vars) => {
-      toast.success(`Solicitud ${vars.estado === "aprobada" ? "aprobada" : "rechazada"}`);
+      toast.success(`Solicitud ${vars.estado === "aprobada" ? "aprobada y firmada" : "rechazada"}`);
+      setSolDetalleId(null);
       queryClient.invalidateQueries({ queryKey: ["solicitudes_permiso", id] });
     },
     onError: (err: Error) => toast.error(err.message),
   });
+
+  const descargarPermisoPDF = async (sol: any) => {
+    let empresaData = null;
+    if (emp?.empresa) {
+      const { data: empFull } = await supabase.from("empresas").select("*").eq("id", emp.empresa.id).single();
+      if (empFull) {
+        empresaData = { nombre: empFull.nombre, razonSocial: empFull.razon_social, cuit: empFull.cuit, domicilio: empFull.domicilio_fiscal, telefono: empFull.telefono, email: empFull.email, logoUrl: empFull.logo_url };
+      }
+    }
+    await generarSolicitudPermisoPDF({
+      empleadoNombre: `${emp!.apellido}, ${emp!.nombre}`,
+      areaTrabajo: emp!.puesto,
+      motivo: sol.motivo,
+      motivoDetalle: sol.motivo_detalle,
+      fechaDesde: sol.fecha_desde,
+      fechaHasta: sol.fecha_hasta,
+      horaReintegro: sol.hora_reintegro,
+      sujetoDescuento: sol.sujeto_descuento,
+      fechaSolicitud: sol.fecha_solicitud,
+      empresa: empresaData,
+      resolucion: sol,
+    });
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -552,57 +594,42 @@ export default function LegajoDetail() {
             ) : (
               <div className="space-y-2">
                 {solicitudes.map((sol: any) => (
-                  <div key={sol.id} className="flex items-center gap-3 rounded-lg border px-4 py-3">
-                    <div className="flex-1 min-w-0">
+                  <div key={sol.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 rounded-lg border px-4 py-3">
+                    <button type="button" className="flex-1 min-w-0 text-left" onClick={() => setSolDetalleId(sol.id)}>
                       <p className="text-sm font-medium">{sol.motivo}{sol.motivo_detalle ? ` — ${sol.motivo_detalle}` : ""}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatoFecha(sol.fecha_desde)} al {formatoFecha(sol.fecha_hasta)}
+                        {sol.hora_reintegro && ` · Reintegro ${String(sol.hora_reintegro).slice(0, 5)} hs`}
                         {sol.sujeto_descuento && " · Con descuento"}
                       </p>
-                      <ListaAdjuntosPermiso adjuntos={sol.adjuntos} />
-                      {sol.estado === "pendiente" && Array.isArray(sol.adjuntos) && sol.adjuntos.length > 0 && <AvisoPresentacion creadaAt={sol.created_at} />}
+                      <ResolucionPermiso sol={sol} />
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", ESTADO_PERMISO_BADGE[sol.estado])}>
+                        {sol.estado}
+                      </span>
+                      <Button variant={sol.estado === "pendiente" && canEdit ? "default" : "outline"} size="sm" className="h-7" onClick={() => setSolDetalleId(sol.id)}>
+                        {sol.estado === "pendiente" && canEdit ? <><PenLine className="h-3.5 w-3.5 mr-1" />Revisar y firmar</> : <><Eye className="h-3.5 w-3.5 mr-1" />Ver</>}
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => descargarPermisoPDF(sol)} title="Descargar PDF">
+                        <Download className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
-                    <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", estadoSolicitudBadge[sol.estado])}>
-                      {sol.estado}
-                    </span>
-                    {sol.estado === "pendiente" && canEdit && (
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => updateSolicitudMutation.mutate({ solId: sol.id, estado: "aprobada" })} title="Aprobar">
-                          <Check className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => updateSolicitudMutation.mutate({ solId: sol.id, estado: "rechazada" })} title="Rechazar">
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    )}
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={async () => {
-                      let empresaData = null;
-                      if (emp.empresa) {
-                        const { data: empFull } = await supabase.from("empresas").select("*").eq("id", emp.empresa.id).single();
-                        if (empFull) {
-                          empresaData = { nombre: empFull.nombre, razonSocial: empFull.razon_social, cuit: empFull.cuit, domicilio: empFull.domicilio_fiscal, telefono: empFull.telefono, email: empFull.email, logoUrl: empFull.logo_url };
-                        }
-                      }
-                      await generarSolicitudPermisoPDF({
-                        empleadoNombre: `${emp.apellido}, ${emp.nombre}`,
-                        areaTrabajo: emp.puesto,
-                        motivo: sol.motivo,
-                        motivoDetalle: sol.motivo_detalle,
-                        fechaDesde: sol.fecha_desde,
-                        fechaHasta: sol.fecha_hasta,
-                        horaReintegro: sol.hora_reintegro,
-                        sujetoDescuento: sol.sujeto_descuento,
-                        fechaSolicitud: sol.fecha_solicitud,
-                        empresa: empresaData,
-                      });
-                    }} title="Descargar PDF">
-                      <Download className="h-3.5 w-3.5" />
-                    </Button>
                   </div>
                 ))}
               </div>
             )}
           </div>
+          <DetallePermisoDialog
+            sol={solDetalle}
+            open={!!solDetalle}
+            onOpenChange={(o) => { if (!o) setSolDetalleId(null); }}
+            empleado={{ nombre: `${emp.apellido}, ${emp.nombre}`, puesto: emp.puesto }}
+            firmaInicial={firmaInicial}
+            onResolver={canEdit && solDetalle ? (r) => updateSolicitudMutation.mutate({ solId: solDetalle.id, ...r }) : undefined}
+            resolviendo={updateSolicitudMutation.isPending}
+            onDescargarPDF={solDetalle ? () => descargarPermisoPDF(solDetalle) : undefined}
+          />
         </TabsContent>
 
         {/* Asistencia */}

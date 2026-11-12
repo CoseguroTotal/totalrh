@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import { aplicarMembrete, aplicarFooterMembrete } from "./MembretePDF";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
+import { fechaHoraAR, type FirmaPermiso } from "@/lib/firmaPermiso";
 
 interface MembreteInfo {
   nombre: string;
@@ -24,6 +25,8 @@ interface SolicitudData {
   fechaSolicitud: string;
   empresa?: MembreteInfo | null;
   grupo?: MembreteInfo | null;
+  /** Resolución firmada por RRHH (estado, quién, cuándo y observaciones) */
+  resolucion?: FirmaPermiso | null;
 }
 
 export async function generarSolicitudPermisoPDF(data: SolicitudData) {
@@ -45,8 +48,9 @@ export async function generarSolicitudPermisoPDF(data: SolicitudData) {
   y += 12;
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
-  const fSol = data.fechaSolicitud ? new Date(data.fechaSolicitud) : new Date();
-  doc.text(`Salta, ${fSol.toLocaleDateString("es-AR")}`, 20, y);
+  // La fecha viene como YYYY-MM-DD: leerla como UTC la corre un día para atrás en Argentina
+  const fSol = data.fechaSolicitud ? formatoFecha(data.fechaSolicitud) : new Date().toLocaleDateString("es-AR");
+  doc.text(`Salta, ${fSol}`, 20, y);
 
   y += 10;
   doc.text("Sr. Gerente", 20, y);
@@ -101,8 +105,37 @@ export async function generarSolicitudPermisoPDF(data: SolicitudData) {
   doc.text("Firma Responsable Directo", w / 2 - 10, y + 5);
 
   y += 25;
+  const res = data.resolucion;
+  const resuelta = res && (res.estado === "aprobada" || res.estado === "rechazada");
+  const obs = resuelta && res.observaciones?.trim()
+    ? (doc.splitTextToSize(`Observaciones: ${res.observaciones.trim()}`, w / 2 - 10) as string[]).slice(0, 8)
+    : [];
+  const alto = resuelta ? 22 + obs.length * 4 : 10;
+  if (y + alto > doc.internal.pageSize.getHeight() - 22) {
+    doc.addPage();
+    y = 40;
+  }
+  if (resuelta && res.aprobado_nombre) {
+    // Firma registrada en el sistema: nombre y cargo sobre la línea
+    doc.setFont("helvetica", "bold");
+    doc.text(res.aprobado_nombre, 50, y - 2, { align: "center" });
+    doc.setFont("helvetica", "normal");
+  }
   doc.line(20, y, 80, y);
   doc.text("Firma y sello Recursos Humanos", 22, y + 5);
+  if (resuelta) {
+    let yi = y + 9;
+    if (res.aprobado_cargo) { doc.text(res.aprobado_cargo, 50, yi, { align: "center" }); yi += 4; }
+    if (res.aprobado_at) { doc.setFontSize(8); doc.text(`Firmado en el sistema el ${fechaHoraAR(res.aprobado_at)}`, 50, yi, { align: "center" }); doc.setFontSize(9); }
+
+    const x = w / 2 - 5;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Resolución: ${res.estado === "aprobada" ? "APROBADA" : "RECHAZADA"}`, x, y - 12);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    obs.forEach((l, i) => doc.text(l, x, y - 6 + i * 4));
+  }
 
   if (membreteConfig) {
     aplicarFooterMembrete(doc, membreteConfig);
