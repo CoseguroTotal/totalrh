@@ -2129,9 +2129,6 @@ export type Database = {
       solicitudes_permiso: {
         Row: {
           adjuntos: Json
-          aprobado_at: string | null
-          aprobado_cargo: string | null
-          aprobado_nombre: string | null
           aprobado_por: string | null
           created_at: string
           empleado_id: string
@@ -2148,9 +2145,6 @@ export type Database = {
         }
         Insert: {
           adjuntos?: Json
-          aprobado_at?: string | null
-          aprobado_cargo?: string | null
-          aprobado_nombre?: string | null
           aprobado_por?: string | null
           created_at?: string
           empleado_id: string
@@ -2167,9 +2161,6 @@ export type Database = {
         }
         Update: {
           adjuntos?: Json
-          aprobado_at?: string | null
-          aprobado_cargo?: string | null
-          aprobado_nombre?: string | null
           aprobado_por?: string | null
           created_at?: string
           empleado_id?: string
