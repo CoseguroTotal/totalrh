@@ -2140,7 +2140,6 @@ export type Database = {
           fecha_hasta: string
           fecha_solicitud: string
           hora_reintegro: string | null
-          hora_salida: string | null
           id: string
           motivo: string
           motivo_detalle: string | null
@@ -2160,7 +2159,6 @@ export type Database = {
           fecha_hasta: string
           fecha_solicitud?: string
           hora_reintegro?: string | null
-          hora_salida?: string | null
           id?: string
           motivo: string
           motivo_detalle?: string | null
@@ -2180,7 +2178,6 @@ export type Database = {
           fecha_hasta?: string
           fecha_solicitud?: string
           hora_reintegro?: string | null
-          hora_salida?: string | null
           id?: string
           motivo?: string
           motivo_detalle?: string | null
