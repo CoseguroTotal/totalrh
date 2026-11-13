@@ -1,5 +1,6 @@
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
+import { textoHorario } from "@/lib/horarioPermiso";
 import { DetallePermisoDialog, ESTADO_PERMISO_BADGE, ResolucionPermiso, type Resolucion } from "@/components/DetallePermiso";
 import { usePerfiles, useSessionUserId } from "@/hooks/useMuro";
 import { nombreCompleto } from "@/components/muro/MuroComponents";
@@ -223,6 +224,7 @@ export default function LegajoDetail() {
       motivoDetalle: sol.motivo_detalle,
       fechaDesde: sol.fecha_desde,
       fechaHasta: sol.fecha_hasta,
+      horaSalida: sol.hora_salida,
       horaReintegro: sol.hora_reintegro,
       sujetoDescuento: sol.sujeto_descuento,
       fechaSolicitud: sol.fecha_solicitud,
@@ -599,7 +601,7 @@ export default function LegajoDetail() {
                       <p className="text-sm font-medium">{sol.motivo}{sol.motivo_detalle ? ` — ${sol.motivo_detalle}` : ""}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatoFecha(sol.fecha_desde)} al {formatoFecha(sol.fecha_hasta)}
-                        {sol.hora_reintegro && ` · Reintegro ${String(sol.hora_reintegro).slice(0, 5)} hs`}
+                        {textoHorario(sol) && ` · ${textoHorario(sol)}`}
                         {sol.sujeto_descuento && " · Con descuento"}
                       </p>
                       <ResolucionPermiso sol={sol} />

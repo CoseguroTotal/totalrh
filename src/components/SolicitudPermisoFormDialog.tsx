@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { LEYENDA_ORIGINAL, SelectorAdjuntos, subirAdjuntosPermiso, textoPlazo, useFechasFeriado } from "@/components/AdjuntosPermiso";
 import type { Json } from "@/integrations/supabase/types";
+import { errorHorario } from "@/lib/horarioPermiso";
 
 const motivos = [
   "Lic. por Paternidad",
@@ -36,6 +37,7 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
   const [motivoDetalle, setMotivoDetalle] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
+  const [horaSalida, setHoraSalida] = useState("");
   const [horaReintegro, setHoraReintegro] = useState("");
   const [sujetoDescuento, setSujetoDescuento] = useState(false);
   const [archivos, setArchivos] = useState<File[]>([]);
@@ -48,6 +50,8 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
     mutationFn: async () => {
       if (!fechaDesde || !fechaHasta) throw new Error("Las fechas son requeridas");
       if (fechaHasta < fechaDesde) throw new Error("La fecha hasta no puede ser anterior a la fecha desde");
+      const errHora = errorHorario(fechaDesde, fechaHasta, { hora_salida: horaSalida, hora_reintegro: horaReintegro });
+      if (errHora) throw new Error(errHora);
       if (requiereDocumento && archivos.length === 0) throw new Error("Este motivo requiere adjuntar un comprobante");
       const adjuntos = await subirAdjuntosPermiso(empleadoId, archivos);
       const { error } = await supabase.from("solicitudes_permiso").insert({
@@ -56,6 +60,7 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
         motivo_detalle: motivoDetalle.trim() || null,
         fecha_desde: fechaDesde,
         fecha_hasta: fechaHasta,
+        hora_salida: horaSalida || null,
         hora_reintegro: horaReintegro || null,
         sujeto_descuento: sujetoDescuento,
         adjuntos: adjuntos as unknown as Json,
@@ -125,8 +130,17 @@ export default function SolicitudPermisoFormDialog({ open, onOpenChange, emplead
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Hora de reintegro</Label>
-            <Input type="time" value={horaReintegro} onChange={(e) => setHoraReintegro(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Hora de salida</Label>
+                <Input type="time" value={horaSalida} onChange={(e) => setHoraSalida(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Hora de regreso</Label>
+                <Input type="time" value={horaReintegro} onChange={(e) => setHoraReintegro(e.target.value)} />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Si salís durante la jornada, indicá a qué hora te vas y a qué hora volvés.</p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Documentación{requiereDocumento ? " *" : " (opcional)"}</Label>

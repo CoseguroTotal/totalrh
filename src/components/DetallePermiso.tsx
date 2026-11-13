@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AvisoPresentacion, ListaAdjuntosPermiso } from "@/components/AdjuntosPermiso";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
 import { fechaHoraAR, leyendaFirma, type FirmaPermiso } from "@/lib/firmaPermiso";
+import { horaCorta } from "@/lib/horarioPermiso";
 import { cn } from "@/lib/utils";
 
 export const ESTADO_PERMISO_BADGE: Record<string, string> = {
@@ -111,9 +112,12 @@ export function DetallePermisoDialog({
               <Dato etiqueta="Detalle"><p className="whitespace-pre-line">{sol.motivo_detalle}</p></Dato>
             </div>
           )}
-          <Dato etiqueta={mismoDia ? "Fecha" : "Desde"}>{formatoFecha(sol.fecha_desde)}</Dato>
+          <div className={cn(mismoDia && "col-span-2")}>
+            <Dato etiqueta={mismoDia ? "Fecha" : "Desde"}>{formatoFecha(sol.fecha_desde)}</Dato>
+          </div>
           {!mismoDia && <Dato etiqueta="Hasta">{formatoFecha(sol.fecha_hasta)}</Dato>}
-          <Dato etiqueta="Reintegro">{sol.hora_reintegro ? `${String(sol.hora_reintegro).slice(0, 5)} hs` : "—"}</Dato>
+          <Dato etiqueta="Hora de salida">{horaCorta(sol.hora_salida) ? `${horaCorta(sol.hora_salida)} hs` : "—"}</Dato>
+          <Dato etiqueta="Hora de regreso">{horaCorta(sol.hora_reintegro) ? `${horaCorta(sol.hora_reintegro)} hs` : "—"}</Dato>
           <Dato etiqueta="Descuento">{sol.sujeto_descuento ? "Sujeto a descuento" : "Sin descuento"}</Dato>
           <Dato etiqueta="Pedida el">{sol.created_at ? fechaHoraAR(sol.created_at) : formatoFecha(sol.fecha_solicitud)}</Dato>
           {Array.isArray(sol.adjuntos) && sol.adjuntos.length > 0 && (

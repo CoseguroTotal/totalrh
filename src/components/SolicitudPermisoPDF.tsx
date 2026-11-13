@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import { aplicarMembrete, aplicarFooterMembrete } from "./MembretePDF";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
 import { fechaHoraAR, type FirmaPermiso } from "@/lib/firmaPermiso";
+import { fraseHorario } from "@/lib/horarioPermiso";
 
 interface MembreteInfo {
   nombre: string;
@@ -20,6 +21,7 @@ interface SolicitudData {
   motivoDetalle?: string | null;
   fechaDesde: string;
   fechaHasta: string;
+  horaSalida?: string | null;
   horaReintegro?: string | null;
   sujetoDescuento: boolean;
   fechaSolicitud: string;
@@ -90,7 +92,7 @@ export async function generarSolicitudPermisoPDF(data: SolicitudData) {
   y += 6;
   const fDesde = formatoFecha(data.fechaDesde);
   const fHasta = formatoFecha(data.fechaHasta);
-  doc.text(`Desde el día ${fDesde}, hasta el día ${fHasta}${data.horaReintegro ? `, reintegrándose a horas ${data.horaReintegro}` : ""}.`, 20, y, { maxWidth: w - 40 });
+  doc.text(`Desde el día ${fDesde}, hasta el día ${fHasta}${fraseHorario({ hora_salida: data.horaSalida, hora_reintegro: data.horaReintegro })}.`, 20, y, { maxWidth: w - 40 });
 
   y += 16;
   doc.text("Sin más, saludo a Ud. muy atte.", 20, y);

@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { formatoFecha } from "@/lib/vacacionesCalendario";
 import { AvisoPresentacion, ListaAdjuntosPermiso } from "@/components/AdjuntosPermiso";
 import { DetallePermisoDialog, ResolucionPermiso } from "@/components/DetallePermiso";
+import { textoHorario } from "@/lib/horarioPermiso";
 import { useMiEmpleado, useSolicitudesPermiso } from "@/hooks/useAutogestion";
 import { RegistroFacialCard } from "@/components/asistencia/FaceCapture";
 import { useDocumentosLegajo } from "@/hooks/useEmpleados";
@@ -113,6 +114,7 @@ export default function Autogestion() {
       motivoDetalle: sol.motivo_detalle,
       fechaDesde: sol.fecha_desde,
       fechaHasta: sol.fecha_hasta,
+      horaSalida: sol.hora_salida,
       horaReintegro: sol.hora_reintegro,
       sujetoDescuento: sol.sujeto_descuento,
       fechaSolicitud: sol.fecha_solicitud,
@@ -268,6 +270,7 @@ export default function Autogestion() {
                       <p className="text-sm font-medium">{sol.motivo}{sol.motivo_detalle ? ` — ${sol.motivo_detalle}` : ""}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatoFecha(sol.fecha_desde)} al {formatoFecha(sol.fecha_hasta)}
+                        {textoHorario(sol) && ` · ${textoHorario(sol)}`}
                         {sol.sujeto_descuento && " · Con descuento"}
                       </p>
                       <ListaAdjuntosPermiso adjuntos={sol.adjuntos} />
