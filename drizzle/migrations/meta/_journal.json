@@ -176,6 +176,20 @@
       "when": 1794837514038,
       "tag": "0024_chat_participantes_solo_leido",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794837535011,
+      "tag": "0025_memorandums_firma_segura",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794837541256,
+      "tag": "0026_sanciones_fecha_descargo",
+      "breakpoints": true
     }
   ]
 }
