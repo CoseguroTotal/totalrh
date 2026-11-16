@@ -153,6 +153,16 @@ Ninguno.
 
 Resultado: 180 tests OK, typecheck OK y build OK.
 
+**Aplicado el 16/11/2026 en las tres bases** (Demo, Coseguro y Rupont):
+- Lovable aplicó las migraciones 1 a 3 y los límites de tamaño, y desplegó `send-email`, `avisos-push`, `registro-empleado` y `create-user` (ninguna `demo-*` en los clientes).
+- Las listas de tipos de los buckets no las pudo aplicar con sus herramientas, así que se aplicaron por SQL directo.
+- Verificado en las tres bases:
+  - el trigger `chat_participantes_guard` existe;
+  - `authenticated` no puede actualizar `conversacion_id` y sí `ultimo_leido_at`;
+  - las funciones de memos y sanciones están actualizadas;
+  - los buckets tienen los límites y tipos de la tabla de H3.
+- En Coseguro se repitió en producción la prueba de sumarse a una conversación ajena, en una transacción que se deshizo: quedó bloqueada y marcar como leído sigue funcionando.
+
 ## 5. Lo que tenés que hacer vos (paneles)
 
 Los puntos 1 a 4 se hacen en cada uno de los tres proyectos de Supabase (desde Lovable con Cloud, o desde el panel de Supabase).
