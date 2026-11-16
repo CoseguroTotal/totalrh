@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { destinatariosPermitidos } from "../_shared/soporte.ts";
+import { errorPublico } from "../_shared/errores.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +43,8 @@ serve(async (req) => {
       });
     }
 
-    const { to, subject, html, from } = await req.json();
+    // El remitente no se toma del navegador: siempre es el configurado en la empresa
+    const { to, subject, html } = await req.json();
 
     // Sin este control cualquier cuenta (incluidas las creadas desde el portal) podía mandar
     // emails a cualquier dirección en nombre de la empresa.
@@ -66,9 +68,9 @@ serve(async (req) => {
       );
     }
 
-    // Get configured sender email if not provided
-    let senderEmail = from;
-    if (!senderEmail) {
+    // Remitente configurado (o el de TotalRH)
+    let senderEmail = "";
+    {
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const adminClient = createClient(supabaseUrl, serviceKey);
       const { data: config } = await adminClient
@@ -103,7 +105,7 @@ serve(async (req) => {
     if (!resendRes.ok) {
       console.error("Resend error:", resendBody);
       return new Response(
-        JSON.stringify({ error: resendBody.message || "Error al enviar email" }),
+        JSON.stringify({ error: "El servicio de email no aceptó el envío. Revisá la dirección o probá más tarde." }),
         { status: resendRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -117,7 +119,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in send-email:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Error desconocido" }),
+      JSON.stringify({ error: errorPublico(error, "No se pudo enviar el email") }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

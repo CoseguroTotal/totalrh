@@ -1,8 +1,20 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import { politicaCsp } from "./src/lib/politicaCsp";
+
+// CSP como <meta> sólo en el build de producción (en desarrollo rompería la recarga en caliente)
+function cspProduccion(supabaseUrl?: string): Plugin {
+  return {
+    name: "csp-produccion",
+    apply: "build",
+    transformIndexHtml: () => [
+      { tag: "meta", attrs: { "http-equiv": "Content-Security-Policy", content: politicaCsp(supabaseUrl) }, injectTo: "head-prepend" },
+    ],
+  };
+}
 
 export default defineConfig(({ mode }) => ({
   server: {
@@ -14,6 +26,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    cspProduccion(loadEnv(mode, process.cwd(), "VITE_").VITE_SUPABASE_URL),
     mode === "development" && componentTagger(),
     // Service worker de la app instalable. El manifiesto vive en public/manifest.json
     // y el registro se hace en main.tsx (nunca en la vista previa de Lovable).

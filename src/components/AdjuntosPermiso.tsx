@@ -22,7 +22,7 @@ export function validarAdjuntos(actuales: number, archivos: { size: number; type
   if (actuales + archivos.length > MAX_ADJUNTOS) return `Podés adjuntar hasta ${MAX_ADJUNTOS} archivos`;
   const grande = archivos.find((f) => f.size > MAX_MB_ADJUNTO * 1024 * 1024);
   if (grande) return `"${grande.name}" supera ${MAX_MB_ADJUNTO} MB`;
-  const raro = archivos.find((f) => !(f.type === "application/pdf" || f.type.startsWith("image/") || /\.pdf$/i.test(f.name)));
+  const raro = archivos.find((f) => f.type === "image/svg+xml" || !(f.type === "application/pdf" || f.type.startsWith("image/") || /\.pdf$/i.test(f.name)));
   if (raro) return `"${raro.name}" no es PDF ni foto`;
   return null;
 }

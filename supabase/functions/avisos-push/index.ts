@@ -5,6 +5,7 @@
 // Las claves VAPID se generan solas la primera vez y quedan en push_config (sólo la ve el servicio).
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { errorPublico } from "../_shared/errores.ts";
 import { aBase64Url, enviarPush, generarClavesVapid, type ClavesVapid, type Suscripcion } from "../_shared/web-push.ts";
 import { datosPush, endpointPermitido, type AvisoPush } from "../_shared/push-rules.ts";
 
@@ -157,6 +158,6 @@ serve(async (req) => {
     return json({ error: "Acción desconocida" }, 400);
   } catch (e) {
     console.error(e);
-    return json({ error: e instanceof Error ? e.message : "Error inesperado" }, 500);
+    return json({ error: errorPublico(e) }, 500);
   }
 });

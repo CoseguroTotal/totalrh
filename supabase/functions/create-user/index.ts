@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { puedeAsignarRol, puedeTocarUsuario, rolGestor } from "../_shared/user-admin-rules.ts";
 import { MENSAJE_PASSWORD_DEBIL, esPasswordDebil } from "../_shared/registro-rules.ts";
+import { errorPublico } from "../_shared/errores.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -244,7 +245,8 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ user_id: userId, email }), { headers: corsHeaders });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Error interno";
+    console.error("create-user", err);
+    const message = errorPublico(err);
     return new Response(JSON.stringify({ error: message }), { status: 500, headers: corsHeaders });
   }
 });

@@ -6,6 +6,7 @@
 // La cuenta se crea suspendida (ban) hasta que RRHH la aprueba y la vincula a un legajo,
 // así una persona sin aprobar no puede leer nada del sistema.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { errorPublico } from "../_shared/errores.ts";
 import { adminClient, bloquear, checkBloqueo, corsHeaders, getIp, json, logIntento } from "../_shared/demo-security.ts";
 import { esEmailSoporte } from "../_shared/soporte.ts";
 import {
@@ -231,7 +232,7 @@ Deno.serve(async (req) => {
           empresa_id: sol.empresa_id,
           sucursal_id: sol.sucursal_id,
         }).select("id").single();
-        if (error) return json({ error: /duplicate|unique/i.test(error.message) ? "Ya existe un legajo con ese número o DNI" : error.message }, 409);
+        if (error) return json({ error: /duplicate|unique/i.test(error.message) ? "Ya existe un legajo con ese número o DNI" : errorPublico(error, "No se pudo crear el legajo") }, 409);
         empleadoId = nuevo.id;
       }
 
@@ -261,6 +262,6 @@ Deno.serve(async (req) => {
     return json({ error: "Acción no válida" }, 400);
   } catch (e) {
     console.error("registro-empleado", e);
-    return json({ error: e instanceof Error ? e.message : "Error inesperado" }, 500);
+    return json({ error: errorPublico(e) }, 500);
   }
 });

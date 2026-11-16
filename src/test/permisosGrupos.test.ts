@@ -16,6 +16,10 @@ describe("adjuntos de permisos", () => {
 
   it("rechaza tipos no permitidos", () => {
     expect(validarAdjuntos(0, [f("planilla.exe", "application/x-msdownload")])).toMatch(/no es PDF/);
+    // SVG puede llevar scripts: no se acepta aunque sea "image/"
+    expect(validarAdjuntos(0, [f("dibujo.svg", "image/svg+xml")])).toMatch(/no es PDF/);
+    // PDF que el celular manda sin tipo: se acepta por la extensión
+    expect(validarAdjuntos(0, [f("certificado.pdf", "")])).toBeNull();
   });
 
   it("limita la cantidad total", () => {
