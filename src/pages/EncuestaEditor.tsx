@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowDown, ArrowLeft, ArrowUp, Loader2, Plus, Send, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, ImagePlus, Loader2, Plus, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useEsModerador } from "@/hooks/useMuro";
+import { useEsModerador, useImagenMuro } from "@/hooks/useMuro";
 import {
-  TIPOS_PREGUNTA, erroresDeEncuesta, useEliminarEncuesta, useEncuesta, useGuardarEncuesta, usePublicarEncuesta,
+  TIPOS_PREGUNTA, erroresDeEncuesta, problemaImagen, useEliminarEncuesta, useEncuesta, useGuardarEncuesta, usePublicarEncuesta,
   type MostrarResultados, type Pregunta, type TipoPregunta,
 } from "@/hooks/useEncuestas";
 
@@ -33,6 +33,19 @@ export default function EncuestaEditor() {
   const [mostrar, setMostrar] = useState<MostrarResultados>("al_responder");
   const [cierre, setCierre] = useState("");
   const [preguntas, setPreguntas] = useState<Pregunta[]>([nuevaPregunta()]);
+  // Imagen: la ya guardada (ruta en el bucket) o una nueva elegida recién
+  const [imagenGuardada, setImagenGuardada] = useState<string | null>(null);
+  const [imagenNueva, setImagenNueva] = useState<File | null>(null);
+  const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { data: urlGuardada } = useImagenMuro(imagenNueva ? null : imagenGuardada);
+
+  useEffect(() => {
+    if (!imagenNueva) { setVistaPrevia(null); return; }
+    const url = URL.createObjectURL(imagenNueva);
+    setVistaPrevia(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imagenNueva]);
 
   useEffect(() => {
     if (!data) return;
@@ -40,6 +53,8 @@ export default function EncuestaEditor() {
     setTitulo(e.titulo); setDescripcion(e.descripcion); setAnonima(e.anonima); setMostrar(e.mostrar_resultados);
     setCierre(e.cierra_at ? e.cierra_at.slice(0, 10) : "");
     setPreguntas(data.preguntas.length ? data.preguntas : [nuevaPregunta()]);
+    setImagenGuardada(e.imagen_url ?? null);
+    setImagenNueva(null);
   }, [data]);
 
   if (isLoading || cargandoRol) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -58,7 +73,19 @@ export default function EncuestaEditor() {
     // Cierra al final del día elegido (hora argentina)
     cierra_at: cierre ? new Date(`${cierre}T23:59:59-03:00`).toISOString() : null,
     preguntas,
+    imagen_url: imagenGuardada,
+    imagenNueva,
   });
+
+  const elegirImagen = (f: File | undefined) => {
+    if (!f) return;
+    const problema = problemaImagen(f);
+    if (problema) { toast.error(problema); return; }
+    setImagenNueva(f);
+  };
+  const quitarImagen = () => { setImagenNueva(null); setImagenGuardada(null); };
+  const imagenAMostrar = vistaPrevia ?? (imagenGuardada ? urlGuardada : null);
+  const hayImagen = !!imagenNueva || !!imagenGuardada;
 
   const guardarBorrador = () => guardar.mutate(payload(), {
     onSuccess: (nuevoId) => { toast.success("Borrador guardado"); if (!id) navigate(`/encuestas/${nuevoId}/editar`, { replace: true }); },
@@ -95,6 +122,27 @@ export default function EncuestaEditor() {
         <div>
           <Label htmlFor="desc">Descripción (opcional)</Label>
           <Textarea id="desc" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Contá para qué es y cuánto tiempo lleva responderla." maxLength={2000} className="mt-1.5" />
+        </div>
+        <div>
+          <Label>Imagen (opcional)</Label>
+          <p className="text-xs text-muted-foreground">Se muestra arriba de la encuesta y en la publicación del muro.</p>
+          {hayImagen ? (
+            <div className="relative mt-2 overflow-hidden rounded-xl border bg-muted">
+              {imagenAMostrar
+                ? <img src={imagenAMostrar} alt="Imagen de la encuesta" className="max-h-72 w-full object-contain" />
+                : <div className="flex h-40 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
+              <div className="absolute right-2 top-2 flex gap-1.5">
+                <Button type="button" size="sm" variant="secondary" onClick={() => fileRef.current?.click()}>Cambiar</Button>
+                <Button type="button" size="icon" variant="secondary" className="h-8 w-8" onClick={quitarImagen} aria-label="Quitar imagen"><X className="h-4 w-4" /></Button>
+              </div>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" className="mt-2 w-full border-dashed h-20 rounded-xl" onClick={() => fileRef.current?.click()}>
+              <ImagePlus className="h-5 w-5 mr-2" />Adjuntar imagen
+            </Button>
+          )}
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif" className="hidden"
+            onChange={(ev) => { elegirImagen(ev.target.files?.[0]); ev.target.value = ""; }} />
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 sm:col-span-1">

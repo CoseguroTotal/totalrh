@@ -5,11 +5,23 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { useEsModerador } from "@/hooks/useMuro";
+import { useEsModerador, useImagenMuro } from "@/hooks/useMuro";
 import {
   estaAbierta, faltantes, porcentaje, useCerrarEncuesta, useEncuesta, useResponderEncuesta, useResultados,
   type Pregunta, type Respuestas, type Resultados,
 } from "@/hooks/useEncuestas";
+
+/** Imagen adjunta a la encuesta (bucket privado: se muestra con URL firmada). */
+function ImagenEncuesta({ ruta }: { ruta: string }) {
+  const { data: url, isError } = useImagenMuro(ruta);
+  if (isError) return null;
+  if (!url) return <div className="flex h-48 items-center justify-center rounded-2xl border bg-muted"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-2xl border bg-muted">
+      <img src={url} alt="Imagen de la encuesta" className="max-h-[480px] w-full object-contain" />
+    </a>
+  );
+}
 
 const ETIQUETAS_ESCALA = ["Muy en desacuerdo", "En desacuerdo", "Neutral", "De acuerdo", "Muy de acuerdo"];
 
@@ -45,6 +57,8 @@ export default function EncuestaDetalle() {
   return (
     <div className="mx-auto max-w-3xl space-y-5 pb-10">
       <Button variant="ghost" size="sm" onClick={() => navigate("/encuestas")}><ArrowLeft className="h-4 w-4 mr-1.5" />Encuestas</Button>
+
+      {e.imagen_url && <ImagenEncuesta ruta={e.imagen_url} />}
 
       <header className="rounded-2xl border bg-gradient-to-br from-violet-500/10 to-primary/10 p-6">
         <h1 className="text-2xl font-bold">{e.titulo}</h1>

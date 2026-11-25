@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
+import { subirImagen } from "@/hooks/useMuro";
 
 export type TipoPregunta = "unica" | "multiple" | "escala" | "texto";
 export type MostrarResultados = "al_responder" | "al_cerrar" | "nunca";
@@ -25,7 +26,19 @@ export interface Encuesta {
   creada_por: string;
   publicada_at: string | null;
   publicacion_id: string | null;
+  /** Ruta de la imagen en el bucket "muro" (opcional). */
+  imagen_url: string | null;
   created_at: string;
+}
+
+/** Tamaño máximo de la imagen de una encuesta (el bucket acepta hasta 10 MB). */
+export const MAX_IMAGEN_ENCUESTA_MB = 5;
+
+/** Motivo por el que no se acepta una imagen, o null si está bien. */
+export function problemaImagen(f: { type: string; size: number }) {
+  if (!f.type.startsWith("image/") || f.type === "image/svg+xml") return "Elegí una imagen (JPG, PNG o WEBP)";
+  if (f.size > MAX_IMAGEN_ENCUESTA_MB * 1024 * 1024) return `La imagen supera ${MAX_IMAGEN_ENCUESTA_MB} MB`;
+  return null;
 }
 
 /** Respuestas por id de pregunta: índices de opción, valor 1–5 o texto. */
@@ -159,13 +172,19 @@ export function useGuardarEncuesta() {
       mostrar_resultados: MostrarResultados;
       cierra_at: string | null;
       preguntas: Pregunta[];
+      /** Ruta ya guardada (se conserva), null para quitarla. */
+      imagen_url: string | null;
+      /** Imagen nueva elegida: se sube y reemplaza a la anterior. */
+      imagenNueva?: File | null;
     }) => {
+      const imagen_url = input.imagenNueva ? await subirImagen(input.imagenNueva) : input.imagen_url;
       const datos = {
         titulo: input.titulo.trim(),
         descripcion: input.descripcion.trim(),
         anonima: input.anonima,
         mostrar_resultados: input.mostrar_resultados,
         cierra_at: input.cierra_at,
+        imagen_url,
       };
       let id = input.id;
       if (id) {

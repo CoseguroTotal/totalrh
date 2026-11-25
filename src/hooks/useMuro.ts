@@ -178,7 +178,8 @@ export function useCelebraciones(dias = 7) {
   });
 }
 
-async function subirImagen(file: File) {
+/** Sube una imagen al bucket privado "muro" (carpeta de quien sube) y devuelve la ruta. */
+export async function subirImagen(file: File) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Sesión vencida");
   const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";

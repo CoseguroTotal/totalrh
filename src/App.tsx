@@ -13,6 +13,7 @@ import AdminRoute from "@/components/AdminRoute";
 import RoleRoute from "@/components/RoleRoute";
 import AutogestionGuard from "@/components/AutogestionGuard";
 import DemoGate from "@/components/DemoGate";
+import AbrirDesdeAviso from "@/components/AbrirDesdeAviso";
 import { ES_DEMO } from "@/lib/modo";
 
 // Cada pantalla se descarga recién cuando se abre
@@ -78,6 +79,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AbrirDesdeAviso />
         <Suspense fallback={<Cargando />}>
           <Routes>
             <Route path="/" element={ES_DEMO ? <Landing /> : <Navigate to="/login" replace />} />
