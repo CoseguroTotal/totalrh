@@ -9,7 +9,7 @@ type Ventana = { url: string; visibilityState: string; focused: boolean; focus: 
 /** Carga public/sw-avisos.js en un "self" falso y devuelve sus manejadores. */
 function cargarServiceWorker(ventanas: Ventana[]) {
   const manejadores: Record<string, (ev: unknown) => void> = {};
-  const showNotification = vi.fn(async () => undefined);
+  const showNotification = vi.fn(async (_titulo: string, _opciones?: Record<string, unknown>) => undefined);
   const openWindow = vi.fn(async () => null);
   const self = {
     location: { origin: "https://rrhh.ejemplo.com" },
