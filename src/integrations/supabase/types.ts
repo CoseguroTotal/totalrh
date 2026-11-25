@@ -998,6 +998,7 @@ export type Database = {
           descripcion: string
           estado: string
           id: string
+          imagen_url: string | null
           mostrar_resultados: string
           publicacion_id: string | null
           publicada_at: string | null
@@ -1012,6 +1013,7 @@ export type Database = {
           descripcion?: string
           estado?: string
           id?: string
+          imagen_url?: string | null
           mostrar_resultados?: string
           publicacion_id?: string | null
           publicada_at?: string | null
@@ -1026,6 +1028,7 @@ export type Database = {
           descripcion?: string
           estado?: string
           id?: string
+          imagen_url?: string | null
           mostrar_resultados?: string
           publicacion_id?: string | null
           publicada_at?: string | null
