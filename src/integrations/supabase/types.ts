@@ -22,6 +22,7 @@ export type Database = {
           hora_entrada: string
           hora_salida: string
           id: string
+          organizacion_id: string
           vigente_desde: string
         }
         Insert: {
@@ -31,6 +32,7 @@ export type Database = {
           hora_entrada: string
           hora_salida: string
           id?: string
+          organizacion_id?: string
           vigente_desde?: string
         }
         Update: {
@@ -40,14 +42,22 @@ export type Database = {
           hora_entrada?: string
           hora_salida?: string
           id?: string
+          organizacion_id?: string
           vigente_desde?: string
         }
         Relationships: [
           {
             foreignKeyName: "asignaciones_turno_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "asignaciones_turno_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -61,6 +71,7 @@ export type Database = {
           id: string
           nombre: string
           notas: string | null
+          organizacion_id: string
           telefono: string | null
           vacante_id: string
         }
@@ -72,6 +83,7 @@ export type Database = {
           id?: string
           nombre: string
           notas?: string | null
+          organizacion_id?: string
           telefono?: string | null
           vacante_id: string
         }
@@ -83,16 +95,24 @@ export type Database = {
           id?: string
           nombre?: string
           notas?: string | null
+          organizacion_id?: string
           telefono?: string | null
           vacante_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "candidatos_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "candidatos_vacante_id_fkey"
-            columns: ["vacante_id"]
+            columns: ["organizacion_id", "vacante_id"]
             isOneToOne: false
             referencedRelation: "vacantes"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
         ]
       }
@@ -102,6 +122,7 @@ export type Database = {
           created_at: string
           id: string
           nombre: string | null
+          organizacion_id: string
           tipo: string
           ultimo_mensaje_at: string
         }
@@ -110,6 +131,7 @@ export type Database = {
           created_at?: string
           id?: string
           nombre?: string | null
+          organizacion_id?: string
           tipo: string
           ultimo_mensaje_at?: string
         }
@@ -118,10 +140,19 @@ export type Database = {
           created_at?: string
           id?: string
           nombre?: string | null
+          organizacion_id?: string
           tipo?: string
           ultimo_mensaje_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_conversaciones_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_mensajes: {
         Row: {
@@ -136,6 +167,7 @@ export type Database = {
           created_at: string
           eliminado: boolean
           id: string
+          organizacion_id: string
         }
         Insert: {
           adjunto_duracion?: number | null
@@ -149,6 +181,7 @@ export type Database = {
           created_at?: string
           eliminado?: boolean
           id?: string
+          organizacion_id?: string
         }
         Update: {
           adjunto_duracion?: number | null
@@ -162,13 +195,21 @@ export type Database = {
           created_at?: string
           eliminado?: boolean
           id?: string
+          organizacion_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "chat_mensajes_conversacion_id_fkey"
-            columns: ["conversacion_id"]
+            columns: ["organizacion_id", "conversacion_id"]
             isOneToOne: false
             referencedRelation: "chat_conversaciones"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "chat_mensajes_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -177,27 +218,37 @@ export type Database = {
         Row: {
           conversacion_id: string
           created_at: string
+          organizacion_id: string
           ultimo_leido_at: string
           user_id: string
         }
         Insert: {
           conversacion_id: string
           created_at?: string
+          organizacion_id?: string
           ultimo_leido_at?: string
           user_id: string
         }
         Update: {
           conversacion_id?: string
           created_at?: string
+          organizacion_id?: string
           ultimo_leido_at?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "chat_participantes_conversacion_id_fkey"
-            columns: ["conversacion_id"]
+            columns: ["organizacion_id", "conversacion_id"]
             isOneToOne: false
             referencedRelation: "chat_conversaciones"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "chat_participantes_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -217,6 +268,7 @@ export type Database = {
           monto_fijo: number | null
           nombre: string
           orden: number | null
+          organizacion_id: string
           porcentaje: number | null
           tipo: Database["public"]["Enums"]["tipo_concepto"]
           tope_base: number | null
@@ -236,6 +288,7 @@ export type Database = {
           monto_fijo?: number | null
           nombre: string
           orden?: number | null
+          organizacion_id?: string
           porcentaje?: number | null
           tipo: Database["public"]["Enums"]["tipo_concepto"]
           tope_base?: number | null
@@ -255,6 +308,7 @@ export type Database = {
           monto_fijo?: number | null
           nombre?: string
           orden?: number | null
+          organizacion_id?: string
           porcentaje?: number | null
           tipo?: Database["public"]["Enums"]["tipo_concepto"]
           tope_base?: number | null
@@ -263,9 +317,16 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "conceptos_liquidacion_concepto_base_id_fkey"
-            columns: ["concepto_base_id"]
+            columns: ["organizacion_id", "concepto_base_id"]
             isOneToOne: false
             referencedRelation: "conceptos_liquidacion"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "conceptos_liquidacion_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -293,6 +354,7 @@ export type Database = {
           logo_url: string | null
           nombre_grupo: string
           notificaciones_email_activas: boolean | null
+          organizacion_id: string
           qr_duracion_segundos: number
           registro_abierto: boolean
           registro_codigo: string | null
@@ -321,6 +383,7 @@ export type Database = {
           logo_url?: string | null
           nombre_grupo?: string
           notificaciones_email_activas?: boolean | null
+          organizacion_id?: string
           qr_duracion_segundos?: number
           registro_abierto?: boolean
           registro_codigo?: string | null
@@ -349,13 +412,22 @@ export type Database = {
           logo_url?: string | null
           nombre_grupo?: string
           notificaciones_email_activas?: boolean | null
+          organizacion_id?: string
           qr_duracion_segundos?: number
           registro_abierto?: boolean
           registro_codigo?: string | null
           telefono?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "configuracion_grupo_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: true
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       datos_medicos: {
         Row: {
@@ -369,6 +441,7 @@ export type Database = {
           nro_art: string | null
           obra_social: string | null
           observaciones: string | null
+          organizacion_id: string
           plan_obra_social: string | null
           updated_at: string
         }
@@ -383,6 +456,7 @@ export type Database = {
           nro_art?: string | null
           obra_social?: string | null
           observaciones?: string | null
+          organizacion_id?: string
           plan_obra_social?: string | null
           updated_at?: string
         }
@@ -397,15 +471,23 @@ export type Database = {
           nro_art?: string | null
           obra_social?: string | null
           observaciones?: string | null
+          organizacion_id?: string
           plan_obra_social?: string | null
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "datos_medicos_empleado_id_fkey"
-            columns: ["empleado_id"]
-            isOneToOne: true
+            columns: ["organizacion_id", "empleado_id"]
+            isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "datos_medicos_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -629,6 +711,7 @@ export type Database = {
           fecha_vencimiento: string | null
           id: string
           nombre_archivo: string
+          organizacion_id: string
           storage_path: string
           tamano: string | null
           tipo_documento: string | null
@@ -640,6 +723,7 @@ export type Database = {
           fecha_vencimiento?: string | null
           id?: string
           nombre_archivo: string
+          organizacion_id?: string
           storage_path: string
           tamano?: string | null
           tipo_documento?: string | null
@@ -651,6 +735,7 @@ export type Database = {
           fecha_vencimiento?: string | null
           id?: string
           nombre_archivo?: string
+          organizacion_id?: string
           storage_path?: string
           tamano?: string | null
           tipo_documento?: string | null
@@ -658,9 +743,16 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "documentos_legajo_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "documentos_legajo_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -691,6 +783,7 @@ export type Database = {
           legajo: string
           nacionalidad: string | null
           nombre: string
+          organizacion_id: string
           puesto: string
           sexo: string | null
           sucursal_id: string
@@ -724,6 +817,7 @@ export type Database = {
           legajo: string
           nacionalidad?: string | null
           nombre: string
+          organizacion_id?: string
           puesto: string
           sexo?: string | null
           sucursal_id: string
@@ -757,6 +851,7 @@ export type Database = {
           legajo?: string
           nacionalidad?: string | null
           nombre?: string
+          organizacion_id?: string
           puesto?: string
           sexo?: string | null
           sucursal_id?: string
@@ -768,17 +863,24 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "empleados_empresa_id_fkey"
-            columns: ["empresa_id"]
+            columns: ["organizacion_id", "empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "empleados_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "empleados_sucursal_id_fkey"
-            columns: ["sucursal_id"]
+            columns: ["organizacion_id", "sucursal_id"]
             isOneToOne: false
             referencedRelation: "sucursales"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
         ]
       }
@@ -789,6 +891,7 @@ export type Database = {
           created_at: string
           empleado_id: string
           id: string
+          organizacion_id: string
           origen: string
           valor_anterior: string | null
           valor_nuevo: string | null
@@ -799,6 +902,7 @@ export type Database = {
           created_at?: string
           empleado_id: string
           id?: string
+          organizacion_id?: string
           origen: string
           valor_anterior?: string | null
           valor_nuevo?: string | null
@@ -809,6 +913,7 @@ export type Database = {
           created_at?: string
           empleado_id?: string
           id?: string
+          organizacion_id?: string
           origen?: string
           valor_anterior?: string | null
           valor_nuevo?: string | null
@@ -816,9 +921,16 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "empleados_cambios_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "empleados_cambios_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -837,6 +949,7 @@ export type Database = {
           localidad: string | null
           logo_url: string | null
           nombre: string
+          organizacion_id: string
           provincia: string | null
           razon_social: string | null
           telefono: string | null
@@ -854,6 +967,7 @@ export type Database = {
           localidad?: string | null
           logo_url?: string | null
           nombre: string
+          organizacion_id?: string
           provincia?: string | null
           razon_social?: string | null
           telefono?: string | null
@@ -871,34 +985,53 @@ export type Database = {
           localidad?: string | null
           logo_url?: string | null
           nombre?: string
+          organizacion_id?: string
           provincia?: string | null
           razon_social?: string | null
           telefono?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "empresas_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       encuesta_participaciones: {
         Row: {
           encuesta_id: string
+          organizacion_id: string
           respondida_at: string
           user_id: string
         }
         Insert: {
           encuesta_id: string
+          organizacion_id?: string
           respondida_at?: string
           user_id: string
         }
         Update: {
           encuesta_id?: string
+          organizacion_id?: string
           respondida_at?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "encuesta_participaciones_encuesta_id_fkey"
-            columns: ["encuesta_id"]
+            columns: ["organizacion_id", "encuesta_id"]
             isOneToOne: false
             referencedRelation: "encuestas"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "encuesta_participaciones_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -910,6 +1043,7 @@ export type Database = {
           obligatoria: boolean
           opciones: Json
           orden: number
+          organizacion_id: string
           texto: string
           tipo: string
         }
@@ -919,6 +1053,7 @@ export type Database = {
           obligatoria?: boolean
           opciones?: Json
           orden?: number
+          organizacion_id?: string
           texto: string
           tipo: string
         }
@@ -928,15 +1063,23 @@ export type Database = {
           obligatoria?: boolean
           opciones?: Json
           orden?: number
+          organizacion_id?: string
           texto?: string
           tipo?: string
         }
         Relationships: [
           {
             foreignKeyName: "encuesta_preguntas_encuesta_id_fkey"
-            columns: ["encuesta_id"]
+            columns: ["organizacion_id", "encuesta_id"]
             isOneToOne: false
             referencedRelation: "encuestas"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "encuesta_preguntas_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -948,6 +1091,7 @@ export type Database = {
           escala: number | null
           id: string
           opciones: number[] | null
+          organizacion_id: string
           pregunta_id: string
           respondente: string | null
           texto: string | null
@@ -958,6 +1102,7 @@ export type Database = {
           escala?: number | null
           id?: string
           opciones?: number[] | null
+          organizacion_id?: string
           pregunta_id: string
           respondente?: string | null
           texto?: string | null
@@ -968,6 +1113,7 @@ export type Database = {
           escala?: number | null
           id?: string
           opciones?: number[] | null
+          organizacion_id?: string
           pregunta_id?: string
           respondente?: string | null
           texto?: string | null
@@ -975,17 +1121,24 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "encuesta_respuestas_encuesta_id_fkey"
-            columns: ["encuesta_id"]
+            columns: ["organizacion_id", "encuesta_id"]
             isOneToOne: false
             referencedRelation: "encuestas"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "encuesta_respuestas_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "encuesta_respuestas_pregunta_id_fkey"
-            columns: ["pregunta_id"]
+            columns: ["organizacion_id", "pregunta_id"]
             isOneToOne: false
             referencedRelation: "encuesta_preguntas"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
         ]
       }
@@ -1000,6 +1153,7 @@ export type Database = {
           id: string
           imagen_url: string | null
           mostrar_resultados: string
+          organizacion_id: string
           publicacion_id: string | null
           publicada_at: string | null
           titulo: string
@@ -1015,6 +1169,7 @@ export type Database = {
           id?: string
           imagen_url?: string | null
           mostrar_resultados?: string
+          organizacion_id?: string
           publicacion_id?: string | null
           publicada_at?: string | null
           titulo: string
@@ -1030,6 +1185,7 @@ export type Database = {
           id?: string
           imagen_url?: string | null
           mostrar_resultados?: string
+          organizacion_id?: string
           publicacion_id?: string | null
           publicada_at?: string | null
           titulo?: string
@@ -1037,11 +1193,18 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "encuestas_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "encuestas_publicacion_id_fkey"
-            columns: ["publicacion_id"]
+            columns: ["organizacion_id", "publicacion_id"]
             isOneToOne: false
             referencedRelation: "muro_publicaciones"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
         ]
       }
@@ -1055,6 +1218,7 @@ export type Database = {
           id: string
           institucion: string | null
           nivel: Database["public"]["Enums"]["nivel_estudio"]
+          organizacion_id: string
           titulo: string
         }
         Insert: {
@@ -1066,6 +1230,7 @@ export type Database = {
           id?: string
           institucion?: string | null
           nivel: Database["public"]["Enums"]["nivel_estudio"]
+          organizacion_id?: string
           titulo: string
         }
         Update: {
@@ -1077,14 +1242,22 @@ export type Database = {
           id?: string
           institucion?: string | null
           nivel?: Database["public"]["Enums"]["nivel_estudio"]
+          organizacion_id?: string
           titulo?: string
         }
         Relationships: [
           {
             foreignKeyName: "estudios_empleado_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "estudios_empleado_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1092,18 +1265,21 @@ export type Database = {
       evento_asistencias: {
         Row: {
           evento_id: string
+          organizacion_id: string
           respuesta: string
           updated_at: string
           user_id: string
         }
         Insert: {
           evento_id: string
+          organizacion_id?: string
           respuesta: string
           updated_at?: string
           user_id?: string
         }
         Update: {
           evento_id?: string
+          organizacion_id?: string
           respuesta?: string
           updated_at?: string
           user_id?: string
@@ -1111,9 +1287,16 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "evento_asistencias_evento_id_fkey"
-            columns: ["evento_id"]
+            columns: ["organizacion_id", "evento_id"]
             isOneToOne: false
             referencedRelation: "eventos"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "evento_asistencias_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1128,6 +1311,7 @@ export type Database = {
           id: string
           inicio: string
           lugar: string | null
+          organizacion_id: string
           pide_asistencia: boolean
           publicacion_id: string | null
           tipo: string
@@ -1144,6 +1328,7 @@ export type Database = {
           id?: string
           inicio: string
           lugar?: string | null
+          organizacion_id?: string
           pide_asistencia?: boolean
           publicacion_id?: string | null
           tipo?: string
@@ -1160,6 +1345,7 @@ export type Database = {
           id?: string
           inicio?: string
           lugar?: string | null
+          organizacion_id?: string
           pide_asistencia?: boolean
           publicacion_id?: string | null
           tipo?: string
@@ -1169,11 +1355,18 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "eventos_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "eventos_publicacion_id_fkey"
-            columns: ["publicacion_id"]
+            columns: ["organizacion_id", "publicacion_id"]
             isOneToOne: false
             referencedRelation: "muro_publicaciones"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
         ]
       }
@@ -1184,6 +1377,7 @@ export type Database = {
           empleado_id: string
           fecha: string
           id: string
+          organizacion_id: string
           tipo: Database["public"]["Enums"]["tipo_evento_legajo"]
           titulo: string
         }
@@ -1193,6 +1387,7 @@ export type Database = {
           empleado_id: string
           fecha: string
           id?: string
+          organizacion_id?: string
           tipo: Database["public"]["Enums"]["tipo_evento_legajo"]
           titulo: string
         }
@@ -1202,15 +1397,23 @@ export type Database = {
           empleado_id?: string
           fecha?: string
           id?: string
+          organizacion_id?: string
           tipo?: Database["public"]["Enums"]["tipo_evento_legajo"]
           titulo?: string
         }
         Relationships: [
           {
             foreignKeyName: "eventos_legajo_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "eventos_legajo_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1222,6 +1425,7 @@ export type Database = {
           fecha: string
           id: string
           nombre: string
+          organizacion_id: string
           tipo: string
         }
         Insert: {
@@ -1230,6 +1434,7 @@ export type Database = {
           fecha: string
           id?: string
           nombre: string
+          organizacion_id?: string
           tipo?: string
         }
         Update: {
@@ -1238,9 +1443,18 @@ export type Database = {
           fecha?: string
           id?: string
           nombre?: string
+          organizacion_id?: string
           tipo?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "feriados_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fichadas: {
         Row: {
@@ -1258,6 +1472,7 @@ export type Database = {
           metodo: string | null
           metodo_salida: string | null
           observaciones: string | null
+          organizacion_id: string
           precision_m: number | null
           terminal_user_id: string | null
           turno_id: string | null
@@ -1277,6 +1492,7 @@ export type Database = {
           metodo?: string | null
           metodo_salida?: string | null
           observaciones?: string | null
+          organizacion_id?: string
           precision_m?: number | null
           terminal_user_id?: string | null
           turno_id?: string | null
@@ -1296,6 +1512,7 @@ export type Database = {
           metodo?: string | null
           metodo_salida?: string | null
           observaciones?: string | null
+          organizacion_id?: string
           precision_m?: number | null
           terminal_user_id?: string | null
           turno_id?: string | null
@@ -1303,17 +1520,24 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "fichadas_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "fichadas_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "fichadas_turno_id_fkey"
-            columns: ["turno_id"]
+            columns: ["organizacion_id", "turno_id"]
             isOneToOne: false
             referencedRelation: "turnos"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
         ]
       }
@@ -1328,6 +1552,7 @@ export type Database = {
           fecha_nacimiento: string | null
           id: string
           nombre: string
+          organizacion_id: string
           parentesco: Database["public"]["Enums"]["parentesco_familiar"]
         }
         Insert: {
@@ -1340,6 +1565,7 @@ export type Database = {
           fecha_nacimiento?: string | null
           id?: string
           nombre: string
+          organizacion_id?: string
           parentesco: Database["public"]["Enums"]["parentesco_familiar"]
         }
         Update: {
@@ -1352,14 +1578,22 @@ export type Database = {
           fecha_nacimiento?: string | null
           id?: string
           nombre?: string
+          organizacion_id?: string
           parentesco?: Database["public"]["Enums"]["parentesco_familiar"]
         }
         Relationships: [
           {
             foreignKeyName: "grupo_familiar_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "grupo_familiar_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1368,27 +1602,37 @@ export type Database = {
         Row: {
           created_at: string
           grupo_id: string
+          organizacion_id: string
           rol: string
           user_id: string
         }
         Insert: {
           created_at?: string
           grupo_id: string
+          organizacion_id?: string
           rol?: string
           user_id: string
         }
         Update: {
           created_at?: string
           grupo_id?: string
+          organizacion_id?: string
           rol?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "grupo_miembros_grupo_id_fkey"
-            columns: ["grupo_id"]
+            columns: ["organizacion_id", "grupo_id"]
             isOneToOne: false
             referencedRelation: "grupos"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "grupo_miembros_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1401,6 +1645,7 @@ export type Database = {
           descripcion: string
           id: string
           nombre: string
+          organizacion_id: string
           tipo: string
           updated_at: string
         }
@@ -1411,6 +1656,7 @@ export type Database = {
           descripcion?: string
           id?: string
           nombre: string
+          organizacion_id?: string
           tipo?: string
           updated_at?: string
         }
@@ -1421,10 +1667,19 @@ export type Database = {
           descripcion?: string
           id?: string
           nombre?: string
+          organizacion_id?: string
           tipo?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "grupos_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       liquidacion_lineas: {
         Row: {
@@ -1436,6 +1691,7 @@ export type Database = {
           id: string
           liquidacion_id: string
           monto: number
+          organizacion_id: string
           tipo: Database["public"]["Enums"]["tipo_concepto"]
         }
         Insert: {
@@ -1447,6 +1703,7 @@ export type Database = {
           id?: string
           liquidacion_id: string
           monto?: number
+          organizacion_id?: string
           tipo: Database["public"]["Enums"]["tipo_concepto"]
         }
         Update: {
@@ -1458,21 +1715,29 @@ export type Database = {
           id?: string
           liquidacion_id?: string
           monto?: number
+          organizacion_id?: string
           tipo?: Database["public"]["Enums"]["tipo_concepto"]
         }
         Relationships: [
           {
             foreignKeyName: "liquidacion_lineas_concepto_id_fkey"
-            columns: ["concepto_id"]
+            columns: ["organizacion_id", "concepto_id"]
             isOneToOne: false
             referencedRelation: "conceptos_liquidacion"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
           {
             foreignKeyName: "liquidacion_lineas_liquidacion_id_fkey"
-            columns: ["liquidacion_id"]
+            columns: ["organizacion_id", "liquidacion_id"]
             isOneToOne: false
             referencedRelation: "liquidaciones"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "liquidacion_lineas_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1484,6 +1749,7 @@ export type Database = {
           estado: Database["public"]["Enums"]["estado_liquidacion"]
           id: string
           neto: number
+          organizacion_id: string
           periodo: string
           sueldo_basico: number
           total_deducciones: number
@@ -1496,6 +1762,7 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_liquidacion"]
           id?: string
           neto?: number
+          organizacion_id?: string
           periodo: string
           sueldo_basico?: number
           total_deducciones?: number
@@ -1508,6 +1775,7 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_liquidacion"]
           id?: string
           neto?: number
+          organizacion_id?: string
           periodo?: string
           sueldo_basico?: number
           total_deducciones?: number
@@ -1517,9 +1785,16 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "liquidaciones_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "liquidaciones_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1542,6 +1817,7 @@ export type Database = {
           firmado_por: string | null
           id: string
           numero: number
+          organizacion_id: string
           titulo: string
         }
         Insert: {
@@ -1561,6 +1837,7 @@ export type Database = {
           firmado_por?: string | null
           id?: string
           numero?: number
+          organizacion_id?: string
           titulo: string
         }
         Update: {
@@ -1580,21 +1857,29 @@ export type Database = {
           firmado_por?: string | null
           id?: string
           numero?: number
+          organizacion_id?: string
           titulo?: string
         }
         Relationships: [
           {
             foreignKeyName: "memorandums_destinatario_empleado_id_fkey"
-            columns: ["destinatario_empleado_id"]
+            columns: ["organizacion_id", "destinatario_empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
           {
             foreignKeyName: "memorandums_empresa_id_fkey"
-            columns: ["empresa_id"]
+            columns: ["organizacion_id", "empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "memorandums_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1605,6 +1890,7 @@ export type Database = {
           contenido: string
           created_at: string
           id: string
+          organizacion_id: string
           publicacion_id: string
         }
         Insert: {
@@ -1612,6 +1898,7 @@ export type Database = {
           contenido: string
           created_at?: string
           id?: string
+          organizacion_id?: string
           publicacion_id: string
         }
         Update: {
@@ -1619,44 +1906,62 @@ export type Database = {
           contenido?: string
           created_at?: string
           id?: string
+          organizacion_id?: string
           publicacion_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "muro_comentarios_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "muro_comentarios_publicacion_id_fkey"
-            columns: ["publicacion_id"]
+            columns: ["organizacion_id", "publicacion_id"]
             isOneToOne: false
             referencedRelation: "muro_publicaciones"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
         ]
       }
       muro_lecturas: {
         Row: {
           confirmado_at: string | null
+          organizacion_id: string
           publicacion_id: string
           user_id: string
           visto_at: string
         }
         Insert: {
           confirmado_at?: string | null
+          organizacion_id?: string
           publicacion_id: string
           user_id?: string
           visto_at?: string
         }
         Update: {
           confirmado_at?: string | null
+          organizacion_id?: string
           publicacion_id?: string
           user_id?: string
           visto_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "muro_lecturas_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "muro_lecturas_publicacion_id_fkey"
-            columns: ["publicacion_id"]
+            columns: ["organizacion_id", "publicacion_id"]
             isOneToOne: false
             referencedRelation: "muro_publicaciones"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
         ]
       }
@@ -1672,6 +1977,7 @@ export type Database = {
           imagen_url: string | null
           mencion_user_id: string | null
           oculta: boolean
+          organizacion_id: string
           requiere_confirmacion: boolean
           tipo: string
           updated_at: string
@@ -1687,6 +1993,7 @@ export type Database = {
           imagen_url?: string | null
           mencion_user_id?: string | null
           oculta?: boolean
+          organizacion_id?: string
           requiere_confirmacion?: boolean
           tipo?: string
           updated_at?: string
@@ -1702,6 +2009,7 @@ export type Database = {
           imagen_url?: string | null
           mencion_user_id?: string | null
           oculta?: boolean
+          organizacion_id?: string
           requiere_confirmacion?: boolean
           tipo?: string
           updated_at?: string
@@ -1709,9 +2017,16 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "muro_publicaciones_grupo_id_fkey"
-            columns: ["grupo_id"]
+            columns: ["organizacion_id", "grupo_id"]
             isOneToOne: false
             referencedRelation: "grupos"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "muro_publicaciones_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1719,29 +2034,39 @@ export type Database = {
       muro_reacciones: {
         Row: {
           created_at: string
+          organizacion_id: string
           publicacion_id: string
           tipo: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          organizacion_id?: string
           publicacion_id: string
           tipo: string
           user_id?: string
         }
         Update: {
           created_at?: string
+          organizacion_id?: string
           publicacion_id?: string
           tipo?: string
           user_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "muro_reacciones_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "muro_reacciones_publicacion_id_fkey"
-            columns: ["publicacion_id"]
+            columns: ["organizacion_id", "publicacion_id"]
             isOneToOne: false
             referencedRelation: "muro_publicaciones"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
         ]
       }
@@ -1752,6 +2077,7 @@ export type Database = {
           leida: boolean
           link: string | null
           mensaje: string
+          organizacion_id: string
           titulo: string
           user_id: string
         }
@@ -1761,6 +2087,7 @@ export type Database = {
           leida?: boolean
           link?: string | null
           mensaje?: string
+          organizacion_id?: string
           titulo: string
           user_id: string
         }
@@ -1770,10 +2097,19 @@ export type Database = {
           leida?: boolean
           link?: string | null
           mensaje?: string
+          organizacion_id?: string
           titulo?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notificaciones_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       novedades_asistencia: {
         Row: {
@@ -1782,6 +2118,7 @@ export type Database = {
           empleado_id: string
           fecha: string
           id: string
+          organizacion_id: string
           tipo: string
         }
         Insert: {
@@ -1790,6 +2127,7 @@ export type Database = {
           empleado_id: string
           fecha: string
           id?: string
+          organizacion_id?: string
           tipo: string
         }
         Update: {
@@ -1798,14 +2136,22 @@ export type Database = {
           empleado_id?: string
           fecha?: string
           id?: string
+          organizacion_id?: string
           tipo?: string
         }
         Relationships: [
           {
             foreignKeyName: "novedades_asistencia_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "novedades_asistencia_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1910,6 +2256,7 @@ export type Database = {
           emitido_at: string
           expira_at: string
           id: string
+          organizacion_id: string
           terminal_user_id: string | null
         }
         Insert: {
@@ -1921,6 +2268,7 @@ export type Database = {
           emitido_at?: string
           expira_at: string
           id?: string
+          organizacion_id?: string
           terminal_user_id?: string | null
         }
         Update: {
@@ -1932,14 +2280,22 @@ export type Database = {
           emitido_at?: string
           expira_at?: string
           id?: string
+          organizacion_id?: string
           terminal_user_id?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "qr_sesiones_consumido_por_fkey"
-            columns: ["consumido_por"]
+            columns: ["organizacion_id", "consumido_por"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "qr_sesiones_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -1951,6 +2307,7 @@ export type Database = {
           hora_desde: string
           hora_hasta: string
           id: string
+          organizacion_id: string
           role: string
         }
         Insert: {
@@ -1959,6 +2316,7 @@ export type Database = {
           hora_desde?: string
           hora_hasta?: string
           id?: string
+          organizacion_id?: string
           role: string
         }
         Update: {
@@ -1967,9 +2325,18 @@ export type Database = {
           hora_desde?: string
           hora_hasta?: string
           id?: string
+          organizacion_id?: string
           role?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "restricciones_horario_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rostros_empleados: {
         Row: {
@@ -1979,6 +2346,7 @@ export type Database = {
           descriptores: Json
           empleado_id: string
           foto_path: string | null
+          organizacion_id: string
           registrado_por: string | null
           updated_at: string
           verificado_at: string | null
@@ -1991,6 +2359,7 @@ export type Database = {
           descriptores: Json
           empleado_id: string
           foto_path?: string | null
+          organizacion_id?: string
           registrado_por?: string | null
           updated_at?: string
           verificado_at?: string | null
@@ -2003,6 +2372,7 @@ export type Database = {
           descriptores?: Json
           empleado_id?: string
           foto_path?: string | null
+          organizacion_id?: string
           registrado_por?: string | null
           updated_at?: string
           verificado_at?: string | null
@@ -2011,9 +2381,16 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "rostros_empleados_empleado_id_fkey"
-            columns: ["empleado_id"]
-            isOneToOne: true
+            columns: ["organizacion_id", "empleado_id"]
+            isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "rostros_empleados_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -2031,6 +2408,7 @@ export type Database = {
           fecha: string
           id: string
           motivo: string
+          organizacion_id: string
           tipo: string
         }
         Insert: {
@@ -2045,6 +2423,7 @@ export type Database = {
           fecha?: string
           id?: string
           motivo: string
+          organizacion_id?: string
           tipo: string
         }
         Update: {
@@ -2059,14 +2438,22 @@ export type Database = {
           fecha?: string
           id?: string
           motivo?: string
+          organizacion_id?: string
           tipo?: string
         }
         Relationships: [
           {
             foreignKeyName: "sanciones_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "sanciones_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -2086,6 +2473,7 @@ export type Database = {
           id: string
           motivo_rechazo: string | null
           nombre: string
+          organizacion_id: string
           revisado_at: string | null
           revisado_por: string | null
           sucursal_id: string | null
@@ -2106,6 +2494,7 @@ export type Database = {
           id?: string
           motivo_rechazo?: string | null
           nombre: string
+          organizacion_id?: string
           revisado_at?: string | null
           revisado_por?: string | null
           sucursal_id?: string | null
@@ -2126,6 +2515,7 @@ export type Database = {
           id?: string
           motivo_rechazo?: string | null
           nombre?: string
+          organizacion_id?: string
           revisado_at?: string | null
           revisado_por?: string | null
           sucursal_id?: string | null
@@ -2135,24 +2525,31 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "solicitudes_alta_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
           {
             foreignKeyName: "solicitudes_alta_empresa_id_fkey"
-            columns: ["empresa_id"]
+            columns: ["organizacion_id", "empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "solicitudes_alta_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "solicitudes_alta_sucursal_id_fkey"
-            columns: ["sucursal_id"]
+            columns: ["organizacion_id", "sucursal_id"]
             isOneToOne: false
             referencedRelation: "sucursales"
-            referencedColumns: ["id"]
+            referencedColumns: ["organizacion_id", "id"]
           },
         ]
       }
@@ -2175,6 +2572,7 @@ export type Database = {
           motivo: string
           motivo_detalle: string | null
           observaciones: string | null
+          organizacion_id: string
           sujeto_descuento: boolean
         }
         Insert: {
@@ -2195,6 +2593,7 @@ export type Database = {
           motivo: string
           motivo_detalle?: string | null
           observaciones?: string | null
+          organizacion_id?: string
           sujeto_descuento?: boolean
         }
         Update: {
@@ -2215,14 +2614,22 @@ export type Database = {
           motivo?: string
           motivo_detalle?: string | null
           observaciones?: string | null
+          organizacion_id?: string
           sujeto_descuento?: boolean
         }
         Relationships: [
           {
             foreignKeyName: "solicitudes_permiso_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "solicitudes_permiso_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -2239,6 +2646,7 @@ export type Database = {
           fecha_hasta: string
           id: string
           observaciones: string | null
+          organizacion_id: string
           periodo_anual: string
         }
         Insert: {
@@ -2252,6 +2660,7 @@ export type Database = {
           fecha_hasta: string
           id?: string
           observaciones?: string | null
+          organizacion_id?: string
           periodo_anual?: string
         }
         Update: {
@@ -2265,14 +2674,22 @@ export type Database = {
           fecha_hasta?: string
           id?: string
           observaciones?: string | null
+          organizacion_id?: string
           periodo_anual?: string
         }
         Relationships: [
           {
             foreignKeyName: "solicitudes_vacaciones_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "solicitudes_vacaciones_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -2284,6 +2701,7 @@ export type Database = {
           created_at: string
           id: string
           leido: boolean
+          organizacion_id: string
           pantalla: string | null
           usuario_email: string | null
           usuario_id: string
@@ -2295,6 +2713,7 @@ export type Database = {
           created_at?: string
           id?: string
           leido?: boolean
+          organizacion_id?: string
           pantalla?: string | null
           usuario_email?: string | null
           usuario_id: string
@@ -2306,12 +2725,21 @@ export type Database = {
           created_at?: string
           id?: string
           leido?: boolean
+          organizacion_id?: string
           pantalla?: string | null
           usuario_email?: string | null
           usuario_id?: string
           usuario_nombre?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "soporte_mensajes_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sucursales: {
         Row: {
@@ -2322,6 +2750,7 @@ export type Database = {
           latitud: number | null
           longitud: number | null
           nombre: string
+          organizacion_id: string
           radio_metros: number
         }
         Insert: {
@@ -2332,6 +2761,7 @@ export type Database = {
           latitud?: number | null
           longitud?: number | null
           nombre: string
+          organizacion_id?: string
           radio_metros?: number
         }
         Update: {
@@ -2342,14 +2772,22 @@ export type Database = {
           latitud?: number | null
           longitud?: number | null
           nombre?: string
+          organizacion_id?: string
           radio_metros?: number
         }
         Relationships: [
           {
             foreignKeyName: "sucursales_empresa_id_fkey"
-            columns: ["empresa_id"]
+            columns: ["organizacion_id", "empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "sucursales_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -2363,6 +2801,7 @@ export type Database = {
           descripcion: string
           estado: string
           id: string
+          organizacion_id: string
           prioridad: string
           titulo: string
           updated_at: string
@@ -2376,6 +2815,7 @@ export type Database = {
           descripcion?: string
           estado?: string
           id?: string
+          organizacion_id?: string
           prioridad?: string
           titulo: string
           updated_at?: string
@@ -2389,38 +2829,57 @@ export type Database = {
           descripcion?: string
           estado?: string
           id?: string
+          organizacion_id?: string
           prioridad?: string
           titulo?: string
           updated_at?: string
           vence?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tareas_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tokens_asistencia: {
         Row: {
           created_at: string | null
           empleado_id: string
           id: string
+          organizacion_id: string
           secret: string
         }
         Insert: {
           created_at?: string | null
           empleado_id: string
           id?: string
+          organizacion_id?: string
           secret: string
         }
         Update: {
           created_at?: string | null
           empleado_id?: string
           id?: string
+          organizacion_id?: string
           secret?: string
         }
         Relationships: [
           {
             foreignKeyName: "tokens_asistencia_empleado_id_fkey"
-            columns: ["empleado_id"]
-            isOneToOne: true
+            columns: ["organizacion_id", "empleado_id"]
+            isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "tokens_asistencia_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -2429,27 +2888,37 @@ export type Database = {
         Row: {
           empleado_id: string
           id: string
+          organizacion_id: string
           token: string
           usado_at: string | null
         }
         Insert: {
           empleado_id: string
           id?: string
+          organizacion_id?: string
           token: string
           usado_at?: string | null
         }
         Update: {
           empleado_id?: string
           id?: string
+          organizacion_id?: string
           token?: string
           usado_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "tokens_consumidos_empleado_id_fkey"
-            columns: ["empleado_id"]
+            columns: ["organizacion_id", "empleado_id"]
             isOneToOne: false
             referencedRelation: "empleados"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "tokens_consumidos_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -2461,6 +2930,7 @@ export type Database = {
           hora_salida: string
           id: string
           nombre: string
+          organizacion_id: string
           tolerancia_minutos: number
         }
         Insert: {
@@ -2469,6 +2939,7 @@ export type Database = {
           hora_salida: string
           id?: string
           nombre: string
+          organizacion_id?: string
           tolerancia_minutos?: number
         }
         Update: {
@@ -2477,9 +2948,18 @@ export type Database = {
           hora_salida?: string
           id?: string
           nombre?: string
+          organizacion_id?: string
           tolerancia_minutos?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "turnos_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -2544,6 +3024,7 @@ export type Database = {
           dias_correspondientes: number
           empresa_id: string
           id: string
+          organizacion_id: string
         }
         Insert: {
           anios_antiguedad_max?: number
@@ -2552,6 +3033,7 @@ export type Database = {
           dias_correspondientes?: number
           empresa_id: string
           id?: string
+          organizacion_id?: string
         }
         Update: {
           anios_antiguedad_max?: number
@@ -2560,13 +3042,21 @@ export type Database = {
           dias_correspondientes?: number
           empresa_id?: string
           id?: string
+          organizacion_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "vacaciones_config_empresa_id_fkey"
-            columns: ["empresa_id"]
+            columns: ["organizacion_id", "empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "vacaciones_config_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]
@@ -2580,6 +3070,7 @@ export type Database = {
           estado: Database["public"]["Enums"]["estado_vacante"]
           fecha_publicacion: string | null
           id: string
+          organizacion_id: string
           requisitos: string | null
           titulo: string
         }
@@ -2591,6 +3082,7 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_vacante"]
           fecha_publicacion?: string | null
           id?: string
+          organizacion_id?: string
           requisitos?: string | null
           titulo: string
         }
@@ -2602,15 +3094,23 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_vacante"]
           fecha_publicacion?: string | null
           id?: string
+          organizacion_id?: string
           requisitos?: string | null
           titulo?: string
         }
         Relationships: [
           {
             foreignKeyName: "vacantes_empresa_id_fkey"
-            columns: ["empresa_id"]
+            columns: ["organizacion_id", "empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["organizacion_id", "id"]
+          },
+          {
+            foreignKeyName: "vacantes_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
             referencedColumns: ["id"]
           },
         ]

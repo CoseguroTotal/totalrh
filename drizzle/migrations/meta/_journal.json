@@ -204,6 +204,13 @@
       "when": 1795704107578,
       "tag": "0028_multiempresa_t1_organizaciones",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1795710726302,
+      "tag": "0029_multiempresa_t2_columnas",
+      "breakpoints": true
     }
   ]
 }
