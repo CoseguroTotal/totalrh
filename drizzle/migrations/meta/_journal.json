@@ -211,6 +211,13 @@
       "when": 1795710726302,
       "tag": "0029_multiempresa_t2_columnas",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1795714932796,
+      "tag": "0030_multiempresa_t3_politicas",
+      "breakpoints": true
     }
   ]
 }

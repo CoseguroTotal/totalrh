@@ -3253,6 +3253,13 @@ export type Database = {
           slug: string
         }[]
       }
+      multiempresa_revision: {
+        Args: never
+        Returns: {
+          objeto: string
+          problema: string
+        }[]
+      }
       muro_celebraciones: {
         Args: { _dias?: number }
         Returns: {
