@@ -3317,13 +3317,14 @@ export type Database = {
       my_empleado_id: { Args: never; Returns: string }
       nuevo_codigo_registro: { Args: never; Returns: string }
       org_actual: { Args: never; Returns: string }
+      org_de_usuario: { Args: { _user_id: string }; Returns: string }
       org_transicion_demo: { Args: never; Returns: string }
       org_vigente: { Args: never; Returns: string }
-      solicitudes_destinatarios_gestion: {
-        Args: { _excluir: string[] }
-        Returns: string[]
-      }
+      solicitudes_destinatarios_gestion:
+        | { Args: { _excluir: string[] }; Returns: string[] }
+        | { Args: { _excluir: string[]; _org: string }; Returns: string[] }
       soporte_email: { Args: never; Returns: string }
+      soporte_org_de: { Args: { _usuario_id: string }; Returns: string }
       soporte_user_id: { Args: never; Returns: string }
       terminal_ultimas_fichadas: {
         Args: never

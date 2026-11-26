@@ -218,6 +218,13 @@
       "when": 1795714932796,
       "tag": "0030_multiempresa_t3_politicas",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1795721450388,
+      "tag": "0031_multiempresa_t4_funciones",
+      "breakpoints": true
     }
   ]
 }
