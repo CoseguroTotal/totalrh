@@ -1810,6 +1810,33 @@ export type Database = {
           },
         ]
       }
+      organizaciones: {
+        Row: {
+          created_at: string
+          estado: string
+          id: string
+          nombre: string
+          plan: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          estado?: string
+          id?: string
+          nombre: string
+          plan?: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          estado?: string
+          id?: string
+          nombre?: string
+          plan?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       push_config: {
         Row: {
           clave_anon: string | null
@@ -2457,20 +2484,57 @@ export type Database = {
       user_roles: {
         Row: {
           id: string
+          organizacion_id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           id?: string
+          organizacion_id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           id?: string
+          organizacion_id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      usuario_organizacion_activa: {
+        Row: {
+          organizacion_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          organizacion_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          organizacion_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usuario_organizacion_activa_organizacion_id_fkey"
+            columns: ["organizacion_id"]
+            isOneToOne: false
+            referencedRelation: "organizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vacaciones_config: {
         Row: {
@@ -2557,6 +2621,10 @@ export type Database = {
     }
     Functions: {
       actualizar_mis_datos: { Args: { _datos: Json }; Returns: undefined }
+      cambiar_organizacion: {
+        Args: { _organizacion_id: string }
+        Returns: undefined
+      }
       chat_crear_grupo: {
         Args: { _miembros: string[]; _nombre: string }
         Returns: string
@@ -2675,6 +2743,16 @@ export type Database = {
       is_manager: { Args: never; Returns: boolean }
       is_manager_or_contador: { Args: never; Returns: boolean }
       is_superadmin: { Args: never; Returns: boolean }
+      mis_organizaciones: {
+        Args: never
+        Returns: {
+          actual: boolean
+          id: string
+          nombre: string
+          rol: Database["public"]["Enums"]["app_role"]
+          slug: string
+        }[]
+      }
       muro_celebraciones: {
         Args: { _dias?: number }
         Returns: {
@@ -2731,6 +2809,9 @@ export type Database = {
       muro_registrar_vistas: { Args: { _ids: string[] }; Returns: undefined }
       my_empleado_id: { Args: never; Returns: string }
       nuevo_codigo_registro: { Args: never; Returns: string }
+      org_actual: { Args: never; Returns: string }
+      org_transicion_demo: { Args: never; Returns: string }
+      org_vigente: { Args: never; Returns: string }
       solicitudes_destinatarios_gestion: {
         Args: { _excluir: string[] }
         Returns: string[]

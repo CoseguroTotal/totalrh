@@ -197,6 +197,13 @@
       "when": 1795629007821,
       "tag": "0027_encuestas_imagen",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1795704107578,
+      "tag": "0028_multiempresa_t1_organizaciones",
+      "breakpoints": true
     }
   ]
 }
