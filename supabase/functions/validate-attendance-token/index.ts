@@ -8,12 +8,16 @@ import {
   puedeVerificarRostro, registroQuedaVerificado,
   type ResultadoGeocerca, type Ubicacion,
 } from "../_shared/attendance-rules.ts";
+import { MENSAJE_SIN_ORG, orgDeUsuario, rolesEnOrg } from "../_shared/organizacion.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Multiempresa: la terminal, RRHH y el empleado operan sólo con empleados, rostros, QR, sucursales y
+// configuración de SU organización (la de quien llama). Con la clave de servicio no hay RLS, por eso
+// cada consulta filtra por organizacion_id.
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,14 +42,14 @@ Deno.serve(async (req) => {
       return data?.user ?? null;
     };
 
-    const rolesDe = async (userId: string) => {
-      const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
-      return new Set((data ?? []).map((r: { role: string }) => r.role));
-    };
+    const orgDe = (userId: string) => orgDeUsuario(supabaseAdmin, userId);
+    const rolesDe = (userId: string, org: string) => rolesEnOrg(supabaseAdmin, userId, org);
+    const sinOrg = () => json({ error: MENSAJE_SIN_ORG }, 403);
 
     /** Borra la foto de autorización (ya no hace falta una vez que RRHH decidió). */
-    const borrarFotoRostro = async (empleadoId: string) => {
-      const { data } = await supabaseAdmin.from("rostros_empleados").select("foto_path").eq("empleado_id", empleadoId).maybeSingle();
+    const borrarFotoRostro = async (org: string, empleadoId: string) => {
+      const { data } = await supabaseAdmin.from("rostros_empleados").select("foto_path")
+        .eq("empleado_id", empleadoId).eq("organizacion_id", org).maybeSingle();
       if (data?.foto_path) await supabaseAdmin.storage.from("rostros").remove([data.foto_path]);
     };
 
@@ -57,11 +61,12 @@ Deno.serve(async (req) => {
      * Busca la última fichada sin importar el día, así un turno noche cierra con la salida
      * del día siguiente; evita dobles marcas en menos de un minuto.
      */
-    const registrarFichada = async (emp: EmpleadoFichada, metodo: "qr" | "facial" | "geo", terminalUserId: string | null, ubic?: DatosUbicacion) => {
+    const registrarFichada = async (org: string, emp: EmpleadoFichada, metodo: "qr" | "facial" | "geo", terminalUserId: string | null, ubic?: DatosUbicacion) => {
       const { data: ultima, error: ultErr } = await supabaseAdmin
         .from("fichadas")
         .select("id, hora_entrada, hora_salida")
         .eq("empleado_id", emp.id)
+        .eq("organizacion_id", org)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -76,10 +81,12 @@ Deno.serve(async (req) => {
 
       const iso = ahora.toISOString();
       if (decision.accion === "salida") {
-        const { error } = await supabaseAdmin.from("fichadas").update({ hora_salida: iso, metodo_salida: metodo }).eq("id", decision.fichadaId);
+        const { error } = await supabaseAdmin.from("fichadas").update({ hora_salida: iso, metodo_salida: metodo })
+          .eq("id", decision.fichadaId).eq("organizacion_id", org);
         if (error) throw error;
       } else {
         const { error } = await supabaseAdmin.from("fichadas").insert({
+          organizacion_id: org,
           empleado_id: emp.id,
           fecha: fechaArgentina(ahora),
           hora_entrada: iso,
@@ -99,9 +106,10 @@ Deno.serve(async (req) => {
     };
 
     /** Geocerca de la sucursal del empleado. */
-    const evaluarUbicacionEmpleado = async (sucursalId: string | null, u: Ubicacion): Promise<{ r: ResultadoGeocerca; sucursal: string }> => {
+    const evaluarUbicacionEmpleado = async (org: string, sucursalId: string | null, u: Ubicacion): Promise<{ r: ResultadoGeocerca; sucursal: string }> => {
       const { data: suc } = sucursalId
-        ? await supabaseAdmin.from("sucursales").select("nombre, latitud, longitud, radio_metros").eq("id", sucursalId).maybeSingle()
+        ? await supabaseAdmin.from("sucursales").select("nombre, latitud, longitud, radio_metros")
+          .eq("id", sucursalId).eq("organizacion_id", org).maybeSingle()
         : { data: null };
       return {
         r: evaluarGeocerca(u, { latitud: suc?.latitud ?? null, longitud: suc?.longitud ?? null, radio_metros: suc?.radio_metros ?? null }),
@@ -115,10 +123,23 @@ Deno.serve(async (req) => {
       return `Estás a ${r.distancia} m de ${sucursal}. Para fichar tenés que estar a menos de ${r.radio} m.`;
     };
 
+    /** Legajo propio dentro de la organización. */
+    const legajoPropio = async (org: string, userId: string) => {
+      const { data } = await supabaseAdmin
+        .from("empleados")
+        .select("id, nombre, apellido, legajo, estado, sucursal_id")
+        .eq("user_id", userId)
+        .eq("organizacion_id", org)
+        .maybeSingle();
+      return data;
+    };
+
     // ── Action: face-enroll — registrar la plantilla facial de un empleado ──
     if (action === "face-enroll") {
       const user = await usuarioAutenticado();
       if (!user) return json({ error: "Debés iniciar sesión" }, 401);
+      const org = await orgDe(user.id);
+      if (!org) return sinOrg();
 
       const { descriptores, consentimiento_texto } = body;
       if (!empleado_id || typeof empleado_id !== "string") return json({ error: "empleado_id requerido" }, 400);
@@ -136,18 +157,20 @@ Deno.serve(async (req) => {
         .from("empleados")
         .select("id, user_id, estado")
         .eq("id", empleado_id)
+        .eq("organizacion_id", org)
         .maybeSingle();
       if (!emp) return json({ error: "Empleado no encontrado" }, 404);
 
-      const rolesCaller = await rolesDe(user.id);
+      const rolesCaller = await rolesDe(user.id, org);
       if (!puedeRegistrarRostro(user.id, emp.user_id, rolesCaller)) {
         return json({ error: "No tenés permiso para registrar el rostro de otro empleado" }, 403);
       }
 
-      // Evitar que la misma cara quede asociada a dos legajos distintos
+      // Evitar que la misma cara quede asociada a dos legajos distintos de la organización
       const { data: otros } = await supabaseAdmin
         .from("rostros_empleados")
         .select("empleado_id, descriptores")
+        .eq("organizacion_id", org)
         .neq("empleado_id", empleado_id);
       for (const o of otros ?? []) {
         const muestras = (o.descriptores as Descriptor[]).filter(esDescriptorValido);
@@ -163,16 +186,19 @@ Deno.serve(async (req) => {
       if (!verificado) {
         const foto = decodificarFotoRostro(body.foto);
         if (!foto) return json({ error: "No se pudo tomar la foto del registro. Probá de nuevo con buena luz." }, 400);
-        const ruta = `${empleado_id}/${Date.now()}.jpg`;
+        // Carpeta de la organización, como el resto de los archivos
+        const ruta = `${org}/${empleado_id}/${Date.now()}.jpg`;
         const { error: fotoErr } = await supabaseAdmin.storage.from("rostros").upload(ruta, foto, { contentType: "image/jpeg", upsert: true });
         if (fotoErr) return json({ error: "No se pudo guardar la foto del registro. Probá de nuevo." }, 500);
         foto_path = ruta;
       }
       // La foto anterior se borra recién ahora (la nueva va a otra ruta)
-      const { data: previo } = await supabaseAdmin.from("rostros_empleados").select("foto_path").eq("empleado_id", empleado_id).maybeSingle();
+      const { data: previo } = await supabaseAdmin.from("rostros_empleados").select("foto_path")
+        .eq("empleado_id", empleado_id).eq("organizacion_id", org).maybeSingle();
       if (previo?.foto_path && previo.foto_path !== foto_path) await supabaseAdmin.storage.from("rostros").remove([previo.foto_path]);
 
       const { error } = await supabaseAdmin.from("rostros_empleados").upsert({
+        organizacion_id: org,
         empleado_id,
         descriptores,
         foto_path,
@@ -192,24 +218,28 @@ Deno.serve(async (req) => {
     if (action === "face-verificar") {
       const user = await usuarioAutenticado();
       if (!user) return json({ error: "Debés iniciar sesión" }, 401);
-      if (!puedeVerificarRostro(await rolesDe(user.id))) return json({ error: "Sólo RRHH o administración pueden verificar rostros" }, 403);
+      const org = await orgDe(user.id);
+      if (!org) return sinOrg();
+      if (!puedeVerificarRostro(await rolesDe(user.id, org))) return json({ error: "Sólo RRHH o administración pueden verificar rostros" }, 403);
 
       const { descriptor, prueba_vida } = body;
       if (!empleado_id || typeof empleado_id !== "string") return json({ error: "empleado_id requerido" }, 400);
       if (!esDescriptorValido(descriptor)) return json({ error: "Rostro no válido" }, 400);
       if (prueba_vida !== true) return json({ error: "Falta completar la prueba de vida" }, 400);
 
-      const { data: reg } = await supabaseAdmin.from("rostros_empleados").select("descriptores").eq("empleado_id", empleado_id).maybeSingle();
+      const { data: reg } = await supabaseAdmin.from("rostros_empleados").select("descriptores")
+        .eq("empleado_id", empleado_id).eq("organizacion_id", org).maybeSingle();
       if (!reg) return json({ error: "Este empleado no tiene rostro registrado" }, 404);
 
       const d = distanciaMinima(descriptor, (reg.descriptores as Descriptor[]).filter(esDescriptorValido));
       if (d > UMBRAL_COINCIDENCIA) {
         return json({ ok: false, error: "El rostro no coincide con el registrado. Si es la persona correcta, registralo de nuevo desde acá." }, 200);
       }
-      await borrarFotoRostro(empleado_id);
+      await borrarFotoRostro(org, empleado_id);
       const { error } = await supabaseAdmin.from("rostros_empleados")
         .update({ verificado_at: new Date().toISOString(), verificado_por: user.id, foto_path: null })
-        .eq("empleado_id", empleado_id);
+        .eq("empleado_id", empleado_id)
+        .eq("organizacion_id", org);
       if (error) throw error;
       return json({ success: true, distancia: d });
     }
@@ -219,13 +249,17 @@ Deno.serve(async (req) => {
     if (action === "face-foto" || action === "face-autorizar" || action === "face-borrar") {
       const user = await usuarioAutenticado();
       if (!user) return json({ error: "Debés iniciar sesión" }, 401);
+      const org = await orgDe(user.id);
+      if (!org) return sinOrg();
       if (!empleado_id || typeof empleado_id !== "string") return json({ error: "empleado_id requerido" }, 400);
-      if (!puedeVerificarRostro(await rolesDe(user.id))) {
-        const { data: propio } = await supabaseAdmin.from("empleados").select("id").eq("id", empleado_id).eq("user_id", user.id).maybeSingle();
+      if (!puedeVerificarRostro(await rolesDe(user.id, org))) {
+        const { data: propio } = await supabaseAdmin.from("empleados").select("id")
+          .eq("id", empleado_id).eq("user_id", user.id).eq("organizacion_id", org).maybeSingle();
         if (action !== "face-borrar" || !propio) return json({ error: "Sólo RRHH o administración pueden autorizar rostros" }, 403);
       }
 
-      const { data: reg } = await supabaseAdmin.from("rostros_empleados").select("foto_path, verificado_at").eq("empleado_id", empleado_id).maybeSingle();
+      const { data: reg } = await supabaseAdmin.from("rostros_empleados").select("foto_path, verificado_at")
+        .eq("empleado_id", empleado_id).eq("organizacion_id", org).maybeSingle();
       if (!reg) return json({ error: "Este empleado no tiene rostro registrado" }, 404);
 
       if (action === "face-foto") {
@@ -237,19 +271,22 @@ Deno.serve(async (req) => {
       }
 
       if (action === "face-borrar") {
-        await borrarFotoRostro(empleado_id);
-        const { error } = await supabaseAdmin.from("rostros_empleados").delete().eq("empleado_id", empleado_id);
+        await borrarFotoRostro(org, empleado_id);
+        const { error } = await supabaseAdmin.from("rostros_empleados").delete()
+          .eq("empleado_id", empleado_id).eq("organizacion_id", org);
         if (error) throw error;
         return json({ success: true });
       }
       if (!reg.foto_path) return json({ error: "Este registro no tiene foto: que lo registre de nuevo desde su celular." }, 400);
       // Nadie autoriza su propio rostro: lo tiene que autorizar otra persona de RRHH
-      const { data: empAut } = await supabaseAdmin.from("empleados").select("user_id").eq("id", empleado_id).maybeSingle();
+      const { data: empAut } = await supabaseAdmin.from("empleados").select("user_id")
+        .eq("id", empleado_id).eq("organizacion_id", org).maybeSingle();
       if (empAut?.user_id === user.id) return json({ error: "Tu propio registro lo tiene que autorizar otra persona de RRHH" }, 403);
-      await borrarFotoRostro(empleado_id);
+      await borrarFotoRostro(org, empleado_id);
       const { error } = await supabaseAdmin.from("rostros_empleados")
         .update({ verificado_at: new Date().toISOString(), verificado_por: user.id, foto_path: null })
-        .eq("empleado_id", empleado_id);
+        .eq("empleado_id", empleado_id)
+        .eq("organizacion_id", org);
       if (error) throw error;
       return json({ success: true });
     }
@@ -258,14 +295,16 @@ Deno.serve(async (req) => {
     if (action === "face-fichar") {
       const user = await usuarioAutenticado();
       if (!user) return json({ error: "No autenticado" }, 401);
-      if (!puedeOperarTerminal(await rolesDe(user.id))) {
+      const org = await orgDe(user.id);
+      if (!org) return sinOrg();
+      if (!puedeOperarTerminal(await rolesDe(user.id, org))) {
         return json({ error: "Sólo las terminales de asistencia pueden fichar por rostro" }, 403);
       }
 
       const { data: config } = await supabaseAdmin
         .from("configuracion_grupo")
         .select("fichado_facial_activo")
-        .limit(1)
+        .eq("organizacion_id", org)
         .maybeSingle();
       if (config && config.fichado_facial_activo === false) {
         return json({ error: "El fichado por reconocimiento facial está desactivado" }, 403);
@@ -275,9 +314,11 @@ Deno.serve(async (req) => {
       if (!esDescriptorValido(descriptor)) return json({ error: "Rostro no válido" }, 400);
       if (prueba_vida !== true) return json({ error: "Falta completar la prueba de vida" }, 400);
 
+      // Sólo se compara contra los rostros de la organización de la terminal
       const { data: registros } = await supabaseAdmin
         .from("rostros_empleados")
         .select("empleado_id, descriptores, verificado_at, empleado:empleados!inner(id, nombre, apellido, legajo, estado)")
+        .eq("organizacion_id", org)
         .neq("empleado.estado", "Baja");
 
       const candidatos = (registros ?? []).map((r: { empleado_id: string; descriptores: unknown }) => ({
@@ -310,52 +351,44 @@ Deno.serve(async (req) => {
       // Adaptar la plantilla a la cámara de la terminal; si falla no impide fichar
       const actualizadas = aprenderMuestra((reg!.descriptores as Descriptor[]).filter(esDescriptorValido), descriptor, match.distancia);
       if (actualizadas) {
-        const { error: aprErr } = await supabaseAdmin.from("rostros_empleados").update({ descriptores: actualizadas }).eq("empleado_id", match.id);
+        const { error: aprErr } = await supabaseAdmin.from("rostros_empleados").update({ descriptores: actualizadas })
+          .eq("empleado_id", match.id).eq("organizacion_id", org);
         if (aprErr) console.error("No se pudo actualizar la plantilla facial", aprErr.message);
       }
 
-      return await registrarFichada(emp, "facial", user.id);
+      return await registrarFichada(org, emp, "facial", user.id);
     }
 
     // ── Action: qr-issue — la terminal solicita un código QR de un solo uso ──
     if (action === "qr-issue") {
       const jwt = req.headers.get("Authorization")?.replace("Bearer ", "");
-      if (!jwt) {
-        return new Response(JSON.stringify({ error: "No autenticado" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (!jwt) return json({ error: "No autenticado" }, 401);
       const { data: userData } = await supabaseAdmin.auth.getUser(jwt);
-      if (!userData?.user) {
-        return new Response(JSON.stringify({ error: "Sesión inválida" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (!userData?.user) return json({ error: "Sesión inválida" }, 401);
+      const org = await orgDe(userData.user.id);
+      if (!org) return sinOrg();
       // Sólo una terminal puede emitir QR: si un empleado pudiera, se escanearía a sí mismo desde cualquier lugar.
-      if (!puedeOperarTerminal(await rolesDe(userData.user.id))) {
+      if (!puedeOperarTerminal(await rolesDe(userData.user.id, org))) {
         return json({ error: "Sólo las terminales de asistencia pueden generar el QR" }, 403);
       }
 
       const { data: config } = await supabaseAdmin
         .from("configuracion_grupo")
         .select("qr_duracion_segundos, fichado_qr_activo")
-        .limit(1)
+        .eq("organizacion_id", org)
         .maybeSingle();
 
       if (config && config.fichado_qr_activo === false) {
-        return new Response(JSON.stringify({ error: "El fichado por QR está desactivado" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "El fichado por QR está desactivado" }, 403);
       }
 
       const duracion = config?.qr_duracion_segundos ?? 10;
       const codigo = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().slice(0, 8);
       const expiraAt = new Date(Date.now() + duracion * 1000).toISOString();
 
+      // El QR queda atado a la organización de la terminal: no sirve para fichar en otra
       const { error: insErr } = await supabaseAdmin.from("qr_sesiones").insert({
+        organizacion_id: org,
         codigo,
         terminal_user_id: userData.user.id,
         expira_at: expiraAt,
@@ -366,89 +399,51 @@ Deno.serve(async (req) => {
       await supabaseAdmin
         .from("qr_sesiones")
         .delete()
+        .eq("organizacion_id", org)
         .lt("emitido_at", new Date(Date.now() - 3600_000).toISOString());
 
-      return new Response(
-        JSON.stringify({ codigo, expira_at: expiraAt, duracion_segundos: duracion }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ codigo, expira_at: expiraAt, duracion_segundos: duracion });
     }
 
     // ── Action: qr-fichar — el empleado escanea el QR desde su celular ──
     if (action === "qr-fichar") {
-      if (!codigo || typeof codigo !== "string") {
-        return new Response(JSON.stringify({ error: "Código QR inválido" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (!codigo || typeof codigo !== "string") return json({ error: "Código QR inválido" }, 400);
 
-      const jwt = req.headers.get("Authorization")?.replace("Bearer ", "");
-      const { data: userData } = jwt
-        ? await supabaseAdmin.auth.getUser(jwt)
-        : { data: null as never };
-      if (!userData?.user?.id) {
-        return new Response(JSON.stringify({ error: "Debés iniciar sesión para fichar" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      const user = await usuarioAutenticado();
+      if (!user) return json({ error: "Debés iniciar sesión para fichar" }, 401);
+      const org = await orgDe(user.id);
+      if (!org) return sinOrg();
 
-      const { data: emp } = await supabaseAdmin
-        .from("empleados")
-        .select("id, nombre, apellido, legajo, estado, sucursal_id")
-        .eq("user_id", userData.user.id)
-        .maybeSingle();
-
-      if (!emp) {
-        return new Response(JSON.stringify({ error: "No se encontró tu legajo" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (emp.estado === "Baja") {
-        return new Response(JSON.stringify({ error: "Legajo inactivo" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      const emp = await legajoPropio(org, user.id);
+      if (!emp) return json({ error: "No se encontró tu legajo" }, 404);
+      if (emp.estado === "Baja") return json({ error: "Legajo inactivo" }, 403);
 
       // Ubicación del celular: obligatoria si así está configurado (evita fichar con una foto
       // del QR reenviada); si no, se guarda como dato de auditoría cuando el empleado la comparte.
-      const { data: cfgGeo } = await supabaseAdmin.from("configuracion_grupo").select("geo_exigir_en_qr").limit(1).maybeSingle();
+      const { data: cfgGeo } = await supabaseAdmin.from("configuracion_grupo").select("geo_exigir_en_qr")
+        .eq("organizacion_id", org).maybeSingle();
       let ubicQr: DatosUbicacion | undefined;
       if (esUbicacionValida(body.ubicacion)) {
-        const { r, sucursal } = await evaluarUbicacionEmpleado(emp.sucursal_id, body.ubicacion);
+        const { r, sucursal } = await evaluarUbicacionEmpleado(org, emp.sucursal_id, body.ubicacion);
         if (cfgGeo?.geo_exigir_en_qr && !r.ok) return json({ error: mensajeGeocerca(r, sucursal, body.ubicacion.precision), motivo: r.motivo }, 403);
         ubicQr = { ...body.ubicacion, distancia: r.distancia };
       } else if (cfgGeo?.geo_exigir_en_qr) {
         return json({ error: "Para fichar tenés que compartir la ubicación del celular.", motivo: "sin_ubicacion" }, 400);
       }
 
+      // Un QR de otra organización no se reconoce
       const { data: qr } = await supabaseAdmin
         .from("qr_sesiones")
         .select("id, expira_at, consumido, terminal_user_id")
         .eq("codigo", codigo)
+        .eq("organizacion_id", org)
         .maybeSingle();
 
-      if (!qr) {
-        return new Response(JSON.stringify({ error: "Código QR no reconocido" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (qr.consumido) {
-        return new Response(JSON.stringify({ error: "Este QR ya fue utilizado" }), {
-          status: 409,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (!qr) return json({ error: "Código QR no reconocido" }, 401);
+      if (qr.consumido) return json({ error: "Este QR ya fue utilizado" }, 409);
       // 5 segundos de gracia por demoras de red
       if (new Date(qr.expira_at).getTime() + 5000 < Date.now()) {
-        return new Response(JSON.stringify({ error: "QR vencido, escaneá el nuevo código" }), {
-          status: 410,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return json({ error: "QR vencido, escaneá el nuevo código" }, 410);
       }
 
       // Consumo atómico: sólo el primero que lo marque puede fichar
@@ -456,46 +451,38 @@ Deno.serve(async (req) => {
         .from("qr_sesiones")
         .update({ consumido: true, consumido_por: emp.id, consumido_at: new Date().toISOString() })
         .eq("id", qr.id)
+        .eq("organizacion_id", org)
         .eq("consumido", false)
         .select("id");
 
-      if (!claimed?.length) {
-        return new Response(JSON.stringify({ error: "Este QR ya fue utilizado" }), {
-          status: 409,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (!claimed?.length) return json({ error: "Este QR ya fue utilizado" }, 409);
 
-      return await registrarFichada(emp, "qr", qr.terminal_user_id, ubicQr);
+      return await registrarFichada(org, emp, "qr", qr.terminal_user_id, ubicQr);
     }
 
     // ── Action: geo-fichar — el empleado ficha desde el celular dentro de la geocerca de su sucursal ──
     if (action === "geo-fichar") {
       const user = await usuarioAutenticado();
       if (!user) return json({ error: "Debés iniciar sesión para fichar" }, 401);
+      const org = await orgDe(user.id);
+      if (!org) return sinOrg();
 
-      const { data: cfg } = await supabaseAdmin.from("configuracion_grupo").select("fichado_geo_activo").limit(1).maybeSingle();
+      const { data: cfg } = await supabaseAdmin.from("configuracion_grupo").select("fichado_geo_activo")
+        .eq("organizacion_id", org).maybeSingle();
       if (!cfg?.fichado_geo_activo) return json({ error: "El fichado por ubicación está desactivado" }, 403);
 
-      const { data: emp } = await supabaseAdmin
-        .from("empleados")
-        .select("id, nombre, apellido, legajo, estado, sucursal_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const emp = await legajoPropio(org, user.id);
       if (!emp) return json({ error: "No se encontró tu legajo" }, 404);
       if (emp.estado === "Baja") return json({ error: "Legajo inactivo" }, 403);
 
       if (!esUbicacionValida(body.ubicacion)) return json({ error: "No llegó la ubicación del celular" }, 400);
-      const { r, sucursal } = await evaluarUbicacionEmpleado(emp.sucursal_id, body.ubicacion);
+      const { r, sucursal } = await evaluarUbicacionEmpleado(org, emp.sucursal_id, body.ubicacion);
       if (!r.ok) return json({ error: mensajeGeocerca(r, sucursal, body.ubicacion.precision), motivo: r.motivo, distancia: r.distancia ?? null }, 403);
 
-      return await registrarFichada(emp, "geo", null, { ...body.ubicacion, distancia: r.distancia });
+      return await registrarFichada(org, emp, "geo", null, { ...body.ubicacion, distancia: r.distancia });
     }
 
-    return new Response(JSON.stringify({ error: "Acción no válida" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: "Acción no válida" }, 400);
   } catch (err) {
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Error desconocido" }), {
       status: 500,

@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { debeBloquear, esInstalacionDemo, minutosRestantes } from "./demo-rules.ts";
+import { ORG_DEMO } from "./organizacion-rules.ts";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,7 +39,8 @@ export interface DemoConfig {
 }
 
 export async function getConfig(admin: SupabaseClient): Promise<DemoConfig> {
-  const { data } = await admin.from("configuracion_grupo").select("*").limit(1).maybeSingle();
+  // La configuración de la demo es la de "Grupo Demo"
+  const { data } = await admin.from("configuracion_grupo").select("*").eq("organizacion_id", ORG_DEMO).maybeSingle();
   return {
     demo_codigo_minutos: data?.demo_codigo_minutos ?? 15,
     demo_max_intentos_codigo: data?.demo_max_intentos_codigo ?? 5,

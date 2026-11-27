@@ -3,11 +3,13 @@
 // - La base llama a "enviar" (triggers con pg_net) cuando hay una notificación o un mensaje de chat nuevo.
 // - "probar" le manda un aviso de prueba a los dispositivos de quien lo pide.
 // Las claves VAPID se generan solas la primera vez y quedan en push_config (sólo la ve el servicio).
+// Multiempresa: el aviso sólo llega a quien todavía pertenece a la organización de la notificación o del chat.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { errorPublico } from "../_shared/errores.ts";
 import { aBase64Url, enviarPush, generarClavesVapid, type ClavesVapid, type Suscripcion } from "../_shared/web-push.ts";
 import { datosPush, endpointPermitido, type AvisoPush } from "../_shared/push-rules.ts";
+import { esEmailSoporte } from "../_shared/soporte.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -78,8 +80,16 @@ async function avisar(admin: SupabaseClient, cfg: Config, usuarios: string[], av
   return { enviados, fallidos };
 }
 
-async function nombreDe(admin: SupabaseClient, userId: string) {
-  const { data } = await admin.from("empleados").select("nombre, apellido").eq("user_id", userId).limit(1).maybeSingle();
+/** De esas personas, las que pertenecen a la organización. */
+async function miembros(admin: SupabaseClient, org: string, usuarios: string[]) {
+  if (!usuarios.length) return [];
+  const { data } = await admin.from("user_roles").select("user_id").eq("organizacion_id", org).in("user_id", usuarios);
+  return [...new Set((data ?? []).map((r: { user_id: string }) => r.user_id))];
+}
+
+async function nombreDe(admin: SupabaseClient, org: string, userId: string) {
+  const { data } = await admin.from("empleados").select("nombre, apellido")
+    .eq("user_id", userId).eq("organizacion_id", org).limit(1).maybeSingle();
   if (data) return `${data.nombre ?? ""} ${data.apellido ?? ""}`.trim();
   const { data: u } = await admin.auth.admin.getUserById(userId);
   return u.user?.email?.split("@")[0] ?? null;
@@ -88,20 +98,28 @@ async function nombreDe(admin: SupabaseClient, userId: string) {
 /** Lo que llama la base cuando se inserta una notificación o un mensaje de chat. */
 async function enviar(admin: SupabaseClient, cfg: Config, tabla: string, id: string) {
   if (tabla === "notificaciones") {
-    const { data: n } = await admin.from("notificaciones").select("id, user_id, titulo, mensaje, link").eq("id", id).maybeSingle();
+    const { data: n } = await admin.from("notificaciones").select("id, user_id, titulo, mensaje, link, organizacion_id").eq("id", id).maybeSingle();
     if (!n) return { enviados: 0, fallidos: 0 };
-    return avisar(admin, cfg, [n.user_id], datosPush.notificacion(n));
+    let destino = await miembros(admin, n.organizacion_id, [n.user_id]);
+    // El soporte atiende a todas las organizaciones aunque no sea miembro de cada una
+    if (!destino.length) {
+      const { data: u } = await admin.auth.admin.getUserById(n.user_id);
+      if (esEmailSoporte(u?.user?.email)) destino = [n.user_id];
+    }
+    return avisar(admin, cfg, destino, datosPush.notificacion(n));
   }
   if (tabla === "chat_mensajes") {
     const { data: m } = await admin.from("chat_mensajes")
-      .select("id, conversacion_id, autor_id, contenido, adjunto_tipo, eliminado").eq("id", id).maybeSingle();
+      .select("id, conversacion_id, autor_id, contenido, adjunto_tipo, eliminado, organizacion_id").eq("id", id).maybeSingle();
     if (!m || m.eliminado) return { enviados: 0, fallidos: 0 };
+    const org = m.organizacion_id as string;
     const [{ data: partes }, { data: conv }, autor] = await Promise.all([
-      admin.from("chat_participantes").select("user_id").eq("conversacion_id", m.conversacion_id),
-      admin.from("chat_conversaciones").select("tipo, nombre").eq("id", m.conversacion_id).maybeSingle(),
-      nombreDe(admin, m.autor_id),
+      admin.from("chat_participantes").select("user_id").eq("conversacion_id", m.conversacion_id).eq("organizacion_id", org),
+      admin.from("chat_conversaciones").select("tipo, nombre").eq("id", m.conversacion_id).eq("organizacion_id", org).maybeSingle(),
+      nombreDe(admin, org, m.autor_id),
     ]);
-    const destinos = (partes ?? []).map((p: { user_id: string }) => p.user_id).filter((u: string) => u !== m.autor_id);
+    const destinos = await miembros(admin, org,
+      (partes ?? []).map((p: { user_id: string }) => p.user_id).filter((u: string) => u !== m.autor_id));
     const grupo = conv?.tipo !== "directa" && conv?.nombre ? conv.nombre : null;
     return avisar(admin, cfg, destinos, datosPush.chat(m, autor, grupo));
   }

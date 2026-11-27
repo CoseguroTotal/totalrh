@@ -2,6 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { destinatariosPermitidos } from "../_shared/soporte.ts";
 import { errorPublico } from "../_shared/errores.ts";
+import { MENSAJE_SIN_ORG, orgDeUsuario, rolesEnOrg } from "../_shared/organizacion.ts";
+
+// Multiempresa: los permisos y el remitente son los de la organización de quien envía.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,10 +51,16 @@ serve(async (req) => {
 
     // Sin este control cualquier cuenta (incluidas las creadas desde el portal) podía mandar
     // emails a cualquier dirección en nombre de la empresa.
-    const adminRoles = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: filas } = await adminRoles.from("user_roles").select("role").eq("user_id", user.id);
+    const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const org = await orgDeUsuario(adminClient, user.id);
+    if (!org) {
+      return new Response(JSON.stringify({ error: MENSAJE_SIN_ORG }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const permiso = destinatariosPermitidos(
-      new Set((filas ?? []).map((r: { role: string }) => r.role)),
+      await rolesEnOrg(adminClient, user.id, org),
       (Array.isArray(to) ? to : [to]).map((x: unknown) => String(x ?? "").trim()).filter(Boolean),
     );
     if (!permiso.ok) {
@@ -68,16 +77,14 @@ serve(async (req) => {
       );
     }
 
-    // Remitente configurado (o el de TotalRH)
+    // Remitente configurado en la organización (o el de TotalRH)
     let senderEmail = "";
     {
-      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const adminClient = createClient(supabaseUrl, serviceKey);
       const { data: config } = await adminClient
         .from("configuracion_grupo")
         .select("email_remitente, nombre_grupo")
-        .limit(1)
-        .single();
+        .eq("organizacion_id", org)
+        .maybeSingle();
       senderEmail = config?.email_remitente || "no-reply@totalrh.com.ar";
       if (!senderEmail.includes("<")) {
         senderEmail = `TotalRH <${senderEmail}>`;

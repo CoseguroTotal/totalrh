@@ -1,5 +1,6 @@
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { expiraCuenta } from "./demo-rules.ts";
+import { ORG_DEMO } from "./organizacion-rules.ts";
 
 export const REPLY_TO = "info@skystudio.ar";
 export const APP_URL = "https://totalrh.com.ar";
@@ -23,6 +24,7 @@ function randomPassword() {
 
 export interface Credencial { rol: string; detalle: string; email: string; password: string }
 
+/** Etapa 1 de multiempresa: todas las cuentas de prueba quedan en "Grupo Demo". */
 export async function provisionarCuentas(admin: SupabaseClient, leadId: string, nombre: string, dias: number) {
   const sufijo = leadId.replace(/-/g, "").slice(0, 6);
   const expira = expiraCuenta(dias).toISOString();
@@ -49,13 +51,14 @@ export async function provisionarCuentas(admin: SupabaseClient, leadId: string, 
         await admin.auth.admin.updateUserById(u.id, { password });
         userId = u.id;
       } else userId = data.user.id;
-      await admin.from("user_roles").insert({ user_id: userId, role: r.key });
+      await admin.from("user_roles").insert({ organizacion_id: ORG_DEMO, user_id: userId, role: r.key });
     }
 
     let empleadoId = prev?.empleado_id ?? null;
     if (r.key === "empleado" && !empleadoId) {
       const [nom, ...ape] = nombre.split(" ");
       const { data: emp } = await admin.from("empleados").insert({
+        organizacion_id: ORG_DEMO,
         legajo: `D-${sufijo}`, nombre: nom || "Demo", apellido: ape.join(" ") || "Demo",
         dni: "00000000", cuil: "20-00000000-0", puesto: "Empleado demo",
         empresa_id: DEMO_EMPRESA, sucursal_id: DEMO_SUCURSAL, fecha_ingreso: new Date().toISOString().slice(0, 10),

@@ -1,5 +1,6 @@
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
 import { adminClient, soloEnDemo } from "../_shared/demo-security.ts";
+import { ORG_DEMO } from "../_shared/organizacion-rules.ts";
 
 Deno.serve(async (request) => {
   const authFailure = authenticateCronRequest(request);
@@ -15,9 +16,10 @@ Deno.serve(async (request) => {
       if (c.empleado_id) {
         for (const t of ["fichadas", "qr_sesiones", "tokens_consumidos", "tokens_asistencia", "solicitudes_vacaciones", "solicitudes_permiso"]) {
           const col = t === "qr_sesiones" ? "consumido_por" : "empleado_id";
-          await admin.from(t).delete().eq(col, c.empleado_id);
+          // Las cuentas de prueba viven sólo en "Grupo Demo"
+          await admin.from(t).delete().eq(col, c.empleado_id).eq("organizacion_id", ORG_DEMO);
         }
-        await admin.from("empleados").delete().eq("id", c.empleado_id);
+        await admin.from("empleados").delete().eq("id", c.empleado_id).eq("organizacion_id", ORG_DEMO);
       }
       await admin.auth.admin.deleteUser(c.user_id);
       await admin.from("demo_cuentas").delete().eq("id", c.id);

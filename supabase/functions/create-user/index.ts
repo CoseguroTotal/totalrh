@@ -2,6 +2,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { puedeAsignarRol, puedeTocarUsuario, rolGestor } from "../_shared/user-admin-rules.ts";
 import { MENSAJE_PASSWORD_DEBIL, esPasswordDebil } from "../_shared/registro-rules.ts";
 import { errorPublico } from "../_shared/errores.ts";
+import { MENSAJE_SIN_ORG, orgDeUsuario, rolesEnOrg } from "../_shared/organizacion.ts";
+import { alcanceBorrado } from "../_shared/organizacion-rules.ts";
+
+// Multiempresa: un admin o RRHH gestiona sólo los usuarios de SU organización (la de quien llama),
+// y sus permisos se miran en esa organización.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,15 +54,6 @@ Deno.serve(async (req) => {
     }
 
     const callerId = claimsData.claims.sub;
-    const { data: callerRoles } = await anonClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", callerId);
-
-    const gestor = rolGestor((callerRoles ?? []).map((r) => r.role as string));
-    if (!gestor) {
-      return new Response(JSON.stringify({ error: "Solo administradores o RRHH pueden gestionar usuarios" }), { status: 403, headers: corsHeaders });
-    }
     const prohibido = (msg: string) => new Response(JSON.stringify({ error: msg }), { status: 403, headers: corsHeaders });
 
     const adminClient = createClient(
@@ -65,10 +61,17 @@ Deno.serve(async (req) => {
       requiredEnv("SUPABASE_SERVICE_ROLE_KEY")
     );
 
-    const rolesDe = async (uid: string) => {
-      const { data } = await adminClient.from("user_roles").select("role").eq("user_id", uid);
-      return (data ?? []).map((r) => r.role as string);
-    };
+    const org = await orgDeUsuario(adminClient, callerId);
+    if (!org) return prohibido(MENSAJE_SIN_ORG);
+
+    /** Roles del usuario en la organización de quien llama. */
+    const rolesDe = async (uid: string) => [...await rolesEnOrg(adminClient, uid, org)];
+
+    const gestor = rolGestor(await rolesDe(callerId));
+    if (!gestor) {
+      return new Response(JSON.stringify({ error: "Solo administradores o RRHH pueden gestionar usuarios" }), { status: 403, headers: corsHeaders });
+    }
+    const noEsDeLaOrg = () => new Response(JSON.stringify({ error: "Usuario no encontrado" }), { status: 404, headers: corsHeaders });
 
     const body = await req.json();
     const action = body.action ?? "create-user";
@@ -77,6 +80,7 @@ Deno.serve(async (req) => {
       const { data: roles, error } = await adminClient
         .from("user_roles")
         .select("id, user_id, role")
+        .eq("organizacion_id", org)
         .order("role");
       if (error) throw error;
 
@@ -98,14 +102,16 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Datos de rol inválidos" }), { status: 400, headers: corsHeaders });
       }
       if (!puedeAsignarRol(gestor, role)) return prohibido("RRHH no puede asignar el rol de administrador");
-      const { data: fila } = await adminClient.from("user_roles").select("user_id, role").eq("id", user_role_id).maybeSingle();
+      const { data: fila } = await adminClient.from("user_roles").select("user_id, role")
+        .eq("id", user_role_id).eq("organizacion_id", org).maybeSingle();
       if (!fila) return new Response(JSON.stringify({ error: "Rol no encontrado" }), { status: 404, headers: corsHeaders });
       if (!puedeTocarUsuario(gestor, await rolesDe(fila.user_id))) return prohibido("RRHH no puede modificar a un administrador");
 
       const { error } = await adminClient
         .from("user_roles")
         .update({ role })
-        .eq("id", user_role_id);
+        .eq("id", user_role_id)
+        .eq("organizacion_id", org);
 
       if (error) throw error;
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
@@ -123,21 +129,31 @@ Deno.serve(async (req) => {
       if (user_id === callerId) {
         return new Response(JSON.stringify({ error: "No podés eliminar tu propio usuario" }), { status: 400, headers: corsHeaders });
       }
-      const { data: targetRoles } = await adminClient.from("user_roles").select("role").eq("user_id", user_id);
-      if (!puedeTocarUsuario(gestor, (targetRoles ?? []).map((r) => r.role as string))) return prohibido("RRHH no puede eliminar a un administrador");
-      if (targetRoles?.some((r) => r.role === "admin")) {
-        const { count } = await adminClient.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin");
+      const targetRoles = await rolesDe(user_id);
+      if (!targetRoles.length) return noEsDeLaOrg();
+      if (!puedeTocarUsuario(gestor, targetRoles)) return prohibido("RRHH no puede eliminar a un administrador");
+      if (targetRoles.includes("admin")) {
+        const { count } = await adminClient.from("user_roles").select("id", { count: "exact", head: true })
+          .eq("role", "admin").eq("organizacion_id", org);
         if ((count ?? 0) <= 1) {
           return new Response(JSON.stringify({ error: "No se puede eliminar el último administrador" }), { status: 400, headers: corsHeaders });
         }
       }
       // El legajo se conserva (fichadas, recibos, historial): solo se desvincula
-      const { error: unlinkErr } = await adminClient.from("empleados").update({ user_id: null }).eq("user_id", user_id);
+      const { error: unlinkErr } = await adminClient.from("empleados").update({ user_id: null })
+        .eq("user_id", user_id).eq("organizacion_id", org);
       if (unlinkErr) throw unlinkErr;
-      const { error: rolesErr } = await adminClient.from("user_roles").delete().eq("user_id", user_id);
+      const { error: rolesErr } = await adminClient.from("user_roles").delete()
+        .eq("user_id", user_id).eq("organizacion_id", org);
       if (rolesErr) throw rolesErr;
-      const { error: delErr } = await adminClient.auth.admin.deleteUser(user_id);
-      if (delErr) throw delErr;
+      // Si la persona también trabaja en otra organización, la cuenta sigue: sólo deja de ser de ésta
+      const { data: otras, error: otrasErr } = await adminClient.from("user_roles").select("organizacion_id")
+        .eq("user_id", user_id) /* org: todas (para saber si la cuenta sigue en otra) */;
+      if (otrasErr) throw otrasErr;
+      if (alcanceBorrado((otras ?? []).map((r) => r.organizacion_id as string), org) === "cuenta") {
+        const { error: delErr } = await adminClient.auth.admin.deleteUser(user_id);
+        if (delErr) throw delErr;
+      }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
     }
 
@@ -148,23 +164,28 @@ Deno.serve(async (req) => {
       if (!user_id || typeof user_id !== "string") {
         return new Response(JSON.stringify({ error: "Usuario inválido" }), { status: 400, headers: corsHeaders });
       }
-      if (!puedeTocarUsuario(gestor, await rolesDe(user_id))) return prohibido("RRHH no puede modificar a un administrador");
+      const rolesUsuario = await rolesDe(user_id);
+      if (!rolesUsuario.length) return noEsDeLaOrg();
+      if (!puedeTocarUsuario(gestor, rolesUsuario)) return prohibido("RRHH no puede modificar a un administrador");
       if (empleado_id) {
-        const { data: emp, error: empErr } = await adminClient.from("empleados").select("id, user_id").eq("id", empleado_id).maybeSingle();
+        const { data: emp, error: empErr } = await adminClient.from("empleados").select("id, user_id")
+          .eq("id", empleado_id).eq("organizacion_id", org).maybeSingle();
         if (empErr) throw empErr;
         if (!emp) return new Response(JSON.stringify({ error: "Legajo no encontrado" }), { status: 404, headers: corsHeaders });
         if (emp.user_id && emp.user_id !== user_id) {
           return new Response(JSON.stringify({ error: "Ese legajo ya tiene otro usuario vinculado" }), { status: 409, headers: corsHeaders });
         }
       }
-      // Un usuario tiene un solo legajo
-      const { error: unlinkErr } = await adminClient.from("empleados").update({ user_id: null }).eq("user_id", user_id).neq("id", empleado_id ?? "00000000-0000-0000-0000-000000000000");
+      // Un usuario tiene un solo legajo en cada organización
+      const { error: unlinkErr } = await adminClient.from("empleados").update({ user_id: null })
+        .eq("user_id", user_id).eq("organizacion_id", org).neq("id", empleado_id ?? "00000000-0000-0000-0000-000000000000");
       if (unlinkErr) throw unlinkErr;
       if (empleado_id) {
         const { data: u } = await adminClient.auth.admin.getUserById(user_id);
         const { error: linkErr } = await adminClient.from("empleados")
           .update({ user_id, ...(u?.user?.email ? { email: u.user.email } : {}) })
-          .eq("id", empleado_id);
+          .eq("id", empleado_id)
+          .eq("organizacion_id", org);
         if (linkErr) throw linkErr;
       }
       return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
@@ -190,6 +211,7 @@ Deno.serve(async (req) => {
         .from("empleados")
         .select("id, user_id")
         .eq("id", empleado_id)
+        .eq("organizacion_id", org)
         .maybeSingle();
 
       if (empleadoLookupErr) throw empleadoLookupErr;
@@ -221,7 +243,7 @@ Deno.serve(async (req) => {
 
     const { error: roleErr } = await adminClient
       .from("user_roles")
-      .insert({ user_id: userId, role });
+      .insert({ organizacion_id: org, user_id: userId, role });
 
     if (roleErr) {
       return new Response(JSON.stringify({ error: roleErr.message }), { status: 400, headers: corsHeaders });
@@ -232,6 +254,7 @@ Deno.serve(async (req) => {
         .from("empleados")
         .update({ user_id: userId, email })
         .eq("id", empleado_id)
+        .eq("organizacion_id", org)
         .is("user_id", null)
         .select("id");
 
