@@ -232,6 +232,13 @@
       "when": 1795779454952,
       "tag": "0032_multiempresa_t5_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795797840510,
+      "tag": "0033_multiempresa_t6_sin_respaldo",
+      "breakpoints": true
     }
   ]
 }
