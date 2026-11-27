@@ -25,6 +25,7 @@ import MisDatosDialog from "@/components/MisDatosDialog";
 import PanelFichar from "@/components/asistencia/PanelFichar";
 import { MOSTRAR_RECIBOS } from "@/marca";
 import { supabase } from "@/integrations/supabase/client";
+import { rutaOrg } from "@/lib/rutaOrg";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 import ZonaProtegida from "@/components/ZonaProtegida";
@@ -151,7 +152,7 @@ export default function Autogestion() {
     let docUrl: string | undefined;
     const file = descargoFileRef.current?.files?.[0];
     if (file) {
-      const path = `${emp.id}/descargos/${Date.now()}_${file.name}`;
+      const path = await rutaOrg(emp.id, "descargos", `${Date.now()}_${file.name}`);
       const { error } = await supabase.storage.from("documentos-legajo").upload(path, file);
       if (error) { toast.error("Error al subir documento"); return; }
       const { data } = supabase.storage.from("documentos-legajo").getPublicUrl(path);

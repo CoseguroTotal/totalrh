@@ -3,6 +3,7 @@ import { enlaceMapa, obtenerUbicacion } from "@/lib/ubicacion";
 import { useEmpresas, useSucursales } from "@/hooks/useEmpleados";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { rutaOrg } from "@/lib/rutaOrg";
 import { toast } from "sonner";
 import { Plus, Building2, Pencil, Trash2, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -286,7 +287,7 @@ function EmpresaFormDialog({ open, onOpenChange, empresa }: { open: boolean; onO
                 <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  const path = `empresas/${Date.now()}_${file.name}`;
+                  const path = await rutaOrg("empresas", `${Date.now()}_${file.name}`);
                   const { error } = await supabase.storage.from("logos-empresas").upload(path, file);
                   if (error) { toast.error(error.message); return; }
                   const { data } = supabase.storage.from("logos-empresas").getPublicUrl(path);

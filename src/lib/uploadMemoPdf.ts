@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { generarMemorandumBlob } from "@/components/MemorandumPDF";
+import { rutaOrg } from "@/lib/rutaOrg";
 
 interface MemoForPdf {
   id?: string;
@@ -21,7 +22,7 @@ export async function uploadMemoPdfAndGetUrl(data: MemoForPdf): Promise<string |
   try {
     const blob = await generarMemorandumBlob(data);
     const folder = data.id || `memo_${data.numero}`;
-    const fileName = `${folder}/memo_${data.numero}_${Date.now()}.pdf`;
+    const fileName = await rutaOrg(folder, `memo_${data.numero}_${Date.now()}.pdf`);
 
     const { error: uploadError } = await supabase.storage
       .from("memorandums-pdf")

@@ -2,6 +2,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { rutaOrg } from "@/lib/rutaOrg";
 import { useEmpleados } from "@/hooks/useEmpleados";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -153,7 +154,7 @@ function GeneralTab() {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const path = `grupo/${Date.now()}_${file.name}`;
+    const path = await rutaOrg("grupo", `${Date.now()}_${file.name}`);
     const { error } = await supabase.storage.from("logos-empresas").upload(path, file);
     if (error) { toast.error(error.message); return; }
     const { data } = supabase.storage.from("logos-empresas").getPublicUrl(path);

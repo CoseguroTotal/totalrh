@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { rutaOrg } from "@/lib/rutaOrg";
 import type { PerfilMuro } from "@/hooks/useMuro";
 import { toast } from "sonner";
 import { avisoSistema, resumenMensaje, sonar } from "@/lib/avisos";
@@ -187,7 +188,7 @@ export function useEnviarMensaje(conversacionId: string | undefined) {
         if (input.archivo.size > LIMITE_MB[tipo] * 1024 * 1024) throw new Error(`El archivo supera ${LIMITE_MB[tipo]} MB`);
         const nombre = input.nombre ?? (input.archivo instanceof File ? input.archivo.name : "archivo");
         const ext = nombre.includes(".") ? nombre.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "") : "bin";
-        const path = `${conversacionId}/${crypto.randomUUID()}.${ext}`;
+        const path = await rutaOrg(conversacionId, `${crypto.randomUUID()}.${ext}`);
         const { error: upErr } = await supabase.storage.from("chat").upload(path, input.archivo, {
           contentType: input.archivo.type || "application/octet-stream",
         });

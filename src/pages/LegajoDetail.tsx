@@ -19,6 +19,7 @@ import { escaparHtml, sendNotificationEmailIfEnabled } from "@/lib/sendNotificat
 import { ArrowLeft, Mail, Phone, Building2, Calendar, FileText, Award, AlertCircle, Loader2, Upload, Pencil, Plus, MapPin, Users, Trash2, GraduationCap, ClipboardList, Download, Check, X, Clock, Palmtree, ShieldAlert, Eye, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { rutaOrg } from "@/lib/rutaOrg";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -236,7 +237,7 @@ export default function LegajoDetail() {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !id) return;
-    const storagePath = `${id}/${Date.now()}_${file.name}`;
+    const storagePath = await rutaOrg(id, `${Date.now()}_${file.name}`);
     const { error: uploadError } = await supabase.storage.from("documentos-legajo").upload(storagePath, file);
     if (uploadError) { toast.error("Error al subir archivo: " + uploadError.message); return; }
     const { error: dbError } = await supabase.from("documentos_legajo").insert({

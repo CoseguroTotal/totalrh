@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { rutaOrg } from "@/lib/rutaOrg";
 
 export const REACCIONES = [
   { tipo: "me_gusta", emoji: "👍", label: "Me gusta" },
@@ -183,7 +184,7 @@ export async function subirImagen(file: File) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Sesión vencida");
   const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-  const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+  const path = await rutaOrg(user.id, `${crypto.randomUUID()}.${ext}`);
   const { error } = await supabase.storage.from("muro").upload(path, file, { contentType: file.type });
   if (error) throw error;
   // Se guarda la ruta: el bucket es privado y la imagen se muestra con URL firmada

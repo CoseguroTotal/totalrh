@@ -4,6 +4,7 @@ import { Clock, FileText, Image as ImageIcon, Loader2, Paperclip, X } from "luci
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { rutaOrg } from "@/lib/rutaOrg";
 
 export interface AdjuntoPermiso {
   path: string;
@@ -32,7 +33,7 @@ export async function subirAdjuntosPermiso(empleadoId: string, archivos: File[])
   const subidos: AdjuntoPermiso[] = [];
   for (const f of archivos) {
     const ext = f.name.includes(".") ? f.name.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "") : "bin";
-    const path = `${empleadoId}/${crypto.randomUUID()}.${ext}`;
+    const path = await rutaOrg(empleadoId, `${crypto.randomUUID()}.${ext}`);
     const { error } = await supabase.storage.from("permisos").upload(path, f, { contentType: f.type || "application/octet-stream" });
     if (error) throw new Error(`No se pudo subir "${f.name}"`);
     subidos.push({ path, nombre: f.name, tipo: f.type, tamano: f.size });
