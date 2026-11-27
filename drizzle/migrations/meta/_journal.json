@@ -225,6 +225,13 @@
       "when": 1795721450388,
       "tag": "0031_multiempresa_t4_funciones",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795779454952,
+      "tag": "0032_multiempresa_t5_storage",
+      "breakpoints": true
     }
   ]
 }

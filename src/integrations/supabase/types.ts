@@ -3326,6 +3326,8 @@ export type Database = {
       soporte_email: { Args: never; Returns: string }
       soporte_org_de: { Args: { _usuario_id: string }; Returns: string }
       soporte_user_id: { Args: never; Returns: string }
+      storage_carpeta: { Args: { _name: string }; Returns: string }
+      storage_org: { Args: { _name: string }; Returns: string }
       terminal_ultimas_fichadas: {
         Args: never
         Returns: {
